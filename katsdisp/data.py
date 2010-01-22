@@ -185,14 +185,19 @@ class CorrProdRef(object):
     def _calc_bl_order(self):
         """Return the order of baseline data output by a CASPER correlator
         X engine."""
-        order1, order2 = [], []
+        ret = []
         for i in range(self.n_ants):
-            for j in range(int(self.n_ants/2),-1,-1):
-                k = (i-j) % self.n_ants
-                if i >= k: order1.append((k, i))
-                else: order2.append((i, k))
-        order2 = [o for o in order2 if o not in order1]
-        return [o for o in order1 + order2]
+            for j in range(i+1):
+                ret.append((j,i))
+        return ret
+        #order1, order2 = [], []
+        #for i in range(self.n_ants):
+        #    for j in range(int(self.n_ants/2),-1,-1):
+        #        k = (i-j) % self.n_ants
+        #        if i >= k: order1.append((k, i))
+        #        else: order2.append((i, k))
+        #order2 = [o for o in order2 if o not in order1]
+        #return [o for o in order1 + order2]
 
     def list_baselines(self):
         return self.bl_order
@@ -1149,6 +1154,8 @@ class DataHandler(object):
             frames = np.average(frames, avg_axis)
         if sum_axis is not None:
             frames = np.sum(frames, sum_axis)
+        if reverse_order:
+            frames.reverse()
         if include_ts:
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
@@ -1184,7 +1191,7 @@ class DataHandler(object):
         """
         if product is None: product = self.default_product
         if self.storage is not None:
-            tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
             mapping = self.cpref.id_to_real_str(product)
             pl.ion()
             fig = pl.figure()
@@ -1196,7 +1203,7 @@ class DataHandler(object):
             cbar = fig.colorbar(cax)
             fig.show()
             pl.draw()
-            ap = AnimatablePlot(fig, self.select_data, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            ap = AnimatablePlot(fig, self.select_data, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
             ap.set_colorbar(cbar)
             return ap
         else:
