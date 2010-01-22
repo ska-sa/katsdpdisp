@@ -234,8 +234,8 @@ class CorrProdRef(object):
         """Turn a user specified antenna into a dbe input number.
         """
          # check to see if physical antenna correspsonds to a dbe input
-        if antenna < 1:
-            print "Physical antennas are numbered from 1 upwards. You have specified " + str(antenna)
+        if antenna < 0:
+            print "Physical antennas are numbered from 0 upwards. You have specified " + str(antenna)
             return (None,None)
         if self._katconfig is not None:
             if self._real_to_dbe.has_key(str(antenna) + str(pol)):
@@ -246,7 +246,7 @@ class CorrProdRef(object):
                 return (None,None)
         else:
             print "No antenna mapping config provided. Use direct dbe mapping. "
-            return (int(antenna) - 1, {'H':'x','V':'y'}[pol])
+            return (int(antenna), {'H':'x','V':'y'}[pol])
 
     def _user_to_id(self, inp):
         if type(inp) != type(()): return inp
@@ -371,7 +371,8 @@ class SignalDisplayFrame(object):
         return self.data[start_channel:stop_channel:2]
 
     def get_im(self, start_channel=0, stop_channel=None):
-        return self.data[start_channel+1:stop_channel+1:2]
+        if stop_channel is not None: stop_channel += 1
+        return self.data[start_channel+1:stop_channel:2]
 
     def get_mag(self, start_channel=0, stop_channel=None):
         """Return a np array of mag data for each channel"""
