@@ -492,11 +492,13 @@ class SignalDisplayStore(object):
             return None
 
     def stats(self):
-        print "Data ID".center(7),"Frames".center(6),"Earliest Stored Data".center(26),"Latest Stored Data".center(26)
-        print "".center(7,"="), "".center(6,"="), "".center(26,"="), "".center(26,"=")
-        for id in self.time_frames.keys():
-            times = self.time_frames[id].keys()
-            print id.center(7),str(len(times)).center(6),time.ctime(min(times)).center(26), time.ctime(max(times)).center(26)
+        print "Correlation Product ID".center(7),"Frames".center(6),"Earliest Stored Data".center(50),"Latest Stored Data".center(50)
+        print "".center(22,"="), "".center(6,"="), "".center(50,"="), "".center(50,"=")
+        for id in self.corr_prod_frames.keys():
+            times = self.corr_prod_frames[id].keys()
+            te = str(min(times)) + " (" + time.ctime(min(times)/1000)  + ")"
+            tl = str(max(times)) + " (" + time.ctime(max(times)/1000)  + ")"
+            print str(id).center(22),str(len(times)).center(6),te.center(50),tl.center(50)
 
 class NullReceiver(object):
     """Null class used when loading historical data into signal displays...
@@ -947,39 +949,8 @@ class DataHandler(object):
         else: self.default_product = product
 
     @property
-    def spectrum(self):
-        return self.receiver.spectrum
-
-    @property
-    def spectrum_xx(self):
-        return self.receiver.spectrum['XX']
-
-    @property
-    def spectrum_yy(self):
-        return self.receiver.spectrum['YY']
-
-    @property
-    def spectrum_xy(self):
-        return self.receiver.spectrum['XY']
-
-    @property
-    def spectrum_yx(self):
-        return self.receiver.spectrum['YX']
-
-    @property
-    def tp(self):
-        return self.receiver.tp
-
-    @property
-    def tp_x(self):
-        return self.receiver.tp['XX']
-
-    @property
-    def tp_y(self):
-        return self.receiver.tp['YY']
-
-    def __getattr__(self, name):
-        return self.receiver.__getattribute__(name)
+    def stats(self):
+        return self.storage.stats()
 
     def stop(self):
         """Stop the signal display receiver and deregister our IP from the subscribers to the k7w signal data stream.
