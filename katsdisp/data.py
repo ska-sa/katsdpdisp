@@ -17,6 +17,7 @@ quitter = Quitter("exit")
  # create a quitter to handle exit conditions
 
 logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger("katsdisp.data")
 
 try:
     import matplotlib.pyplot as pl
@@ -620,13 +621,17 @@ class SpeadSDReceiver(threading.Thread):
         for heap in spead.iterheaps(self.rx):
             self.ig.update(heap)
             self.heap_count += 1
-            if self.ig['sd_data'] is not None:
-                data = self.ig['sd_data']
-                data = data.reshape(data.shape[0],data.shape[1]*data.shape[2],data.shape[3]).swapaxes(0,1)
-                ts = self.ig['sd_timestamp'] / 1000.0
-                for id in range(data.shape[0]):
-                    fdata = data[id].flatten()
-                    self.storage.add_data(ts, id, 0, len(fdata), fdata)
+            try:
+                if self.ig['sd_data'] is not None:
+                    data = self.ig['sd_data']
+                    data = data.reshape(data.shape[0],data.shape[1]*data.shape[2],data.shape[3]).swapaxes(0,1)
+                    ts = self.ig['sd_timestamp'] / 100.0
+                     # timestamp is in centiseconds since epoch (40 bit spead limitation)
+                    for id in range(data.shape[0]):
+                        fdata = data[id].flatten()
+                        self.storage.add_data(ts, id, 0, len(fdata), fdata)
+            except Exception, e:
+                logger.warning("Failed to add signal display frame. (" + str(e) + ")")
         self.rx.stop()
 
 class SignalDisplayReceiver(threading.Thread):
