@@ -14,8 +14,7 @@ import numpy as np, spead, logging, sys, time, h5py
 logging.basicConfig(level=logging.WARNING)
 
 data_port = 7148
-#sd_ip = '127.0.0.1'
-sd_ip = '192.168.1.37'
+sd_ip = '127.0.0.1'
 
 def receive():
     print 'Initalising SPEAD transports...'
