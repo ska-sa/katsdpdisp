@@ -1,17 +1,4 @@
-# A library for receiving and interacting with online signal display data.
-#
-# The useful things herein are:
-#    AnimatablePlot - generally not called directly, but all plot commands return an instance of this class to allow the plot to be animated
-#    SignalDisplayFrame - in signal display parlance a frame is the complex spectrum for a single correlator product id for a single dump.
-#                       - internally the data is stored as a np.float32 array of size CHANNELS*2. A number of helper functions provide views such as complex, re, im, mag, phase
-#    SignalDisplayStore - a class to store and group a bunch of SignalDisplayFrame. By default 3600 frames for each unique product id are stored.
-#    SignalDisplayReceiver - receives signal display frames (or parts thereof) and places them in the store.
-#    DataHandler - High level object that holds all plots and utility functions for interacting with a SignalDisplayStore.
-#
-# Fundamentally all the signal display addressing uses what we call correlator product id's. Each invididual correlation product
-# produced by a correlator is assigned a unique correlation product id. (e.g. 0x * 0y). This avoid issues such as combinations of
-# single pol and dual pol antennas connected to the same correlator causing problems with traditional baseline/polarisation indexing.
-#
+# This library contains classes and routines that aid with data stream integration into katuilib
 
 import threading
 import socket
@@ -20,8 +7,11 @@ import numpy as np
 import time
 import warnings
 import sys
+import datetime
+import calendar
 from struct import unpack
-from .quitter import Quitter
+
+from quitter import Quitter
 
 quitter = Quitter("exit")
  # create a quitter to handle exit conditions
@@ -31,9 +21,16 @@ logger = logging.getLogger("katsdisp.data")
 try:
     import matplotlib.pyplot as pl
     import matplotlib.lines
+    import matplotlib.dates
+    import matplotlib.ticker
 except:
     pl = None
     warnings.warn("Could not import matplotlib.pyplot -- plotting functions will not work.")
+
+try:
+    import netifaces
+except:
+    netifaces = None
 
 class Archive(object):
     """An archive containing telescope data.
@@ -57,8 +54,8 @@ class Archive(object):
         self.user = user
         self.password = password
         self.data_directory = data_directory
-        from .utility import FFNode
-        self.node = FFNode(ip,ip)
+        from .utility import KATNode
+        self.node = KATNode(ip,ip)
 
 class DataFile(object):
     """A reference to a data file stored in an archive.
@@ -162,15 +159,13 @@ class CorrProdRef(object):
         self._katconfig = katconfig
         if katconfig is not None:
             try:
-                ar = katconfig.get_array_config()
-                mapping = ar._sections['dbe1']
+                mapping = katconfig.get_input_mapping()
                 for k,v in mapping.iteritems():
-                    if k.startswith("input"):
-                        dbe = k[5:]
-                        rvals = v.split(",")
-                        real = rvals[0][3:] + rvals[1][-1].capitalize()
-                        self._dbe_to_real[dbe] = real
-                        self._real_to_dbe[real] = dbe
+                    dbe = k[5:]
+                    rvals = v.split(",")
+                    real = rvals[0][3:] + rvals[1][-1].capitalize()
+                    self._dbe_to_real[dbe] = real
+                    self._real_to_dbe[real] = dbe
                 self.n_ants = len(self._dbe_to_real) / 2
             except Exception, err:
                 print "Although a config was supplied, construction of real to dbe mapping failed. (" + str(err) + ")"
@@ -185,19 +180,14 @@ class CorrProdRef(object):
     def _calc_bl_order(self):
         """Return the order of baseline data output by a CASPER correlator
         X engine."""
-        ret = []
+        order1, order2 = [], []
         for i in range(self.n_ants):
-            for j in range(i+1):
-                ret.append((j,i))
-        return ret
-        #order1, order2 = [], []
-        #for i in range(self.n_ants):
-        #    for j in range(int(self.n_ants/2),-1,-1):
-        #        k = (i-j) % self.n_ants
-        #        if i >= k: order1.append((k, i))
-        #        else: order2.append((i, k))
-        #order2 = [o for o in order2 if o not in order1]
-        #return [o for o in order1 + order2]
+            for j in range(int(self.n_ants/2),-1,-1):
+                k = (i-j) % self.n_ants
+                if i >= k: order1.append((k, i))
+                else: order2.append((i, k))
+        order2 = [o for o in order2 if o not in order1]
+        return [o for o in order1 + order2]
 
     def list_baselines(self):
         return self.bl_order
@@ -239,8 +229,8 @@ class CorrProdRef(object):
         """Turn a user specified antenna into a dbe input number.
         """
          # check to see if physical antenna correspsonds to a dbe input
-        if antenna < 0:
-            print "Physical antennas are numbered from 0 upwards. You have specified " + str(antenna)
+        if antenna < 1:
+            print "Physical antennas are numbered from 1 upwards. You have specified " + str(antenna)
             return (None,None)
         if self._katconfig is not None:
             if self._real_to_dbe.has_key(str(antenna) + str(pol)):
@@ -248,10 +238,10 @@ class CorrProdRef(object):
                 return (int(inp[0]),inp[1])
             else:
                 print "The specified physical input (Antenna " + str(antenna) + ", Pol: " + str(pol) + ") does not appear to be connected to the dbe.\n Please check your configuration."
-                return (None,None)
+                raise KeyError
         else:
             print "No antenna mapping config provided. Use direct dbe mapping. "
-            return (int(antenna), {'H':'x','V':'y'}[pol])
+            return (int(antenna) - 1, {'H':'x','V':'y'}[pol])
 
     def _user_to_id(self, inp):
         if type(inp) != type(()): return inp
@@ -285,6 +275,17 @@ class CorrProdRef(object):
         a = (short and m[3] or mt)
         return a + str(m[0]) + " * " + a + str(m[1]) + " " + str(m[2])
 
+    def get_id_to_real_map(self):
+        """Returns a dict with corr prod ids as the key and string antenna description as the value."""
+        prods = len(self._dbe_to_real) * (len(self._dbe_to_real)-1)
+         # the number of products produced by the dbe
+        a = {}
+        for x in range(prods):
+            t = self.id_to_real(x)
+            a[x] = t[3] + t[0] + ":" + t[3] + t[1] + " " + t[2]
+             # our format is Ax:Ay POL (e.g. A1:A2 VV)
+        return a
+
     def id_to_real(self, id):
         """Takes a correlator product id and returns the physical inputs it corresponds to.
 
@@ -295,8 +296,9 @@ class CorrProdRef(object):
 
         Returns
         -------
-        (a1, a2, pol) : tuple
-            Returns the physical antenna pair and the actual polarisation product (HH,VV,HV,VH)
+        (a1, a2, pol, map_type) : tuple
+            Returns the physical antenna pair and the actual polarisation product (HH,VV,HV,VH) and the mapping type [Antenna - real antennas | Input - dbe inputs instead of antennas returned]
+
         """
         input = self.id_to_input(id)
         pol = self._dbe_pol_dict[input[2]]
@@ -336,10 +338,21 @@ class CorrProdRef(object):
     def input_to_id():
         pass
 
+    def antennas(self):
+        """List the antenna numbers obtained from the config file.
+
+        Returns
+        -------
+        antennas : list of str
+            The list of antennas, e.g. ['1', '2'], ['3', '4']
+        """
+        return list(set(inp[:-1] for inp in self._real_to_dbe))
+
+
 class SignalDisplayFrame(object):
     """A class to store a single frame of signal display data.
     """
-    def __init__(self, timestamp_ms, corr_prod_id, length, data):
+    def __init__(self, timestamp_ms, corr_prod_id, length):
         self.timestamp_ms = timestamp_ms
         self.corr_prod_id = corr_prod_id
         self.length = length
@@ -376,8 +389,7 @@ class SignalDisplayFrame(object):
         return self.data[start_channel:stop_channel:2]
 
     def get_im(self, start_channel=0, stop_channel=None):
-        if stop_channel is not None: stop_channel += 1
-        return self.data[start_channel+1:stop_channel:2]
+        return self.data[start_channel+1:stop_channel+1:2]
 
     def get_mag(self, start_channel=0, stop_channel=None):
         """Return a np array of mag data for each channel"""
@@ -387,31 +399,42 @@ class SignalDisplayFrame(object):
         """Return a np array of phase angle (deg) for each channel"""
         return np.angle(self.data.view(dtype=np.complex64))[start_channel:stop_channel]
 
-    def get_avg_power(self, start_channel=0, stop_channel=None):
+    def get_avg_power(self, start_channel=0, stop_channel=None, rfi_mask=set()):
         """Return the power averaged over frequency channels specified.
-           Default is all channels in the frame."""
-        return np.average(np.abs(self.data.view(dtype=np.complex64)[start_channel:stop_channel]))
+           Default is all channels in the frame.
+           An rfiMask in set form can be given as well which will exclude the masked channels from the calculation."""
+        mag = self.get_mag(start_channel,stop_channel)
+        return np.average(np.ma.masked_array(mag, [x in rfi_mask for x in range(1,len(mag)+1)]))
+
+        #return np.average(np.abs(self.data.view(dtype=np.complex64)[start_channel:stop_channel]))
 
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
     for it's clients.
     Parameters
     ----------
+    n_ants : integer
+        The number of antennas in the system. used for conversion. !!To be replaced by antenna config file!!
     capacity : integer
         The overall number of correlator dumps to store.
         The size of a single, complete dump is: channels * correlation_products * 8 bytes
         default: 3600
     """
-    def __init__(self, capacity=3600):
+    def __init__(self, n_ants=2, capacity=3600):
         self.capacity = capacity
+        self.n_ants = n_ants
+        self.cpref = CorrProdRef(n_ants)
         self.time_frames = {}
          # a dictionary of SignalDisplayFrames. Organised by timestamp and then correlation product id
         self.corr_prod_frames = {}
          # a dictionary of SignalDisplayFrames. Organised by correlation product id and then timestamp (ref same data as time_frames)
-        self._timestamp_count = 0
         self._last_frame = None
         self._last_data = None
         self._last_offset = None
+        self.center_freqs_mhz = []
+         # currently this only gets populated on loading historical data
+        self.cur_frames = {}
+         # a dict of the most recently completed frames for each corr_prod_id. Not guaranteed to be for the same timestamp...
 
     """Add some data to the store.
     In general this a fragment of a signal display frame and hence
@@ -431,65 +454,109 @@ class SignalDisplayStore(object):
         A numpy array of complex frequency channels for the specified correlation product.
     """
     def add_data(self, timestamp_ms, corr_prod_id, offset, length, data):
-        frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length, data)
-         # check top level containers
         if not self.time_frames.has_key(timestamp_ms):
             self.time_frames[timestamp_ms] = {}
-            self._timestamp_count += 1
         if not self.corr_prod_frames.has_key(corr_prod_id):
             self.corr_prod_frames[corr_prod_id] = {}
-        if not self.time_frames[timestamp_ms].has_key(corr_prod_id):
-            f = SignalDisplayFrame(timestamp_ms, corr_prod_id, length, data)
-            self.time_frames[timestamp_ms][corr_prod_id] = f
-            self.corr_prod_frames[corr_prod_id][timestamp_ms] = f
-             # add the blank frame
 
-        if self._timestamp_count > self.capacity:
+        if not self.time_frames[timestamp_ms].has_key(corr_prod_id):
+            frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length)
+            self.time_frames[timestamp_ms][corr_prod_id] = frame
+            self.corr_prod_frames[corr_prod_id][timestamp_ms] = frame
+             # add the blank frame
+        else:
+            frame = self.time_frames[timestamp_ms][corr_prod_id]
+
+        frame.add_data(offset, data)
+        if frame._valid:
+            self.cur_frames[corr_prod_id] = frame
+             # always point to the most recently completed valid frame
+         # if we have run up against our storage capacity we should complete the current frame and the pop the earliest frame from the stack...
+        if len(self.time_frames) > self.capacity:
             ts = min(self.time_frames.keys())
-            x = self.time_frames[timestamp_ms].pop(ts)
+            x = self.time_frames.pop(ts)
              # pop out the oldest time element
-            for id in x.iterkeys():
-                self.corr_prod_frames[id].pop(ts)
+            for prod_id in x.iterkeys():
+                self.corr_prod_frames[prod_id].pop(ts)
              # remove the stale timestamps from individual ids
 
-        self._last_frame = self.time_frames[timestamp_ms][corr_prod_id]
+        self._last_frame = frame
         self._last_data = data
         self._last_offset = offset
-        self.time_frames[timestamp_ms][corr_prod_id].add_data(offset, data)
-        self.corr_prod_frames[corr_prod_id][timestamp_ms].add_data(offset, data)
 
-    def load(self, filename, scan=0, start=None, end=None):
+    def pc_load_letter(self, filename, rows=None, cf=1.8e9):
+        """Load signal display data from an hdf5 generated by the packetised correlator
+        as deployed at the GMRT in Q3 2010."""
+        import os
+        import h5py
+        try:
+            os.stat(filename)
+            d = h5py.File(filename)
+        except OSError:
+            print "Specified file (%s) could not be found." % filename
+        try:
+            bw = d['/'].attrs['bandwidth']
+            nc = d['/'].attrs['n_chans']
+            self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
+            self.center_freqs_mhz.reverse()
+             # channels mapped in reverse order
+        except KeyError:
+            print "Did not find the required attributes bandwidth and n_chans. Frequency information not populated\n"
+            pass
+        n_xeng = d['/'].attrs['n_xeng']
+        n_chans = d['/'].attrs['n_chans']
+        n_bls = d['/'].attrs['n_bls']
+        n_stokes = d['/'].attrs['n_stokes']
+        raw = None
+        for x in range(n_xeng):
+            data = d['xeng_raw%i'%x].value
+            if raw is None:
+                raw = np.zeros((max(rows,data.shape[0]),n_chans, n_bls, n_stokes,2), dtype=np.float32)
+            raw[:,x::n_xeng] = data.astype(np.float32)
+            print "Added data from X engine",x
+        raw = raw.reshape((raw.shape[0],n_chans,n_bls*n_stokes,2))
+        raw = raw.swapaxes(1,2)
+         # we now have timestamp, baseline_index, frequency, 2
+        for t in d['timestamp0'].value:
+            for id in range(raw.shape[1]):
+                data = raw[t][id].flatten()
+                print t,":Adding data length",len(data),"for bl id",id
+                self.add_data(t, id, 0, len(data), data)
+        print "Load complete..."
+
+    def load(self, filename, cscan=None, scan=None, start=None, end=None):
         """Load signal display data from a previously captured HDF5 file.
-        A base filename is specified. A search is made for <filename>.00x.h5
-        Baselines are filled in based on the files found. (1 - A1A1, 2 - A1A2, 3 - A2A2)
-        Generally the file is flatenned and all data is read in. If the scan parameter is set
-        then only the specified scan will be read in. At the moment only CompoundScan0 is used.
-
+        Generally the file is flatenned and all data is read in.
+        If cscan is set then only the specified CompoundScan will be used. Likewise for scan.
         The start and end frame can be specified to limit to data that is retrieved.
+        If channel information like the center_frequency and bandwidth is available a freqs table is populated.
         """
         import os
         import h5py
-        for b in range(1,4):
-            fullname = filename + str(b) + '.h5'
+        try:
+            os.stat(filename)
+            d = h5py.File(filename)
             try:
-                os.stat(fullname)
-                d = h5py.File(fullname)
-                for s in d['Scans']['CompoundScan0']:
-                    data = d['Scans']['CompoundScan0'][s]['data'].value[start:end]
-                    ts = d['Scans']['CompoundScan0'][s]['timestamps'].value[start:end]
-                    print "Adding",len(ts),"timestamps from",s,"for baseline",b
+                cf = d['Correlator'].attrs['center_frequency_hz']
+                bw = d['Correlator'].attrs['channel_bandwidth_hz']
+                nc = d['Correlator'].attrs['num_freq_channels']
+                self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
+                self.center_freqs_mhz.reverse()
+                 # channels mapped in reverse order
+            except KeyError:
+                pass # no frequency information
+            for cscan in (cscan in d['Scans'].keys() and [cscan] or d['Scans'].keys()):
+                for s in (scan in d['Scans'][cscan].keys() and [d['Scans'][cscan][scan]] or [d['Scans'][cscan][s] for s in d['Scans'][cscan].keys()]):
+                    print "Adding data from %s" % s.name
+                    data = s['data'].value[start:end]
+                    ts = s['timestamps'].value[start:end]
                     for i,t in enumerate(ts):
-                        t = t / 1000
-                        d = data[i]
-                        (mx,px) = self._make_spectrum(d['XX'])
-                        (my,py) = self._make_spectrum(d['YY'])
-                        (mxy,pxy) = self._make_spectrum(d['XY'])
-                        (myx,pyx) = self._make_spectrum(d['YX'])
-                        data_id = (b - 1)
-                        self.add_data(t,1,data_id,[mx],[my],[mxy],[myx])
-                        self.add_data(t,2,data_id + 3,[px],[py],[pxy],[pyx])
-            except OSError:
-                print "Baseline",b,"could not be found. (filename=",fullname,")."
+                        dt = data[i]
+                        for id in range(len(dt[0])):
+                            d_float = np.ravel(np.array([np.real(dt[str(id)]),np.imag(dt[str(id)])]), order='F')
+                            self.add_data(t, id, 0, len(d_float), d_float)
+        except OSError:
+            print "Specified file (%s) could not be found." % filename
 
     def __getitem__(self, name):
         try:
@@ -498,33 +565,69 @@ class SignalDisplayStore(object):
             return None
 
     def stats(self):
-        print "Correlation Product ID".center(7),"Frames".center(6),"Earliest Stored Data".center(50),"Latest Stored Data".center(50)
-        print "".center(22,"="), "".center(6,"="), "".center(50,"="), "".center(50,"=")
+        """Print out the current state of the data store."""
+        print "Data ID".center(7),"Frames".center(6),"Earliest Stored Data".center(26),"Latest Stored Data".center(26)
+        print "".center(7,"="), "".center(6,"="), "".center(26,"="), "".center(26,"=")
         for id in self.corr_prod_frames.keys():
             times = self.corr_prod_frames[id].keys()
-            te = str(min(times)) + " (" + time.ctime(min(times)/1000)  + ")"
-            tl = str(max(times)) + " (" + time.ctime(max(times)/1000)  + ")"
-            print str(id).center(22),str(len(times)).center(6),te.center(50),tl.center(50)
+            print str(id).center(7),str(len(times)).center(6),time.ctime(min(times)).center(26), time.ctime(max(times)).center(26)
 
 class NullReceiver(object):
     """Null class used when loading historical data into signal displays...
     """
     def __init__(self, storage, channels=512):
         self.storage = storage
-        self.data_rate = 0
         self.channels = channels
-        self.spectrum = {}
-        self.spectrum['XX'] = [[0] * channels,[0] * channels,[0] * channels, [0] * channels, [0] * channels, [0] * channels]
-        self.spectrum['YY'] = [[0] * channels,[0] * channels,[0] * channels, [0] * channels, [0] * channels, [0] * channels]
-        self.spectrum['XY'] = [[0] * channels,[0] * channels,[0] * channels, [0] * channels, [0] * channels, [0] * channels]
-        self.spectrum['YX'] = [[0] * channels,[0] * channels,[0] * channels, [0] * channels, [0] * channels, [0] * channels]
-        self.tp = {}
-        self.tp['XX'] = [0,0,0]
-        self.tp['YY'] = [0,0,0]
-        self.tp['XY'] = [0,0,0]
-        self.tp['YX'] = [0,0,0]
         self.current_timestamp = 0
         self.last_ip = None
+
+class SpeadSDReceiver(threading.Thread):
+    """A class to receive signal display data via SPEAD and store it in a SignalDisplayData object.
+
+    Parameters
+    ----------
+    port : integer
+        The port on which to listen for SPEAD udp packets.
+    storage : SignalDispayStore
+        The object in which to store the received signal display data. If none specified then only the current frame
+        of data will be available at any given time.
+        default: None
+    pkt_buffer_count : integer
+        The buffer size for a single SPEAD heap.
+        default: 1024
+    """
+    def __init__(self, port, storage, pkt_buffer_count=1024):
+        self._port = port
+        self.storage = storage
+        try:
+            import spead
+        except Exception, e:
+            print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
+            return
+        self.rx = spead.TransportUDPrx(self._port, pkt_count=pkt_buffer_count)
+        self.ig = spead.ItemGroup()
+        self.heap_count = 0
+        threading.Thread.__init__(self)
+
+    def stop(self):
+        if self.rx is not None: self.rx.stop()
+
+    def run(self):
+        """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
+           the storage object.
+        """
+        import spead
+        for heap in spead.iterheaps(self.rx):
+            self.ig.update(heap)
+            self.heap_count += 1
+            if self.ig['sd_data'] is not None:
+                data = self.ig['sd_data']
+                data = data.reshape(data.shape[0],data.shape[1]*data.shape[2],data.shape[3]).swapaxes(0,1)
+                ts = self.ig['sd_timestamp'] / 1000.0
+                for id in range(data.shape[0]):
+                    fdata = data[id].flatten()
+                    self.storage.add_data(ts, id, 0, len(fdata), fdata)
+        self.rx.stop()
 
 class SignalDisplayReceiver(threading.Thread):
     """A class to receive and decode signal display data, and store it in a SignalDisplayData object.
@@ -541,12 +644,13 @@ class SignalDisplayReceiver(threading.Thread):
         The size in bytes to set the udp receive buffer to.
         default: 512000
     """
-    def __init__(self, port, store=None, recv_buffer=512000):
+    def __init__(self, port, storage, recv_buffer=512000):
         self.port = port
-        self.storage = store
+        self.storage = storage
         self._running = True
         self.data_rate = 0
         self.process_time = 0
+        self.n_ants = 2
         threading.Thread.__init__(self)
         self.packet_count = 0
         self.recv_buffer = recv_buffer
@@ -556,7 +660,6 @@ class SignalDisplayReceiver(threading.Thread):
         self.last_timestamp = 0
         self.last_ip = None
         self._last_frame = None
-        quitter.register_callback("Signal Display Receiver", self.stop)
 
     def stop(self):
         self._running = False
@@ -587,6 +690,8 @@ class SignalDisplayReceiver(threading.Thread):
             return (0, 0, 0, 0)
 
     def stats(self):
+        """Print out a listing of the current data handler statistics. This includes packet arrival and processing times, as well as the number of frames
+        in storage."""
         print "Data rate (over last 10 packets):",self.data_rate
         print "Packet process time (us - avg for last 10 packets):",self.process_time
         print "Last packet from IP:",self.last_ip
@@ -607,14 +712,20 @@ class SignalDisplayReceiver(threading.Thread):
             logger.error("Failed to set requested receive buffer size of " + str(self.recv_buffer) + " bytes")
         udpIn.bind(('', self.port))
         udpIn.setblocking(True)
+        udpIn.settimeout(2)
+         # one second timeout. Needed for handling shutdown properly.
         self.packet_count = 0
         d_start = 0
         while self._running:
+            try:
+                data, self.last_ip = udpIn.recvfrom(9200)
+            except socket.timeout:
+                continue
+            self._last_frame = data
             if self.packet_count % 10 == 0:
                 d_start = time.time()
-            data, self.last_ip = udpIn.recvfrom(9200)
-            self._last_frame = data
-            if d_start > 0:
+            elif d_start > 0:
+                # do this on the next packet
                 self.data_rate = int(len(data)*10 / (time.time() - d_start) / 1024)
                 self.process_time = (time.time() - d_start) * 100000
                 d_start = 0
@@ -632,6 +743,7 @@ class SignalDisplayReceiver(threading.Thread):
             self.storage.add_data(timestamp_ms, corr_prod_id, data_offset, length, packet_data)
             self.last_timestamp = timestamp_ms
             self.packet_count += 1
+        print "Receiver loop terminated..."
 
 class AnimatablePlot(object):
     """A plot container that contains sufficient meta information for the plot to be animated by another thread.
@@ -645,7 +757,7 @@ class AnimatablePlot(object):
 
     >>> from matplotlib.pyplot import figure
     >>> from pylab import standard_normal
-    >>> from ffuilib.data import AnimatablePlot
+    >>> from katuilib.data import AnimatablePlot
     >>> img = standard_normal(size = (100,100))
     >>> f = figure()
     >>> f.gca().imshow(img)
@@ -661,6 +773,9 @@ class AnimatablePlot(object):
         A pointer to the function to be called when the plot is updated
     update_args : kwargs
         The keyword arguments to be supplied to the update_function
+    dh : DataHandler
+        A reference to the parent datahandler for this plot
+        default: None
     """
     def __init__(self, figure, update_function, **update_args):
         self.figure = figure
@@ -668,7 +783,7 @@ class AnimatablePlot(object):
         self._yautoscale = True
         self.ymin = 0
         self.ymax = 0
-	self.fixed_x = False
+        self.fixed_x = False
         self.update_functions = {}
         self.update_arguments = {}
         self.update_functions[0] = update_function
@@ -678,7 +793,10 @@ class AnimatablePlot(object):
         self._markers = {}
         self._marker_count = 0
         self._cbar = None
+        self._stopEvent = threading.Event()
         self._styles = ['b','g','r','c','m','y','k']
+        self._last_update = time.time()
+        self._thread = None
 
     def set_colorbar(self, cbar):
         self._cbar = cbar
@@ -737,9 +855,20 @@ class AnimatablePlot(object):
         Differences between OSX and Linux matplotlibiness mean that we need a bit of
         overkill to get a correct redraw.
         """
-        self.figure.show()
+        #self.figure.show()
         self.figure.canvas.draw()
-        pl.draw()
+        #pl.draw()
+
+    def threaded_animate(self, interval=0.2):
+        """Start the animation in another thread...."""
+        self._stopEvent.clear()
+        self._thread = threading.Thread(target=self.animate, args=((interval,)))
+        self._thread.daemon = True
+        self._thread.start()
+
+    def stop_threaded_animate(self):
+        self._stopEvent.set()
+        self._thread = None
 
     def animate(self, interval=1, **override_args):
         """Animate the plot.
@@ -754,7 +883,7 @@ class AnimatablePlot(object):
             keyword argument provided to the update function that gets called on each animation cycle.
         """
         print "Animating plot. Press Ctrl-C to halt..."
-        while True:
+        while not self._stopEvent.isSet():
             try:
                 self.update(**override_args)
                 time.sleep(interval)
@@ -771,6 +900,7 @@ class AnimatablePlot(object):
         offset = 0
         ymin = xmin = np.inf
         ymax = xmax = None
+        self._last_update = time.time()
         for slot in self.update_functions.keys():
             offset = 0
             for override in override_args.keys():
@@ -816,10 +946,8 @@ class AnimatablePlot(object):
                         self.ax.lines[slot].set_ydata(new_data)
                 elif len(self.ax.images) > 0:
                     if self._cbar is not None:
-                        self._cbar.set_array(new_data)
-                        self._cbar.set_clim(vmin=np.min(new_data),vmax=np.max(new_data))
-                        self._cbar.autoscale()
-                        self._cbar.draw_all()
+                        new_cax = self._cbar.ax.imshow(new_data, aspect='auto', interpolation='bicubic', animated=True)
+                        self._cbar.update_bruteforce(new_cax)
                     self.ax.set_ylim(len(new_data) - 1,0)
                     self.ax.images[slot].set_data(new_data)
                 elif len(self.ax.patches) > 0:
@@ -834,6 +962,243 @@ class AnimatablePlot(object):
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
 
+
+class AnimatableSensorPlot(object):
+    """A sensor plot container that contains sufficient meta information for the plot to be animated by another thread.
+
+    A list of sensors and plotting parameters is maintained.
+
+    Parameters
+    ----------
+    sensors : list of katuilib sensor objects
+        Sensors whose value to plot. Optional.
+    source : "cached" or "stored"
+        How to retrieve data.
+        "cached" uses .get_cached_history (i.e. the local cache).
+        "stored" uses .get_stored_history (i.e. the central monitor store).
+        The default is "cached".
+    start_time : datetime or float (seconds since Unix epoch).
+        Start of time range (passed to get_cached_histor or get_stored_history).
+        Default is 0 (i.e. no limit). Datetime objects are converted to seconds
+        since the Unix epoch.
+    end_time : datetime or float (seconds since Unix epoch).
+        End of time range (passed to get_cached_histor or get_stored_history).
+        Default is 0 (i.e. no limit). Datetime objects are converted to seconds
+        since the Unix epoch. Negative values select the most recent time period.
+    title : str
+        Title to give figure.
+        Default title is "Sensor Plot".
+    legend_loc : object
+        Any valid matplotlib legend loc parameter.
+        Default is 0 (best guess).
+
+    Examples
+    --------
+    If you wanted to animate three temperature sensors:
+
+    >>> from katuilib.data import AnimatableSensorPlot
+    >>> ap = AnimatableSensorPlot(title="Temperature Sensors")
+    >>> ap.add_sensor(kat.ped1.sensor.rfe3_temperature)
+    >>> ap.add_sensor(kat.ped2.sensor.rfe5_temperature)
+    >>> ap.add_sensor(kat.anc.sensor.bms1_chiller_supply_temperature)
+    >>> ap.animate()
+
+    Alternatively, to plot stored sensor histories without a katui configuration:
+
+    >>> from katuilib.data import AnimatableSensorPlot
+    >>> site_cm = "http://ff-dc.kat.ac.za/raw_site_ffarchive/central_monitoring/"
+    >>> ap = AnimatableSensorPlot(title="Temperature Sensors", source="stored")
+    >>> rfe3_temp = katuilib.katcp_client.KATBaseSensor(
+    ...    "ped2", "rfe3.temperature", "RFE3 Temperature (Pedestal 2)", "degC", "float",
+    ...    central_monitor_url=site_cm)
+    ...
+    >>> rfe5_temp = katuilib.katcp_client.KATBaseSensor(
+    ...    "ped2", "rfe5.temperature", "RFE5 Temperature (Pedestal 2)", "degC", "float",
+    ...    central_monitor_url=site_cm)
+    ...
+    >>> ap.add_sensor(rfe3_temp)
+    >>> ap.add_sensor(rfe5_temp)
+    >>> ap.show()
+    """
+    def __init__(self, sensors=None, source="cached", start_time=0, end_time=0, title="Sensor Plot", legend_loc=0):
+        if pl is None:
+            raise RuntimeError("Can't create AnimatableSensorPlot -- matplotlib not available.")
+        if sensors is None:
+            self.sensors = []
+        else:
+            self.sensors = list(sensors)
+        self.source = source
+        self.figure = pl.figure()
+        self.ax = self.figure.gca()
+        self.legend_loc = legend_loc
+        self._thread = None
+        self._stopEvent = threading.Event()
+        self._colors = ['b','g','r','c','m','y','k']
+
+        if hasattr(start_time, "timetuple"):
+            self.start_time = calendar.timegm(start_time.timetuple())
+        else:
+            self.start_time = start_time
+
+        if hasattr(end_time, "timetuple"):
+            self.end_time = calendar.timegm(end_time.timetuple())
+        else:
+            self.end_time = end_time
+
+        self.ax.set_xlabel("Time (UTC)")
+        self.ax.set_ylabel("Sensor Value")
+        self.ax.set_title(title)
+
+    def add_sensor(self, sensor):
+        """Add a katuilib sensor to the list of sensors to plot.
+
+        Call .update() or .show() afterwards to update the figure.
+
+        Parameters
+        ----------
+        sensor : katuilib sensor object
+            Sensor to add to the figure.
+        """
+        self.sensors.append(sensor)
+
+    def threaded_animate(self, interval=0.2):
+        """Start the animation in another thread...."""
+        self._stopEvent.clear()
+        self._thread = threading.Thread(target=self.animate, args=((interval,)))
+        self._thread.daemon = True
+        self._thread.start()
+
+    def stop_threaded_animate(self):
+        self._stopEvent.set()
+        self._thread = None
+
+    def animate(self, interval=1):
+        """Animate the plot.
+
+        Parameters
+        ----------
+        interval : float
+            The number of second to wait between each update to the plot.
+            default: 1
+        """
+        print "Animating plot. Press Ctrl-C to halt..."
+        try:
+            self.show()
+            while not self._stopEvent.isSet():
+                time.sleep(interval)
+                self.update()
+        except KeyboardInterrupt:
+            print "Animation halted."
+
+    def _fetch_data(self, sensor):
+        """Retrieve data for updating a sensor plot."""
+        if self.source == "stored":
+            time_data, value_data, status_data = sensor.get_stored_history(
+                select=False,
+                start_time=self.start_time,
+                end_time=self.end_time,
+            )
+        else:
+            time_data, value_data, status_data = sensor.get_cached_history(
+                start_time=self.start_time,
+                end_time=self.end_time,
+            )
+
+        time_data = np.array(time_data, dtype=float)
+
+        # convert from seconds since epoch to days since 1 AD.
+        time_data = time_data / (24.0 * 60.0 * 60.0) + (datetime.datetime(1970, 1, 1) - datetime.datetime(1, 1, 1)).days
+
+        return time_data, value_data, status_data
+
+    def _add_line(self, slot, sensor, limits):
+        """Add a new line to the plot."""
+        time_data, value_data, _status_data = self._fetch_data(sensor)
+        self._update_limits(time_data, value_data, limits)
+        label = "%s.%s" % (sensor.parent_name, sensor.name)
+        if sensor.units:
+            label += " (%s)" % sensor.units
+        self.ax.plot_date(time_data, value_data,
+            label=label, color=self._colors[slot % len(self._colors)], linestyle="-", marker='')
+
+    def _update_line(self, slot, sensor, limits):
+        """Update an existing line in the plot."""
+        time_data, value_data, _status_data = self._fetch_data(sensor)
+        self._update_limits(time_data, value_data, limits)
+        line = self.ax.lines[slot]
+        line.set_xdata(time_data)
+        line.set_ydata(value_data)
+
+    def _update_limits(self, data_x, data_y, limits):
+        """Update the sets of limits."""
+        if len(data_x) > 0:
+            limits[0][0].append(np.min(data_x))
+            limits[0][1].append(np.max(data_x))
+            limits[1][0].append(np.min(data_y))
+            limits[1][1].append(np.max(data_y))
+
+    def _date_tick_heuresitcs(self, dt):
+        """Apply some date tick heurestics."""
+        if dt < 10.0 / (24.0 * 60.0):
+            # less than ten minutes
+            self.ax.xaxis.set_minor_locator(matplotlib.ticker.AutoLocator())
+            self.ax.xaxis.set_major_locator(matplotlib.ticker.AutoLocator())
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%H:%M:%S'))
+        elif dt < 4.0 / 24.0:
+            # less than a four hours
+            self.ax.xaxis.set_minor_locator(matplotlib.dates.MinuteLocator(interval=1))
+            self.ax.xaxis.set_major_locator(matplotlib.dates.MinuteLocator(interval=15))
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d-%b-%Y %H:%M'))
+        elif dt < 1.0:
+            # less than a day
+            self.ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(interval=1))
+            self.ax.xaxis.set_major_locator(matplotlib.dates.HourLocator(interval=6))
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d-%b-%Y %H:%M'))
+        elif dt < 7.0:
+            # less than a week
+            self.ax.xaxis.set_minor_locator(matplotlib.dates.HourLocator(interval=6))
+            self.ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=1))
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d-%b-%Y'))
+        elif dt < 30:
+            # less than a month
+            self.ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator(interval=1))
+            self.ax.xaxis.set_major_locator(matplotlib.dates.DayLocator(interval=7))
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d-%b-%Y'))
+        else:
+            # greater than a month
+            self.ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator(interval=1))
+            self.ax.xaxis.set_major_locator(matplotlib.dates.MonthLocator(interval=1))
+            self.ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%b-%Y'))
+
+    def update(self):
+        """Single shot update of the plot.
+        """
+        # xmins, xmaxes, ymins, ymaxes
+        limits = ( ([], []), ([], []))
+
+        for slot, sensor in enumerate(self.sensors):
+            if slot < len(self.ax.lines):
+                self._update_line(slot, sensor, limits)
+            else:
+                self._add_line(slot, sensor, limits)
+
+        if limits[0][0]:
+            xmin, xmax = min(limits[0][0]), max(limits[0][1])
+            ymin, ymax = min(limits[1][0]), max(limits[1][1])
+            self.ax.set_xlim((xmin, xmax))
+            self.ax.set_ylim((ymin*0.95, ymax*1.05))
+            self._date_tick_heuresitcs(xmax - xmin)
+
+        self.ax.legend(loc=self.legend_loc)
+
+        self.figure.canvas.draw()
+
+    def show(self):
+        """Show the figure."""
+        self.update()
+        self.figure.show()
+
+
 class PlotAnimator(object):
     """An animated plot container that allows the user to add a number of AnimatablePlot instances to the container
     and animate these children.
@@ -844,13 +1209,13 @@ class PlotAnimator(object):
     Examples
     --------
     To create an animated signal display chain showing the signal from adc through correlation:
-    (assuming you have created a top level ff object using configure or tbuild)
+    (assuming you have created a top level kat object using configure or tbuild)
 
     >>> pa = PlotAnimator()
-    >>> ap1 = ff.dh.plot_snapshot('adc')
-    >>> ap2 = ff.dh.plot_snapshot('quant')
-    >>> ap3 = ff.dh.sd.plot_spectrum()
-    >>> ap4 = ff.dh.sd.plot_waterfall()
+    >>> ap1 = kat.dh.plot_snapshot('adc')
+    >>> ap2 = kat.dh.plot_snapshot('quant')
+    >>> ap3 = kat.dh.sd.plot_spectrum()
+    >>> ap4 = kat.dh.sd.plot_waterfall()
     >>> pa.add_plot('adc',ap1); pa.add_plot('quant', ap2); pa.add_plot('spectrum', ap3); pa.add_plot('waterfall', ap4)
     >>> pa.animate_all()
 
@@ -907,44 +1272,48 @@ class DataHandler(object):
 
     Parameters
     ----------
-    dbe : FFDevice
-        A reference to an FFDevice object connected to a dbe proxy that has a k7writer reference. This is used to add this current host as a signal display data listener.
+    dbe : KATDevice
+        A reference to an KATDevice object connected to a dbe proxy that has a k7writer reference. This is used to add this current host as a signal display data listener.
     port : integer
         The port on which to receive signal display data.
         default: 7006
     ip : string
         Override the IP detection code by providing a specific IP address to which to send the signal data.
         default: None
-    n_ants : integer
-        The number of antenna's to use in the internal mapping object. If a katconfig is provided then this value will be overriden by the data from the config file.
+    receiver : DataReceiver
+        The receiver to use for this data handler. If not specified then a default is created and started.
+        default: None
+    store : SignalDisplayStore
+        The storage to use in the default receiver. If none specified then a default is created.
+        default: None
     katconfig : config
         Used to construct physical antenna to dbe input mappings.
         default: None
     """
-    def __init__(self, dbe=None, port=7006, ip=None, store=None, n_ants=2, katconfig=None):
+    def __init__(self, dbe=None, port=7006, ip=None, receiver=None, store=None, katconfig=None):
+        self.dbe = dbe
         if dbe is not None:
-            self.dbe = dbe
-            if ip is None:
-                self._local_ip = socket.gethostbyname(socket.gethostname())
+            self._local_ip = ip if ip is not None else external_ip()
+            if self._local_ip is None:
+                print "DataHandler failed to determine external IP address."
             else:
-                self._local_ip = ip
-            print "Adding IP",self._local_ip,"to K7W listeners..."
-            self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
+                print "Adding IP",self._local_ip,"to K7W listeners..."
+                self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
         if store is None:
             self.storage = SignalDisplayStore()
         else:
             self.storage = store
-        self.cpref = CorrProdRef(n_ants=n_ants, katconfig=katconfig)
-        if dbe is not None:
+        self.cpref = CorrProdRef(katconfig=katconfig)
+        self.receiver = receiver
+        if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
             self.receiver.setDaemon(True)
             self.receiver.start()
-        else:
-            self.receiver = NullReceiver(self.storage)
-             # a null receiver used when reading historical data
-        self.default_product = 0
-        self.default_products = [0]
+            quitter.register_callback("Data Handler", self.stop)
+        self.default_product = (1, 2, 'HH')
+        self.default_products = [(1, 2, 'HH')]
         self._debug = False
+        self._plots = {}
 
     def set_default_product(self, product):
         """Sets a default product to use for command within the data handler.
@@ -954,16 +1323,72 @@ class DataHandler(object):
         if type(product) == type([]): self.default_products = product
         else: self.default_product = product
 
+    def _add_plot(self, fname, ap):
+        ap._fname = fname
+        self._plots[ap.figure.number] = ap
+
+    def get_plot(self, number):
+        if self._plots.has_key(number):
+            return self._plots[number]
+        else:
+            print "Figure %i is not in the active figures list." % number
+
+    def close_plot(self, number):
+        if self._plots.has_key(number):
+            ap = self._plots.pop(number)
+            ap.figure.close()
+            del ap
+        else:
+            print "Figure %i is not in the active figures list." % number
+
+    def list_plots(self):
+        print "Figure".center(8),"Calling Function".center(20),"Animating".center(12), "Last Update".center(40)
+        print "".center(8,"="), "".center(20,"="), "".center(12,"="), "".center(40,"=")
+        for fnumber, ap in self._plots.iteritems():
+            print str(fnumber).ljust(8), ap._fname.ljust(20), (ap._thread is None and "No" or "Yes").ljust(12), time.ctime(ap._last_update).ljust(40)
+
     @property
-    def stats(self):
-        return self.storage.stats()
+    def spectrum(self):
+        return self.receiver.spectrum
+
+    @property
+    def spectrum_xx(self):
+        return self.receiver.spectrum['XX']
+
+    @property
+    def spectrum_yy(self):
+        return self.receiver.spectrum['YY']
+
+    @property
+    def spectrum_xy(self):
+        return self.receiver.spectrum['XY']
+
+    @property
+    def spectrum_yx(self):
+        return self.receiver.spectrum['YX']
+
+    @property
+    def tp(self):
+        return self.receiver.tp
+
+    @property
+    def tp_x(self):
+        return self.receiver.tp['XX']
+
+    @property
+    def tp_y(self):
+        return self.receiver.tp['YY']
+
+    def __getattr__(self, name):
+        return self.receiver.__getattribute__(name)
 
     def stop(self):
         """Stop the signal display receiver and deregister our IP from the subscribers to the k7w signal data stream.
         """
         self.receiver.stop()
-        print "Removing local IP from K7W listeners..."
-        self.dbe.req.k7w_remove_sdisp_ip(self._local_ip)
+        if self.dbe is not None and self._local_ip is not None:
+            print "Removing local IP from K7W listeners..."
+            self.dbe.req.k7w_remove_sdisp_ip(self._local_ip)
 
     def plot_fringe_dashboard(self, product=None, dumps=360, dtype='phase', channels=512):
         """Show a fringe dashboard that includes a phase spectrogram, mag/phase vs time/frequency plots, and re vs im.
@@ -976,7 +1401,7 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         dumps : integer
             The number of time dumps to show in the spectrogram.
             defaults: 360
@@ -988,6 +1413,7 @@ class DataHandler(object):
             default: 512
         """
         if product is None: product = self.default_product
+        product = self.cpref.user_to_id(product)
         # definitions for the axes
         left = bottom = 0.06
         height_s = width_s = 0.1
@@ -1003,7 +1429,7 @@ class DataHandler(object):
         rect_mag_f = [left + (width_s + spacing) * 2, bottom + height_l + height_s + (spacing * 2), width_l2, height_s]
 
         # start with a rectangular Figure
-        pl.figure(1, figsize=(14,10))
+        pl.figure(figsize=(14,10))
 
         # initially we only plot the spectrogram
         #sk = self.storage.frames['PHA1A2'].keys()
@@ -1064,18 +1490,28 @@ class DataHandler(object):
          # define chart updater
         def populate(t_ref, f_ref):
              # time plots
+            t = time.time()
             fringe_data = self.get_fringes(product=product, channel=f_ref, dtype='re', start_time=min(tstamps), end_time=max(tstamps))
+            t = time.time()
             phase_t_data = self.get_time_series(product=product, dtype='phase', start_channel=f_ref, stop_channel=f_ref+1, start_time=min(tstamps), end_time=max(tstamps))
-            ax_mag_t.plot(fringe_data[1], range(0,len(wfall_data[1]))) #, fringe_data[0][::-1])
-            ax_phase_t.plot(phase_t_data[1], range(0, len(wfall_data[1]))) #, phase_t_data[0][::-1])
+            t = time.time()
+            ax_mag_t.plot(fringe_data[1], range(0,len(fringe_data[1]))) #, fringe_data[0][::-1])
+            ax_phase_t.plot(phase_t_data[1], range(0, len(phase_t_data[1]))) #, phase_t_data[0][::-1])
+            #print "Plotting both mag and phase took %f s" % (time.time() - t)
             ax_wfall.set_ylim((dumps,0))
              # spectral plots
-            power_f = self.storage.time_frames[int(tstamps[t_ref] * 1000)][product].get_mag()
+            t = time.time()
+            power_f = self.storage.time_frames[np.uint64(tstamps[t_ref] * 1000)][product].get_mag()
+            t = time.time()
             #phase_f = self.storage.frames['PHA1A2'][sk[-frames:][t_ref]]
-            phase_f = self.storage.time_frames[int(tstamps[t_ref] * 1000)][product].get_phase()
+            phase_f = self.storage.time_frames[np.uint64(tstamps[t_ref] * 1000)][product].get_phase()
+            sys.stdout.flush()
+            t = time.time()
             ax_mag_f.plot(power_f)
             ax_mag_f.set_yscale("log")
             ax_phase_f.plot(phase_f)
+            #print "Plotting both mag and phase took %f s" % (time.time() - t)
+            t = time.time()
             ax_wfall.set_xlim((0,channels))
              # re vs im
             reim = self.get_fringes(product=product, channel=f_ref, dtype='complex', end_time=-dumps)
@@ -1083,22 +1519,29 @@ class DataHandler(object):
 
          # define event handler for clicking...
         def onpress(event):
+            #print "Dash click event at",time.ctime()
             if event.inaxes != ax_wfall: return
             if event.button == 1: clear_plots()
             x1,y1 = event.xdata, event.ydata
             t_ref = int(y1)
             t = time.ctime(tstamps[t_ref])
             f_ref = int(x1)
+            ts = time.time()
             populate(t_ref, f_ref)
+            #print "Populate took %f s" % (time.time() - ts)
             ax_mag_t.set_ylabel("Xcorr mag vs time for channel " + str(f_ref))
             ax_phase_t.set_ylabel("Xcorr phase vs time for channel " + str(f_ref))
             ax_mag_f.set_title("Xcorr mag spectrum for " + t)
             ax_phase_f.set_title("Xcorr phase spectrum for " + t)
             ax_reim.set_title("Re vs Im for channel " + str(f_ref))
+            ts = time.time()
             f.canvas.draw()
-            pl.draw()
+            #print "Draw took %f s" % (time.time() - ts)
+            #pl.draw()
+            #print "Finished click event at",time.ctime()
         f.canvas.mpl_connect('button_release_event', onpress)
-        pl.show()
+        f.show()
+        pl.draw()
 
     def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=512, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
         """Used to select a particular window of data from the store for use in the signal displays...
@@ -1134,10 +1577,15 @@ class DataHandler(object):
             If set the timestamp of each frame is included as the first column of the array
         """
         if product is None: product = self.default_product
+        orig_product = product
         product = self.cpref.user_to_id(product)
         if self._debug:
             print "Select data called with product: %i, start_time: %i , end_time: %i, start_channel: %i, end_channel: %i" % (product, start_time, end_time, start_channel, stop_channel)
-        fkeys = self.storage.corr_prod_frames[product].keys()
+        try:
+            fkeys = self.storage.corr_prod_frames[product].keys()
+        except KeyError:
+            print "\nNo data for the specified product (%s) was found in the data store.\nThis most probably means that data is not flowing through the system. Make sure that the dbe and k7writer are running and a capture_start() has been issued.\nIf data is flowing correctly it may be that k7writer has been instructed to send data to the incorrect IP address.\nCheck to see if kat.dh.sd._local_ip matches the IP address of your machine.\nIf the incorrect IP is set then you can manually set it to the correct one using:  kat.dbe.req.k7w_add_sdisp_ip('<my_local_ip>')\n" % str(orig_product)
+            raise KeyError("No data found. See detailed message above...")
         fkeys.sort()
         ts = []
         if end_time >= 0:
@@ -1175,7 +1623,7 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         start_time : integer
             Either a direct specification of the start_time or zero to indicate the earliest available time.
         end_time : integer
@@ -1191,7 +1639,16 @@ class DataHandler(object):
         """
         if product is None: product = self.default_product
         if self.storage is not None:
-            tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
+            select_data_kwargs = {
+                'dtype': dtype,
+                'product': product,
+                'start_time': start_time,
+                'end_time': end_time,
+                'start_channel': start_channel,
+                'stop_channel': stop_channel,
+                'reverse_order': True,
+            }
+            tp = self.select_data(**select_data_kwargs)
             mapping = self.cpref.id_to_real_str(product)
             pl.ion()
             fig = pl.figure()
@@ -1203,8 +1660,9 @@ class DataHandler(object):
             cbar = fig.colorbar(cax)
             fig.show()
             pl.draw()
-            ap = AnimatablePlot(fig, self.select_data, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
+            ap = AnimatablePlot(fig, self.select_data, **select_data_kwargs)
             ap.set_colorbar(cbar)
+            self._add_plot(sys._getframe().f_code.co_name, ap)
             return ap
         else:
             print "No stored data available..."
@@ -1222,7 +1680,7 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         dumps : integer
             The number of frames of data to use for the FFT time axis.
             default: 120
@@ -1239,23 +1697,8 @@ class DataHandler(object):
         pl.draw()
         ap = AnimatablePlot(f, self.get_lfr, product=product, dumps=dumps)
         ap.set_colorbar(cbar)
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
-
-    def plot_waterfalls(self, dtype='phase', products=None, start_time=0, end_time=-120, start_channel=0, stop_channel=512, interval=1):
-        """
-        Plot a number of waterfall plots with a single command. See the usage for plot_waterfall.
-        The main difference is that an array of desired products is provided.
-
-        Returns
-        -------
-        pa : PlotAnimator
-            A collection of animatable plots representing the produced waterfalls.
-        """
-        if products is None: products = self.default_products
-        pa = PlotAnimator(interval=interval)
-        for product in products:
-            pa.add_plot('waterfall' + str(product),self.plot_waterfall(product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
-        return pa
 
     def get_time_function(self, pol='XX'):
         """Return the data required for the time function plot.
@@ -1347,7 +1790,7 @@ class DataHandler(object):
             If an array of integers is specified they are treated as a correlation product id directly (ordered as it comes out of the correlator)
             If an array of tuples is provided this should be either (baseline, pol) or (antenna1, antenna2, pol) in form.
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         end_time : integer
             default: -120
         scale : string
@@ -1370,6 +1813,7 @@ class DataHandler(object):
         pl.yscale(scale)
         f.show()
         pl.draw()
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_re_vs_im(self, channel=0, products=None, end_time=-120):
@@ -1385,7 +1829,7 @@ class DataHandler(object):
             If an array of integers is specified they are treated as a correlation product id directly (ordered as it comes out of the correlator)
             If an array of tuples is provided this should be either (baseline, pol) or (antenna1, antenna2, pol) in form.
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         end_time : integer
             default: -120
         """
@@ -1406,6 +1850,7 @@ class DataHandler(object):
         f.show()
         pl.draw()
         ap.set_square_scale(True)
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_fringes(self,channel=256, product=None, dtype='complex', dumps=120):
@@ -1422,7 +1867,7 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         dtype : string
             Choose to plot either or 're', 'im' or 'complex' (re and im plotted on same graph)
             default: complex
@@ -1450,6 +1895,7 @@ class DataHandler(object):
         pl.xlabel("Time since " + time.ctime(data[2]))
         f.show()
         pl.draw()
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_periodogram(self, product=None, end_time=-120, scale='log'):
@@ -1468,7 +1914,112 @@ class DataHandler(object):
         f.show()
         pl.draw()
         ap = AnimatablePlot(f, self.get_periodogram, product=product, end_time=end_time)
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
+
+    def _angle_wrap(self, angle, period=2.0 * np.pi):
+        return (angle + 0.5 * period) % period - 0.5 * period
+
+    def plot_phase_closure(self, a=(1,2,'VV'), b=(2,3,'VV'), c=(1,3,'VV'), start_channel=100, stop_channel=400, end_time=-120, swap=False, new_figure=True, source_name="", box=True):
+        """Plot the closure phase between the 3 specified baselines. (phase = a + b - c)
+
+        Parameters
+        ==========
+        a : corr_prod_id
+            The id of the first baseline.
+            default: (1,2,'VV')
+        b : corr_prod_id
+            The id of the second baseline.
+            default: (2,3,'VV')
+        c : corr_prod_id
+            The id of the third baseline. Note that this is subtracted from the first two (i.e. vector in opposition to the first two)
+            default: (1,3,'VV')
+        start_channel : integer
+            default: 100
+        stop_channel : integer
+            default: 400
+        end_time: integer
+            default: -120
+        swap: boolean
+            By default the produced boxplot will be averaged over time. If swap is set then data is averaged over frequency.
+            default: False
+        new_figure: boolean
+            If set to False then the plot will be drawn in the current figure instead of a new one being created.
+            default: True
+        """
+        if new_figure:
+            pl.figure()
+        p12 = np.array(self.select_data(product=a, dtype='phase',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        p23 = np.array(self.select_data(product=b, dtype='phase',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        p13 = np.array(self.select_data(product=c, dtype='phase',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        s = p12 + p23 - p13
+        s = self._angle_wrap(s)
+        s = s * (180/np.pi)
+        if swap: s = s.swapaxes(1,0)
+        if not box:
+            pl.plot(s.mean(axis=0))
+            pl.plot(s.min(axis=0))
+            pl.plot(s.max(axis=0))
+        else:
+            pl.boxplot(s)
+        pl.title(source_name + " Phase Closure ("+str(a) + "," + str(b) + "," + str(c) + ")")
+        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.storage.center_freqs_mhz) > 0 else "channel") + "]")
+        pl.ylabel("Phase [deg]")
+        pl.ylim(-180,180)
+        if len(self.storage.center_freqs_mhz) > 0 and not swap:
+            pl.xticks(range(0,s.shape[1],25), [int(self.storage.center_freqs_mhz[start_channel+f]) for f in range(0,s.shape[1],25)])
+            pl.subplots_adjust(bottom=0.15)
+        else:
+            pl.xticks(range(0,s.shape[1],4),rotation=90)
+        if new_figure:
+            f = pl.gcf()
+            f.show()
+            pl.draw()
+
+    def plot_amp_closure(self, pol='VV', start_channel=100, stop_channel=400, end_time=-120, swap=False, new_figure=True, source_name="", box=True):
+        """Plot the closure amplitude around the first 4 antennas. amp = (|A1A2| * |A3A4|) / (|A1A3| * |A2A4|)
+
+        Parameters
+        ==========
+        pol : string
+            The polarisation to plot. ['HH','VV']
+            default: 'VV'
+        start_channel : integer
+            default: 100
+        stop_channel : integer
+            default: 400
+        end_time: integer
+            default: -120
+        swap: boolean
+            By default the produced boxplot will be averaged over time. If swap is set then data is averaged over frequency.
+            default: False
+        """
+        if new_figure:
+            pl.figure()
+        a12 = np.array(self.select_data(product=(1,2,pol), dtype='mag',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        a34 = np.array(self.select_data(product=(3,4,pol), dtype='mag',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        a13 = np.array(self.select_data(product=(1,3,pol), dtype='mag',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        a24 = np.array(self.select_data(product=(2,4,pol), dtype='mag',end_time=end_time, start_channel=start_channel, stop_channel=stop_channel))
+        am = (a12 * a34) / (a13 * a24)
+        if swap: am = am.swapaxes(1,0)
+        if not box:
+            pl.plot(am.mean(axis=0))
+            pl.plot(am.min(axis=0))
+            pl.plot(am.max(axis=0))
+        else:
+            pl.boxplot(am)
+        pl.title(source_name + " Amplitude Closure (%s)" % (pol))
+        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.storage.center_freqs_mhz) > 0 else "channel") + "]")
+        pl.ylabel("Amplitude")
+        if len(self.storage.center_freqs_mhz) > 0 and not swap:
+            pl.xticks(range(0,am.shape[1],25), [int(self.storage.center_freqs_mhz[start_channel+f]) for f in range(0,am.shape[1],25)])
+            pl.subplots_adjust(bottom=0.15)
+        else:
+            pl.xticks(range(0,am.shape[1],4),rotation=90)
+        if new_figure:
+            f = pl.gcf()
+            f.show()
+            pl.draw()
 
     def plot_time_function(self, product=None, dumps=120, start_channel=128, scale='linear'):
         """Plot the time function of the specified polarisation.
@@ -1483,7 +2034,7 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         dumps : integer
             The number of dumps to include in the calculation
             default: 120
@@ -1511,6 +2062,7 @@ class DataHandler(object):
         f.show()
         pl.draw()
         ap = AnimatablePlot(f, self.get_time_function3, product=product, end_time=-dumps, start_channel=start_channel)
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_spectrum(self, type='mag', products=None, start_channel=0, stop_channel=512, scale='log', average=1):
@@ -1527,7 +2079,7 @@ class DataHandler(object):
             If an array of integers is specified they are treated as a correlation product id directly (ordered as it comes out of the correlator)
             If an array of tuples is provided this should be either (baseline, pol) or (antenna1, antenna2, pol) in form.
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (1,1,1)] are actually all product id 9
+            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         start_channel : integer
             default: 0
         stop_channel : integer
@@ -1547,12 +2099,12 @@ class DataHandler(object):
         avg = ""
         if average > 1: avg = " (" + str(average) + " dump average.)"
         if type == 'phase':
-            pl.ylabel("Phase (degrees)")
+            pl.ylabel("Phase [rad]")
             pl.title("Phase Spectrum" + avg)
-            ax.set_ylim(ymin=-180,ymax=180)
+            ax.set_ylim(ymin=-np.pi,ymax=np.pi)
         else:
             pl.title("Power Spectrum" + avg)
-            pl.ylabel("Power (arb units)")
+            pl.ylabel("Power [arb units]")
             pl.yscale(scale)
         for i,product in enumerate(products):
             pl.plot(self.select_data(product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0), label=self.cpref.id_to_real_str(product, short=True))
@@ -1563,18 +2115,19 @@ class DataHandler(object):
         pl.legend(loc=0)
         f.show()
         pl.draw()
+        self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
-class FFData(object):
-    """A class to encapsulate various fringe finder data handling functions.
+class KATData(object):
+    """A class to encapsulate various KAT data handling functions.
 
     Essentially this class provides a mechanism for retrieving and plotting raw data directly from the dbe, as well
     as interacting with and plotting of the signal display data stream.
 
     Parameters
     ----------
-    dbe : FFDevice
-        A reference to an FFDevice object connected to the fringe finder dbe proxy. This is used for making data calls to the dbe.
+    dbe : KATDevice
+        A reference to an KATDevice object connected to the KAT dbe proxy. This is used for making data calls to the dbe.
     """
     def __init__(self, dbe=None, katconfig=None):
         self.dbe = dbe
@@ -1584,7 +2137,28 @@ class FFData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def load_data(self, filename):
+    def start_spead_receiver(self, port=7149):
+        """Starts a SPEAD based signal display data receiver on the specified port.
+        
+        Parameters
+        ----------
+        port : integer
+            default: 7149
+        """
+        st = SignalDisplayStore()
+        r = SpeadSDReceiver(port,st)
+        r.setDaemon(True)
+        r.start()
+        self.sd = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
+
+    def pc_load_data(self, filename, rows=None):
+        st = SignalDisplayStore()
+        st.pc_load_letter(filename, rows=rows)
+        r = NullReceiver(st)
+        self.sd_pc = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
+        print "Signal display data available as .sd_pc"
+
+    def load_data(self, filename, cscan=None, scan=None, start=None, end=None):
         """Load the data from the specified file(s) and use this to populate a signal display storage object.
         The signal display plots can the be accessed as they were at the time of data capture. The new data handler
         is available as .sd_hist
@@ -1596,8 +2170,9 @@ class FFData(object):
             Checks for files of the type <filename>1.h5, <filename>2.h5, and <filename>3.h5
         """
         st = SignalDisplayStore()
-        st.load(filename)
-        self.sd_hist = DataHandler(dbe=None, store=st)
+        st.load(filename, cscan=cscan, scan=scan, start=start, end=end)
+        r = NullReceiver(st)
+        self.sd_hist = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
         print "Historical signal display data available as .sd_hist"
 
     def start_sdisp(self, ip=None):
@@ -1642,11 +2217,11 @@ class FFData(object):
         if type == 'quanti': rettype = 'quant'
         if self.dbe is not None:
             try:
-                raw = unpack('>8192b',self.dbe.req.dbe_poco_snap_shot(rettype,input,tuple=True)[0][2][1])
+                raw = unpack('>8192b',self.dbe.req.snap_shot(rettype,input,tuple=True)[0][2][1])
             except AttributeError:
-                logger.error("Current dbe device does not support poco-snap-shot command.")
+                logger.error("Current dbe device does not support snap-shot command.")
             except IndexError:
-                logger.error("poco-snap-shot command failed.")
+                logger.error("snap-shot command failed.")
         else:
             logger.error("No dbe device known. Unable to capture snapshot.")
         if type == 'quant' or type == 'quanti':
@@ -1726,6 +2301,7 @@ class FFData(object):
         f.show()
         pl.draw()
         ap = AnimatablePlot(f, self.get_histogram_data, type=type, input=input)
+        if self.sd is not None: self.sd._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_snapshot(self, type='adc', input='0x'):
@@ -1761,11 +2337,13 @@ class FFData(object):
         f.show()
         pl.draw()
         ap = AnimatablePlot(f, self.get_snapshot, type=type, input=input)
+        self._add_plot(sys._getframe().f_code.co_name, ap)
+        if self.sd is not None: self.sd._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
     def plot_snapshots(self, type='adc', interval=1):
         """Plot snapshots of the specified type for each of the four input channels available
-        in the fringe finder pocket correlator.
+        in the KAT pocket correlator.
 
         Parameters
         ----------
@@ -1787,3 +2365,35 @@ class FFData(object):
         pa.add_plot('snap 1x',self.plot_snapshot(type=type, input='1x'))
         pa.add_plot('snap 1y',self.plot_snapshot(type=type, input='1y'))
         return pa
+
+
+def external_ip(preferred_ifaces=('eth0', 'en0')):
+    """Return the external IPv4 address of this machine.
+
+    Attempts to use netifaces module if available, otherwise
+    falls back to socket.
+
+    Returns
+    -------
+    ip : str or None
+        IPv4 address string (dotted quad). Returns None if
+        ip address cannot be guessed.
+    """
+    if netifaces is None:
+        ips = [socket.gethostbyname(socket.gethostname())]
+    else:
+        preferred_ips = []
+        other_ips = []
+        for iface in netifaces.interfaces():
+            for addr in netifaces.ifaddresses(iface).get(netifaces.AF_INET, []):
+                if 'addr' in addr:
+                    if iface in preferred_ifaces:
+                        preferred_ips.append(addr['addr'])
+                    else:
+                        other_ips.append(addr['addr'])
+        ips = preferred_ips + other_ips
+
+    if ips:
+        return ips[0]
+    else:
+        return None
