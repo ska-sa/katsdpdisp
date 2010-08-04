@@ -1306,9 +1306,10 @@ class DataHandler(object):
                 self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
         if store is None:
             self.storage = SignalDisplayStore()
+            self.cpref = CorrProdRef(katconfig=katconfig)
         else:
             self.storage = store
-        self.cpref = CorrProdRef(katconfig=katconfig)
+            self.cpref = store.cpref
         self.receiver = receiver
         if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
@@ -2142,15 +2143,17 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149):
+    def start_spead_receiver(self, port=7149, n_ants=4):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
         ----------
         port : integer
             default: 7149
+        n_ants : integer
+            The number of antennas in the receive stream
         """
-        st = SignalDisplayStore()
+        st = SignalDisplayStore(n_ants=n_ants)
         r = SpeadSDReceiver(port,st)
         r.setDaemon(True)
         r.start()
