@@ -220,7 +220,8 @@ class CorrProdRef(object):
         a pol index (0,1,2,3)
         """
         if type(pol) == type(""):
-            if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol)
+            if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol.upper())
+            if pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
         if pol < 0 or pol > 3:
             print "Unknown polarisation (" + str(pol) + ") specified."
             return None
@@ -230,9 +231,9 @@ class CorrProdRef(object):
         """Turn a user specified antenna into a dbe input number.
         """
          # check to see if physical antenna correspsonds to a dbe input
-        if antenna < 1:
-            print "Physical antennas are numbered from 1 upwards. You have specified " + str(antenna)
-            return (None,None)
+        #if antenna < 1:
+        #    print "Physical antennas are numbered from 1 upwards. You have specified " + str(antenna)
+        #    return (None,None)
         if self._katconfig is not None:
             if self._real_to_dbe.has_key(str(antenna) + str(pol)):
                 inp = self._real_to_dbe[str(antenna) + str(pol)]
@@ -241,8 +242,8 @@ class CorrProdRef(object):
                 print "The specified physical input (Antenna " + str(antenna) + ", Pol: " + str(pol) + ") does not appear to be connected to the dbe.\n Please check your configuration."
                 raise KeyError
         else:
-            print "No antenna mapping config provided. Use direct dbe mapping. "
-            return (int(antenna) - 1, {'H':'x','V':'y'}[pol])
+            #print "No antenna mapping config provided. Use direct dbe mapping. "
+            return (int(antenna), {'H':'x','X':'x','x':'x','V':'y','Y':'y','y':'y'}[pol])
 
     def _user_to_id(self, inp):
         if type(inp) != type(()): return inp
@@ -280,10 +281,12 @@ class CorrProdRef(object):
         """Returns a dict with corr prod ids as the key and string antenna description as the value."""
         prods = len(self._dbe_to_real) * (len(self._dbe_to_real)-1)
          # the number of products produced by the dbe
+        if prods == 0: prods = (self.n_ants * (self.n_ants+1))*2
         a = {}
         for x in range(prods):
             t = self.id_to_real(x)
-            a[x] = t[3] + t[0] + ":" + t[3] + t[1] + " " + t[2]
+            #a[x] = t[3] + str(t[0]) + ":" + t[3] + str(t[1]) + " " + t[2]
+            a[x] = str(t[0]) + t[2][0] + " * " + str(t[1]) + t[2][1]
              # our format is Ax:Ay POL (e.g. A1:A2 VV)
         return a
 
@@ -303,7 +306,7 @@ class CorrProdRef(object):
         """
         input = self.id_to_input(id)
         pol = self._dbe_pol_dict[input[2]]
-        map_type = 'I'
+        map_type = 'i'
         try:
             inp1 = self._dbe_to_real[str(input[0]) + str(pol[0])]
             inp2 = self._dbe_to_real[str(input[1]) + str(pol[1])]
@@ -2106,18 +2109,21 @@ class DataHandler(object):
         if average > 1: avg = " (" + str(average) + " dump average.)"
         if type == 'phase':
             pl.ylabel("Phase [rad]")
-            pl.title("Phase Spectrum" + avg)
             ax.set_ylim(ymin=-np.pi,ymax=np.pi)
         else:
-            pl.title("Power Spectrum" + avg)
             pl.ylabel("Power [arb units]")
             pl.yscale(scale)
+        s = [[0]]
         for i,product in enumerate(products):
+            if s == [[0]]:
+                s = self.select_data(product=product, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
             pl.plot(self.select_data(product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0), label=self.cpref.id_to_real_str(product, short=True))
             if i == 0:
                 ap = AnimatablePlot(f, self.select_data, product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0)
             else:
                 ap.add_update_function(self.select_data, product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0)
+        if type == 'phase': pl.title("Phase Spectrum at " + time.ctime(s[0][0]*1000) + avg)
+        else: pl.title("Power Spectrum at " + time.ctime(s[0][0]*1000) + avg)
         pl.legend(loc=0)
         f.show()
         pl.draw()
