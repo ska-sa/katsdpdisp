@@ -11,7 +11,7 @@
 
 import numpy as np, spead, logging, sys, time, h5py
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 acc_scale = True
  # scale by the reported number of accumulations per dump
@@ -54,7 +54,7 @@ def receive():
                 meta[name] = ig[name]
                 meta_required.pop(meta_required.index(name))
                 if len(meta_required) == 0:
-                    sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.uint32)
+                    sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.int32)
                     print "Initialised sd frame to shape",sd_frame.shape
             if not datasets.has_key(name):
              # check to see if we have encountered this type before
@@ -70,13 +70,13 @@ def receive():
                 f[name].resize(datasets_index[name]+1, axis=0)
             if sd_frame is not None and name.startswith("xeng_raw"):
                 if sd_slots is None:
-                    sd_frame.dtype = ig[name].dtype
+                    sd_frame.dtype = np.dtype(np.float32) if acc_scale else ig[name].dtype
                      # make sure we have the right dtype for the sd data
                     sd_slots = np.zeros(meta['n_chans']/ig[name].shape[0])
                     n_xeng = len(sd_slots)
                      # this is the first time we know how many x engines there are
                     f['/'].attrs['n_xeng'] = n_xeng
-                    ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(ig[name].dtype,sd_frame.shape))
+                    ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(sd_frame.dtype,sd_frame.shape))
                     ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
                     t_it = ig_sd.get_item('sd_data')
                     print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape
@@ -94,7 +94,7 @@ def receive():
                     sd_slots = np.zeros(len(sd_slots))
                     sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=sd_frame.dtype)
                 if acc_scale:
-                    sd_frame[xeng_id::len(sd_slots)] = ig[name] / (meta['n_accs'] if meta.has_key('n_accs') else 1)
+                    sd_frame[xeng_id::len(sd_slots)] = (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
                 else:
                     sd_frame[xeng_id::len(sd_slots)] = ig[name]
                 sd_slots[xeng_id] = 1
