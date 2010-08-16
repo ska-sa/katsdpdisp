@@ -221,7 +221,8 @@ class CorrProdRef(object):
         """
         if type(pol) == type(""):
             if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol.upper())
-            if pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
+            elif pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
+            else: pol = -1
         if pol < 0 or pol > 3:
             print "Unknown polarisation (" + str(pol) + ") specified."
             return None
@@ -424,10 +425,10 @@ class SignalDisplayStore(object):
         The size of a single, complete dump is: channels * correlation_products * 8 bytes
         default: 3600
     """
-    def __init__(self, n_ants=2, capacity=3600):
+    def __init__(self, n_ants=2, capacity=3600, katconfig=None):
         self.capacity = capacity
         self.n_ants = n_ants
-        self.cpref = CorrProdRef(n_ants)
+        self.cpref = CorrProdRef(n_ants, katconfig=katconfig)
         self.time_frames = {}
          # a dictionary of SignalDisplayFrames. Organised by timestamp and then correlation product id
         self.corr_prod_frames = {}
@@ -1308,11 +1309,10 @@ class DataHandler(object):
                 print "Adding IP",self._local_ip,"to K7W listeners..."
                 self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
         if store is None:
-            self.storage = SignalDisplayStore()
-            self.cpref = CorrProdRef(katconfig=katconfig)
+            self.storage = SignalDisplayStore(katconfig=katconfig)
         else:
             self.storage = store
-            self.cpref = store.cpref
+        self.cpref = store.cpref
         self.receiver = receiver
         if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
@@ -2183,7 +2183,7 @@ class KATData(object):
             The full qualified root filename (without the baseline number or .h5 extension). (e.g. /var/kat/data/1260384145.00)
             Checks for files of the type <filename>1.h5, <filename>2.h5, and <filename>3.h5
         """
-        st = SignalDisplayStore()
+        st = SignalDisplayStore(katconfig=self._katconfig)
         st.load(filename, cscan=cscan, scan=scan, start=start, end=end)
         r = NullReceiver(st)
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
