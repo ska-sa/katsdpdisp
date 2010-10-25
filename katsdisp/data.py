@@ -1645,6 +1645,20 @@ class DataHandler(object):
         Returns
         -------
         ap : AnimatablePlot
+        
+        Examples
+        --------
+        First ensure that the signal displays have been started for this client (assuming a 'kat' connection object):
+        >>> kat.dh.start_sdisp()
+        Then make some plots:
+        >>> kat.dh.sd.plot_waterfall()
+        >>> kat.dh.sd.plot_waterfall('phase',(1,2,'VV'))
+        >>> kat.dh.sd.plot_waterfall(dtype='mag',product=1)
+        >>> kat.dh.sd.plot_waterfall(dtype='mag',product=(1,1,'HH'))
+        Make an animatable plot:
+        >>> ap = kat.dh.sd.plot_waterfall()
+        >>> ap.animate()
+        
         """
         if product is None: product = self.default_product
         if self.storage is not None:
@@ -2193,8 +2207,22 @@ class KATData(object):
         """Connect the data handler object to the signal display data stream and create a new DataHandler service
         for the incoming data.
 
-        This command instructs k7writer to send signal display data to the current host (in addition to all other listeners). A new DataHandler
-        is created to receive and interpret the incoming signal display frames.
+        This command instructs k7writer to send signal display data to the current host (in addition to all other listeners).
+        A new DataHandler is created to receive and interpret the incoming signal display frames.
+
+        Once this command has executed successfully the signal display data will be available under the sd name.
+        
+        Example
+        -------
+        Start the signal display receiver:
+        >>> kat.dh.start_sdisp()
+        Check that the number of packets received increases over time by running a few times:
+        >>> kat.dh.sd.receiver.stats()
+        Make a waterfall plot of the data:
+        >>> kat.dh.sd.plot_waterfall()
+        Animate the last plot:
+        >>> _.animate()
+        
         """
         logger.info("Starting signal display capture")
         if self.dbe is not None:
