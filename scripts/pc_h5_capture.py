@@ -11,13 +11,13 @@
 
 import numpy as np, spead, logging, sys, time, h5py
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
-acc_scale = True
+acc_scale = False
  # scale by the reported number of accumulations per dump
 
 data_port = 7148
-sd_ip = '127.0.0.1'
+sd_ip = '192.168.4.20'
 
 def receive():
     print 'Initalising SPEAD transports...'
@@ -47,7 +47,8 @@ def receive():
         ig.update(heap)
         for name in ig.keys():
             item = ig.get_item(name)
-            if not item._changed: continue
+            if not item._changed and datasets.has_key(name): continue
+             # the item is not marked as changed, and we have a record for it
             if name in meta_desired:
                 meta[name] = ig[name]
             if name in meta_required:
@@ -58,17 +59,23 @@ def receive():
                     print "Initialised sd frame to shape",sd_frame.shape
             if not datasets.has_key(name):
              # check to see if we have encountered this type before
-                shape = item.shape
-                dtype = np.dtype(type(ig[name])) if shape == [] else ig[name].dtype
+                shape = ig[name].shape if item.shape == -1 else item.shape
+                dtype = np.dtype(type(ig[name])) if shape == [] else item.dtype
+                if dtype is None: dtype = ig[name].dtype
+                 # if we can't get a dtype from the descriptor try and get one from the value
                 print "Creating dataset for name:",name,", shape:",shape,", dtype:",dtype
                 f.create_dataset(name,[1] + ([] if list(shape) == [1] else list(shape)), maxshape=[None] + ([] if list(shape) == [1] else list(shape)), dtype=dtype)
                 dump_size += np.multiply.reduce(shape) * dtype.itemsize
                 datasets[name] = f[name]
                 datasets_index[name] = 0
+                if not item._changed: continue
+                 # if we built from and empty descriptor
             else:
                 print "Adding",name,"to dataset. New size is",datasets_index[name]+1
                 f[name].resize(datasets_index[name]+1, axis=0)
             if sd_frame is not None and name.startswith("xeng_raw"):
+                sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
+                print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
                 if sd_slots is None:
                     sd_frame.dtype = np.dtype(np.float32) if acc_scale else ig[name].dtype
                      # make sure we have the right dtype for the sd data
@@ -81,24 +88,11 @@ def receive():
                     t_it = ig_sd.get_item('sd_data')
                     print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape
                     tx_sd.send_heap(ig_sd.get_heap())
-                xeng_id = int(name[8:])
-                if sd_slots[xeng_id] == 1:
-                 # we already have occupancy for this section of the sd frame. We better send things along...
-                    sd_timestamp = time.time()
-                     # use current timestamp until better soln available..
-                    print "Sending signal display frame with timestamp %i. %s (%i slots full out of %i available)." % (sd_timestamp,
-                        "Unscaled" if not acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), sum(sd_slots),len(sd_slots))
-                    ig_sd['sd_data'] = sd_frame
-                    ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
-                    tx_sd.send_heap(ig_sd.get_heap())
-                    sd_slots = np.zeros(len(sd_slots))
-                    sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=sd_frame.dtype)
-                if acc_scale:
-                    sd_frame[xeng_id::len(sd_slots)] = (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
-                else:
-                    sd_frame[xeng_id::len(sd_slots)] = ig[name]
-                sd_slots[xeng_id] = 1
-             # base our frame checking on the increment of xeng id 0
+                print "Sending signal display frame with timestamp %i. %s. Max: %i, Mean: %i" % (sd_timestamp,
+                    "Unscaled" if not acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
+                ig_sd['sd_data'] = ig[name] if not acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
+                ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
+                tx_sd.send_heap(ig_sd.get_heap())
             f[name][datasets_index[name]] = ig[name]
             datasets_index[name] += 1
             item._changed = False
