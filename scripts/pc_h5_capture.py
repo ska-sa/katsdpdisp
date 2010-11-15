@@ -57,6 +57,8 @@ def receive():
                 if len(meta_required) == 0:
                     sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.int32)
                     print "Initialised sd frame to shape",sd_frame.shape
+                    meta_required = ['n_chans','n_bls','n_stokes']
+                    sd_slots = None
             if not datasets.has_key(name):
              # check to see if we have encountered this type before
                 shape = ig[name].shape if item.shape == -1 else item.shape
@@ -77,6 +79,8 @@ def receive():
                 sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                 print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
                 if sd_slots is None:
+                    ig_sd = spead.ItemGroup()
+                     # reinit the group to force meta data resend
                     sd_frame.dtype = np.dtype(np.float32) if acc_scale else ig[name].dtype
                      # make sure we have the right dtype for the sd data
                     sd_slots = np.zeros(meta['n_chans']/ig[name].shape[0])
@@ -86,7 +90,7 @@ def receive():
                     ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(sd_frame.dtype,sd_frame.shape))
                     ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
                     t_it = ig_sd.get_item('sd_data')
-                    print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape
+                    print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent."
                     tx_sd.send_heap(ig_sd.get_heap())
                 print "Sending signal display frame with timestamp %i. %s. Max: %i, Mean: %i" % (sd_timestamp,
                     "Unscaled" if not acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
