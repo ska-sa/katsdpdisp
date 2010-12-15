@@ -26,7 +26,7 @@ def parse_opts(argv):
     parser.add_option('--acc-scale', action='store_true', default=False,
                       help='scale by the reported number of accumulations '
                       'per dump')
-    return parser.parse(argv)
+    return parser.parse_args(argv)
 
 def receive():
     opts, args = parse_opts(sys.argv)
