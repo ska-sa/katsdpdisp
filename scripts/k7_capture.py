@@ -20,27 +20,43 @@ hdf5_version = "2.0"
  # initial version describing indicating compatibility with our HDF5v2 spec. Minor revision may be incremented by augment at a later stage.
 
 mapping = {'xeng_raw':'/Data/correlator_data',
-           'timestamp':'/Data/timestamps'}
+           'timestamp':'/Data/raw_timestamps'}
  # maps SPEAD element names to HDF5 paths
-default_map = '/MetaData/Configuration/Correlator/'
-
+timestamps = '/Data/timestamps'
+correlator_map = '/MetaData/Configuration/Correlator/'
+observation_map = '/MetaData/Configuration/Observation/'
  # default path for things that are not mentioned above
+config_sensors = ['script_arguments','script_description','script_experiment_id','script_name','script_nd_params','script_observer','script_rf_params','script_starttime','script_status']
+ # sensors to pull from the cfg katcp device
 
 def remap(name):
-    return name in mapping and mapping[name] or default_map + name
+    return name in mapping and mapping[name] or correlator_map + name
+
+def small_build(system):
+    print "Creating KAT connections..."
+    katconfig = katuilib.conf.KatuilibConfig(system)
+    cfg_config = katconfig.clients['cfg']
+    cfg = katuilib.utility.build_device(cfg_config.name, cfg_config.ip, cfg_config.port)
+    count=0
+    while not cfg.is_connected() and count < 6:
+        count+=1
+        print "Waiting for cfg device to become available... (wait %i/5)" % count
+        time.sleep(2)
+    if not cfg.is_connected():
+        print "Failed to connect to cfg device (ip: %s, port: %i)\n" % (cfg_config.ip, cfg_config.port)
+        sys.exit(0)
+    return cfg
 
 def parse_opts(argv):
     parser = optparse.OptionParser()
+    parser.add_option('--include_cfg', action='store_true', default=True, help='pull configuration information via katcp from the configuration server')
     parser.add_option('--ip', default='192.168.4.20', help='signal display ip')
     parser.add_option('--data-port', default=7148, type=int, help='port to receive data on')
     parser.add_option('--acc-scale', action='store_true', default=False, help='scale by the reported number of accumulations per dump')
+    parser.add_option("-s", "--system", default="systems/local.conf", help="system configuration file to use. [default=%default]")
     return parser.parse_args(argv)
 
-def receive():
-    opts, args = parse_opts(sys.argv)
-    data_port = opts.data_port
-    acc_scale = opts.acc_scale
-    sd_ip = opts.ip
+def receive(data_port, acc_scale, sd_ip, cfg):
     print 'Initalising SPEAD transports...'
     print "Data reception on port", data_port
     rx = spead.TransportUDPrx(data_port, pkt_count=1024, buffer_size=51200000)
@@ -48,7 +64,8 @@ def receive():
     tx_sd = spead.Transmitter(spead.TransportUDPtx(sd_ip, 7149))
     ig = spead.ItemGroup()
     ig_sd = spead.ItemGroup()
-    f = h5py.File(str(int(time.time())) + ".pc.h5", mode="w")
+    fname = str(int(time.time())) + ".pc.h5"
+    f = h5py.File(fname, mode="w")
     f['/'].attrs['version_number'] = hdf5_version
     f['/'].create_group('Data')
     f['/'].create_group('MetaData')
@@ -97,6 +114,8 @@ def receive():
                 dump_size += np.multiply.reduce(shape) * dtype.itemsize
                 datasets[name] = f[remap(name)]
                 datasets_index[name] = 0
+                if name == 'timestamp':
+                    f.create_dataset(timestamps,[1] + new_shape, maxshape=[None] + new_shape, dtype=np.float64)
                 if not item._changed:
                     continue
                  # if we built from and empty descriptor
@@ -114,7 +133,7 @@ def receive():
                     sd_slots = np.zeros(meta['n_chans']/ig[name].shape[0])
                     n_xeng = len(sd_slots)
                      # this is the first time we know how many x engines there are
-                    f[default_map].attrs['n_xeng'] = n_xeng
+                    f[correlator_map].attrs['n_xeng'] = n_xeng
                     ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(sd_frame.dtype,sd_frame.shape))
                     ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
                     t_it = ig_sd.get_item('sd_data')
@@ -125,17 +144,40 @@ def receive():
                 ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                 tx_sd.send_heap(ig_sd.get_heap())
             f[remap(name)][datasets_index[name]] = ig[name]
+            if name == 'timestamp':
+                f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
+                 # insert derived timestamps
             datasets_index[name] += 1
             item._changed = False
               # we have dealt with this item so continue...
+        if idx==0 and cfg is not None:
+            # add config store metadata after receiving first frame. This should ensure that the values pulled are fresh.
+            for s in config_sensors:
+                f[observation_map].attrs[s] = kat.cfg.sensor.__getattribute__(s).get_value()
+            print "Added initial observation sensor values...\n"
         idx+=1
     for (name,idx) in datasets_index.iteritems():
         if idx == 1:
             print "Repacking dataset",name,"as an attribute as it is singular."
-            f[default_map].attrs[name] = f[remap(name)].value[0]
+            f[correlator_map].attrs[name] = f[remap(name)].value[0]
             del f[remap(name)]
     f.flush()
     f.close()
+    return fname
 
 if __name__ == '__main__':
-    receive()
+    opts, args = parse_opts(sys.argv)
+    cfg = None
+    if opts.include_cfg:
+        try:
+            import katuilib
+        except ImportError:
+            print "katulib is not available on this host. please run script using --include_cfg=false"
+            sys.exit(0)
+        cfg = small_build(opts.system)
+    while True:
+        fname = receive(opts.data_port, opts.acc_scale, opts.ip, cfg)
+        print "Capture complete. Data recored to %s" % fname
+
+
+
