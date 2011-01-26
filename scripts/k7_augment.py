@@ -151,6 +151,7 @@ def get_sensor_data(sensor, start_time, end_time, dither=1, initial_value=False)
     -------
     array : dtype=[('timestamp','float'),('value', '<f4')]
     """
+    print "Pulling data for sensor %s from %i to %i\n" % (sensor.name, start_time, end_time)
     start_time = start_time - dither
     end_time = end_time + dither
     initial_data = [[], [], []]
@@ -161,6 +162,41 @@ def get_sensor_data(sensor, start_time, end_time, dither=1, initial_value=False)
     data = sensor.get_stored_history(select=False,start_time=start_time,end_time=end_time)
     print "Retrieved data of length",len(data[1]),"in",time.time()-stime,"s"
     return np.rec.fromarrays([initial_data[0] + data[0], initial_data[1] + data[1], initial_data[2] + data[2]], names='timestamp, value, status')
+
+def insert_sensor(name, dataset, obs_start, obs_end, int_time):
+    global errors
+    pstime = time.time()
+    try:
+        sensor_i = kat.sensors.__dict__[name]
+        data = get_sensor_data(sensor_i, obs_start, obs_end, int_time)
+        if np.multiply.reduce(data.shape) == 0:
+            section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting empty dataset."
+            s_dset = dataset.create_dataset(sensor_i.name, [], maxshape=None)
+        else:
+            s_dset = dataset.create_dataset(sensor_i.name, data=data)
+            section_reports[name] = "Success"
+        s_dset.attrs['name'] = sensor_i.name
+        s_dset.attrs['description'] = sensor_i.description
+        s_dset.attrs['units'] = sensor_i.units
+        s_dset.attrs['type'] = sensor_i.type
+    except KeyError:
+         # sensor does not exist
+        section_reports[name] = "Error: Cannot find sensor",name,".This is most likely a configuration issue."
+        errors += 1
+    except Exception, err:
+        if not str(err).startswith('Name already exists'):
+            section_reports[name] = "Error: Failed to create dataset for "+ name + " (" + str(err) + ")"
+            errors += 1
+        else:
+            section_reports[name] = "Success (Note: Existing data for this sensor was not changed.)"
+    if options.verbose: print "Creation of dataset for sensor " + name + " took " + str(time.time() - pstime) + "s"
+
+def create_group(f, name):
+    try:
+        ng = f.create_group(name)
+    except:
+        ng = f[name]
+    return ng
 
 def get_lo1_frequency(start_time):
     try:
@@ -206,13 +242,13 @@ signal.signal(signal.SIGINT, terminate)
 state = ["|","/","-","\\"]
 batch_count = 0
 
-pointing_sensors = ["pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
-enviro_sensors = ["enviro_air_temperature","enviro_air_pressure","enviro_air_relative_humidity","enviro_wind_speed"]
+pointing_sensors = ["mode","lock","scan_status","target","observer","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
+enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_humidity","asc_wind_speed","asc_wind_direction"]
  # a list of pointing sensors to insert
 pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
  # a list of pedestal sensors to insert
 
-sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors}
+sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors}
  # mapping from sensors to proxy
 
 sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True}
@@ -318,16 +354,12 @@ while(len(files) > 0 or options.batch):
             print "Observation session runs from %s to %s\n" % (time.ctime(obs_start), time.ctime(obs_end))
             int_time = f['/MetaData/Configuration/Correlator'].attrs['int_time']
 
-            try:
-                sg = f.create_group("/MetaData/Sensors")
-            except:
-                sg = f["/MetaData/Sensors"]
+            hist = create_group(f,"/History")
+            sg = create_group(f, "/MetaData/Sensors")
+            ag = create_group(sg, "Antennas")
+            pg = create_group(sg, "Pedestals")
+            eg = create_group(sg, "Enviro")
 
-            try:
-                ag = sg.create_group("Antennas")
-            except:
-                ag = sg["Antennas"]
-            # Cycle through all antennas and add pointing data
             for antenna in range(1,8):
                 antenna = str(antenna)
                 ant_name = 'ant' + antenna
@@ -335,37 +367,29 @@ while(len(files) > 0 or options.batch):
                     a = ag.create_group("Antenna" + antenna)
                 except:
                     a = ag["Antenna" + antenna]
-
-                # do pointing table...
                 stime = time.time()
-                for proxy in sensors.keys():
-                    for sensor in sensors[proxy]:
-                        pstime = time.time()
-                        try:
-                            ###sensor_i = kat.__dict__[proxy + antenna].sensor.__dict__[sensor]
-                            sensor_i = kat.sensors.__dict__[ant_name+"_"+sensor]
-                            print "Get sensor %s from %i to %i\n" % (sensor_i, obs_start, obs_end)
-                            s_dset = a.create_dataset(sensor, data=get_sensor_data(sensor_i, obs_start, obs_end, int_time))
-                            s_dset.attrs['name'] = sensor_i.name
-                            s_dset.attrs['description'] = sensor_i.description
-                            s_dset.attrs['units'] = sensor_i.units
-                            s_dset.attrs['type'] = sensor_i.type
-                            section_reports[proxy + antenna + "." + sensor] = "Success"
-                        except KeyError:
-                             # sensor does not exist
-                            section_reports[proxy + antenna + "." + sensor] = "Error: Cannot find sensor " + str(sensor) + " on device " + proxy + antenna + ". This is most likely a configuration issue."
-                            errors += 1
-                        except Exception, err:
-                            if not str(err).startswith('Name already exists'):
-                                section_reports[proxy + antenna + "." + sensor] = "Error: Failed to create dataset for "+ str(sensor) + " (" + str(err) + ")"
-                                errors += 1
-                            else:
-                                section_reports[proxy + antenna + "." + sensor] = "Success (Note: Existing data for this sensor was not changed.)"
-                        if options.verbose: print "Creation of dataset for sensor " + str(sensor) + " took " + str(time.time() - pstime) + "s"
+                for sensor in pointing_sensors:
+                    insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time)
                 if options.verbose: print "Overall creation of sensor table for antenna " + antenna + " took " + str(time.time()-stime) + "s"
+
+            for ped in range(1,8):
+                ped = str(ped)
+                ped_name = 'ped' + ped
+                try:
+                    p = pg.create_group("Pedestal" + ped)
+                except:
+                    p = pg["Pedestal" + ped]
                 stime = time.time()
+                for sensor in pedestal_sensors:
+                    insert_sensor(ped_name + "_" + sensor, p, obs_start, obs_end, int_time)
+                if options.verbose: print "Overall creation of sensor table for pedestal " + ped + " took " + str(time.time()-stime) + "s"
+            stime = time.time()
+            for sensor in enviro_sensors:
+                insert_sensor("anc_" + sensor, eg, obs_start, obs_end, int_time)
+            if options.verbose: print "Overall creation of enviro sensor table took " + str(time.time()-stime) + "s"
              # end of antenna loop
             f['/'].attrs['augment_ts'] = time.time()
+
         except Exception, err:
             section_reports["general"] = "Exception: " + str(err)
             errors += 1
@@ -376,13 +400,13 @@ while(len(files) > 0 or options.batch):
             f['/'].attrs['augment_errors'] = errors
             if options.force:
                 try:
-                    del f['augment_log']
+                    del hist['augment_log']
                 except KeyError:
                     pass # no worries if the augment log does not exist, a new one is written...
             try:
-                f['/'].create_dataset("augment_log", data=log)
+                hist.create_dataset("augment_log", data=log)
             except ValueError:
-                f['/']['augment_log'].write_direct(log)
+                hist['augment_log'].write_direct(log)
         except Exception, err:
             print "Warning: Unable to create augment_log dataset. (" + str(err) + ")"
         f.close()
