@@ -163,12 +163,12 @@ def get_sensor_data(sensor, start_time, end_time, dither=1, initial_value=False)
     print "Retrieved data of length",len(data[1]),"in",time.time()-stime,"s"
     return np.rec.fromarrays([initial_data[0] + data[0], initial_data[1] + data[1], initial_data[2] + data[2]], names='timestamp, value, status')
 
-def insert_sensor(name, dataset, obs_start, obs_end, int_time):
+def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False):
     global errors
     pstime = time.time()
     try:
         sensor_i = kat.sensors.__dict__[name]
-        data = get_sensor_data(sensor_i, obs_start, obs_end, int_time)
+        data = get_sensor_data(sensor_i, obs_start, obs_end, int_time, initial_value=iv)
         if np.multiply.reduce(data.shape) == 0:
             section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting empty dataset."
             s_dset = dataset.create_dataset(sensor_i.name, [], maxshape=None)
@@ -251,7 +251,7 @@ pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
 sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors}
  # mapping from sensors to proxy
 
-sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True}
+sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True, "mode":True, "target":True,"observer":True,"lock":True}
  # indicate which sensors will require an initial value fetch
 
 ######### Start of augment code #########
@@ -369,7 +369,7 @@ while(len(files) > 0 or options.batch):
                     a = ag["Antenna" + antenna]
                 stime = time.time()
                 for sensor in pointing_sensors:
-                    insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time)
+                    insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for antenna " + antenna + " took " + str(time.time()-stime) + "s"
 
             for ped in range(1,8):
@@ -381,7 +381,7 @@ while(len(files) > 0 or options.batch):
                     p = pg["Pedestal" + ped]
                 stime = time.time()
                 for sensor in pedestal_sensors:
-                    insert_sensor(ped_name + "_" + sensor, p, obs_start, obs_end, int_time)
+                    insert_sensor(ped_name + "_" + sensor, p, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for pedestal " + ped + " took " + str(time.time()-stime) + "s"
             stime = time.time()
             for sensor in enviro_sensors:
