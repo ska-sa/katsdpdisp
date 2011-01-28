@@ -72,15 +72,15 @@ class k7Capture(threading.Thread):
         self.fname = "None"
         threading.Thread.__init__(self)
 
-    def remap(name):
+    def remap(self, name):
         return name in mapping and mapping[name] or correlator_map + name
 
     def write_sensor(location, name, value):
         """Write a sensor value directly into the current hdf5 at the specified locations.
            Note that this will create a new HDF5 file if one does not already exist..."""
-        f = (self._current_hdf5 is None and init_file() or self._current_hdf5)
+        f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
 
-    def init_file():
+    def init_file(self):
         self.fname = str(int(time.time())) + ".pc.h5"
         f = h5py.File(self.fname, mode="w")
         f['/'].attrs['version_number'] = hdf5_version
@@ -119,7 +119,7 @@ class k7Capture(threading.Thread):
         sd_timestamp = None
         for heap in spead.iterheaps(rx):
             if idx == 0:
-                f = (self._current_hdf5 is None and init_file() or self._current_hdf5)
+                f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
                 self.status_sensor.set_value("capturing")
             ig.update(heap)
             for name in ig.keys():
@@ -159,6 +159,8 @@ class k7Capture(threading.Thread):
                 else:
                     print "Adding",name,"to dataset. New size is",datasets_index[name]+1
                     f[self.remap(name)].resize(datasets_index[name]+1, axis=0)
+                    if name == 'timestamp':
+                        f[timestamps].resize(datasets_index[name]+1, axis=0)
                 if sd_frame is not None and name.startswith("xeng_raw"):
                     sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                     print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
@@ -182,8 +184,11 @@ class k7Capture(threading.Thread):
                     tx_sd.send_heap(ig_sd.get_heap())
                 f[self.remap(name)][datasets_index[name]] = ig[name]
                 if name == 'timestamp':
-                    f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
-                     # insert derived timestamps
+                    try:
+                        f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
+                         # insert derived timestamps
+                    except KeyError:
+                        f[timestamps][datasets_index[name]] = 0
                 datasets_index[name] += 1
                 item._changed = False
                   # we have dealt with this item so continue...
@@ -238,10 +243,10 @@ class CaptureDeviceServer(DeviceServer):
 
     def request_capture_start(self, sock, msg):
         """Spawns a new capture thread that waits for a SPEAD start stream packet."""
-        self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, opts.ip, cfg, self._my_sensors["packets_captured"], self._my_sensors["status"])
+        self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, opts.ip, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
         self.rec_thread.setDaemon(True)
         self.rec_thread.start()
-        self._capture_active.set_value(1)
+        self._my_sensors["capture-active"].set_value(1)
         return Message.reply(msg.name, "ok", "Capture started at %s" % time.ctime())
 
     @request(Str(), Str())
@@ -298,7 +303,7 @@ class CaptureDeviceServer(DeviceServer):
         tx.end()
         self.rec_thread.join()
         self.rec_thread = None
-        self._capture_active.set_value(0)
+        self._my_sensors["capture-active"].set_value(0)
         return Message.reply(msg.name, "ok", "Capture stoppped at %s" % time.ctime())
 
 if __name__ == '__main__':

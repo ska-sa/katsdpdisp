@@ -49,7 +49,7 @@ def small_build(system):
 
 def parse_opts(argv):
     parser = optparse.OptionParser()
-    parser.add_option('--include_cfg', action='store_true', default=True, help='pull configuration information via katcp from the configuration server')
+    parser.add_option('--include_cfg', action='store_true', default=False, help='pull configuration information via katcp from the configuration server')
     parser.add_option('--ip', default='192.168.4.20', help='signal display ip')
     parser.add_option('--data-port', default=7148, type=int, help='port to receive data on')
     parser.add_option('--acc-scale', action='store_true', default=False, help='scale by the reported number of accumulations per dump')
@@ -122,6 +122,9 @@ def receive(data_port, acc_scale, sd_ip, cfg):
             else:
                 print "Adding",name,"to dataset. New size is",datasets_index[name]+1
                 f[remap(name)].resize(datasets_index[name]+1, axis=0)
+                if name == 'timestamp':
+                    f[timestamps].resize(datasets_index[name]+1,axis=0)
+
             if sd_frame is not None and name.startswith("xeng_raw"):
                 sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                 print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
@@ -145,8 +148,11 @@ def receive(data_port, acc_scale, sd_ip, cfg):
                 tx_sd.send_heap(ig_sd.get_heap())
             f[remap(name)][datasets_index[name]] = ig[name]
             if name == 'timestamp':
-                f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
-                 # insert derived timestamps
+                try:
+                    f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
+                     # insert derived timestamps
+                except KeyError:
+                    f[timestamps][datasets_index[name]] = -1;
             datasets_index[name] += 1
             item._changed = False
               # we have dealt with this item so continue...
@@ -178,6 +184,4 @@ if __name__ == '__main__':
     while True:
         fname = receive(opts.data_port, opts.acc_scale, opts.ip, cfg)
         print "Capture complete. Data recored to %s" % fname
-
-
-
+        time.sleep(2) # wait for sockets to close
