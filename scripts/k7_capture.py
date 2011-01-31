@@ -152,7 +152,7 @@ def receive(data_port, acc_scale, sd_ip, cfg):
                     f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                      # insert derived timestamps
                 except KeyError:
-                    f[timestamps][datasets_index[name]] = -1;
+                    f[timestamps][datasets_index[name]] = -1.0;
             datasets_index[name] += 1
             item._changed = False
               # we have dealt with this item so continue...
