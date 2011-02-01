@@ -65,6 +65,7 @@ class k7Capture(threading.Thread):
         self.acc_scale = acc_scale
         self.sd_ip = sd_ip
         self.cfg = cfg
+        self._label_idx = 0
         self._current_hdf5 = None
         self.pkt_sensor = pkt_sensor
         self.status_sensor = status_sensor
@@ -75,10 +76,17 @@ class k7Capture(threading.Thread):
     def remap(self, name):
         return name in mapping and mapping[name] or correlator_map + name
 
-    def write_sensor(location, name, value):
+    def write_obs_param(self, sensor_string, value_string):
+        f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
+        f['/MetaData/Observation'].attrs[sensor_string] = value_string
+
+    def write_label(self, label):
         """Write a sensor value directly into the current hdf5 at the specified locations.
            Note that this will create a new HDF5 file if one does not already exist..."""
         f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
+        f['/Markup/labels'][self._label_idx] = (time.time(), label)
+        self._label_idx += 1
+        f['/Markup/labels'].resize(self._label_idx+1,axis=0)
 
     def init_file(self):
         self.fname = str(int(time.time())) + ".pc.h5"
@@ -90,7 +98,7 @@ class k7Capture(threading.Thread):
         f['/'].create_group('MetaData/Observation')
         f['/'].create_group('MetaData/Configuration/Correlator')
         f['/'].create_group('Markup')
-        f['/Markup'].create_dataset('labels', [], maxshape=None, dtype=h5py.new_vlen(str))
+        f['/Markup'].create_dataset('labels', [1], maxshape=[None], dtype=np.dtype([('timestamp', np.float64), ('label', h5py.new_vlen(str))]))
          # create a label storage of variable length strings
         self._current_hdf5 = f
         return f
@@ -206,8 +214,10 @@ class k7Capture(threading.Thread):
                 del f[self.remap(name)]
         print "Capture complete."
         self.status_sensor.set_value("complete")
-        f.flush()
-        f.close()
+        if f is not None:
+            f.flush()
+            f.close()
+             # we may have ended capture before receiving any data packets and thus not have a current file
         self._current_hdf5 = None
 
 class CaptureDeviceServer(DeviceServer):
@@ -241,13 +251,14 @@ class CaptureDeviceServer(DeviceServer):
             self.add_sensor(self._my_sensors[sensor])
         self._my_sensors["label"].set_value("no_thread")
 
+    @return_reply(Str())
     def request_capture_start(self, sock, msg):
         """Spawns a new capture thread that waits for a SPEAD start stream packet."""
         self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, opts.ip, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
         self.rec_thread.setDaemon(True)
         self.rec_thread.start()
         self._my_sensors["capture-active"].set_value(1)
-        return Message.reply(msg.name, "ok", "Capture started at %s" % time.ctime())
+        return ("ok", "Capture started at %s" % time.ctime())
 
     @request(Str(), Str())
     @return_reply(Str())
@@ -276,9 +287,10 @@ class CaptureDeviceServer(DeviceServer):
         !set_script_param ok script-name
         
         """
+        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_start")
         try:
             self._my_sensors[sensor_string].set_value(value_string)
-            #self._activity_logger.info("Set script parameter %s=%s" % (sensor_string,value_string))
+            self.rec_thread.write_obs_param(sensor_string, value_string)
         except ValueError, e:
             return ("fail", "Could not parse sensor name or value string '%s=%s': %s" % (sensor_string, value_string, e))
         return ("ok", "%s=%s" % (sensor_string, value_string))
@@ -287,14 +299,18 @@ class CaptureDeviceServer(DeviceServer):
     @return_reply(Str())
     def request_set_label(self, sock, label):
         """Set the current scan label to the supplied value."""
-        self._label.set_value(label)
+        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_start")
+        self._my_sensors["label"].set_value(label)
+        self.rec_thread.write_label(label)
         return ("ok","Label set to %s" % label)
 
+    @return_reply(Str())
     def request_get_current_file(self, sock, msg):
         """Return the name of the current (or most recent) capture file."""
         if self.rec_thread is not None: self.current_file = self.rec_thread.fname
-        return Message.reply(msg.name, "ok", self.current_file)
+        return ("ok", self.current_file)
 
+    @return_reply(Str())
     def request_capture_stop(self, sock, msg):
         """Attempts to gracefully shut down current capture thread by sending a SPEAD stop packet to local receiver."""
         self.current_file = self.rec_thread.fname
@@ -304,7 +320,7 @@ class CaptureDeviceServer(DeviceServer):
         self.rec_thread.join()
         self.rec_thread = None
         self._my_sensors["capture-active"].set_value(0)
-        return Message.reply(msg.name, "ok", "Capture stoppped at %s" % time.ctime())
+        return ("ok", "Capture stoppped at %s" % time.ctime())
 
 if __name__ == '__main__':
     opts, args = parse_opts(sys.argv)
