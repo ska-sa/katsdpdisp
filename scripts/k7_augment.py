@@ -242,7 +242,7 @@ signal.signal(signal.SIGINT, terminate)
 state = ["|","/","-","\\"]
 batch_count = 0
 
-pointing_sensors = ["mode","lock","scan_status","target","observer","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
+pointing_sensors = ["activity","target","observer","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
 enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_humidity","asc_wind_speed","asc_wind_direction"]
  # a list of pointing sensors to insert
 pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
@@ -251,7 +251,7 @@ pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
 sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors}
  # mapping from sensors to proxy
 
-sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True, "mode":True, "target":True,"observer":True,"lock":True}
+sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True, "activity":True, "target":True,"observer":True,"lock":True}
  # indicate which sensors will require an initial value fetch
 
 ######### Start of augment code #########

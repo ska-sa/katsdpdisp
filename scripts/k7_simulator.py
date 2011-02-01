@@ -4,16 +4,109 @@ Hacked out from Jason's correlator package...
 \n"""
 
 
-import corr, time, sys, numpy, os, logging, katcp, struct
+import corr
+import time
+import numpy as np
 import spead
+import Queue
+import threading
+import sys
+import optparse
+from katcp import DeviceServer, Sensor, Message
+from katcp.kattypes import request, return_reply, Str, Int
 
-class K7Correlator:
+def parse_opts(argv):
+    parser = optparse.OptionParser()
+    parser.add_option('-c', '--config', dest='config', type="string", default="./k7-local.conf", help='k7 correlator config file to use.')
+    parser.add_option('-p', '--port', dest='port', type=long, default=2041, metavar='N', help='attach to port N (default=2040)')
+    parser.add_option('-a', '--host', dest='host', type="string", default="", metavar='HOST', help='listen to HOST (default="" - all hosts)')
+    return parser.parse_args(argv)
+
+class SimulatorDeviceServer(DeviceServer):
+
+    VERSION_INFO = ("k7-simulator",0,1)
+    BUILD_INFO = ("k7-capture",0,1,"rc1")
+
+    def __init__(self, *args, **kwargs):
+        self._sensors = {}
+        self._sensors["sync-time"] = Sensor(Sensor.INTEGER, "sync_time", "Last sync time in epoch seconds.","",default=0, params=[0,2**32])
+        self._sensors["tone_freq"] = Sensor(Sensor.INTEGER, "tone_freq", "The frequency of the injected tone in Hz.","",default=0, params=[0,2**32])
+        self._sensors["destination_ip"] = Sensor(Sensor.STRING, "destination_ip","The current destination address for data and metadata.","","")
+        self.c = K7Correlator(kwargs['config_file'])
+        self._sensors["destination_ip"].set_value(self.c.config['rx_meta_ip_str'])
+        del kwargs['config_file']
+        self.c.setDaemon(True)
+        self.c.start()
+        super(SimulatorDeviceServer, self).__init__(*args, **kwargs)
+
+    def setup_sensors(self):
+        for sensor in self._sensors:
+            self.add_sensor(self._sensors[sensor])
+
+    @return_reply(Str())
+    def request_spead_issue(self, sock, msg):
+        """Issue the SPEAD meta packets..."""
+        self.c.spead_issue()
+        return ("ok","SPEAD meta packets sent to %s" % (self.c.config['rx_meta_ip_str']))
+
+    @return_reply(Str())
+    def request_start_tx(self, sock, msg):
+        """Start the data stream."""
+        self.c._thread_paused = False
+        return ("ok","Data stream started.")
+
+    @request(Int())
+    @return_reply(Str())
+    def request_set_dump_rate(self, sock, rate):
+        """Set the dump rate in Hz. Default is 1."""
+        self.c.dump_period = 1.0 / int(rate)
+        return ("ok","Dump rate set to %i Hz" % rate)
+
+    @return_reply(Str())
+    def request_stop_tx(self, sock, msg):
+        """Stop the data stream."""
+        self.c._thread_paused = True
+        self.c.send_stop()
+        return ("ok","Data stream stopped.")
+
+class K7Correlator(threading.Thread):
     def __init__(self, config_file):
         self.config = corr.cn_conf.CorrConf(config_file)
         self.sync_time = int(time.time())
         self.adc_value = 0
         self.tx=spead.Transmitter(spead.TransportUDPtx(self.config['rx_meta_ip_str'],self.config['rx_udp_port']))
         self.data_ig=spead.ItemGroup()
+        self._data_meta_descriptor = None
+        self.init_data_descriptor()
+        self.dump_period = 1.0
+        self.sample_rate = 800e6
+        self.tone_freq = 302e6
+        self.data = self.generate_data()
+        self._thread_runnable = True
+        self._thread_paused = False
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while self._thread_runnable:
+            if not self._thread_paused:
+                self.send_dump()
+                status = "\rSending correlator dump at %s (dump period: %f s)" % (time.ctime(), self.dump_period)
+                sys.stdout.write(status)
+                sys.stdout.flush()
+            time.sleep(self.dump_period)
+        self.send_stop()
+        print "Correlator tx halted."
+
+    def generate_data(self):
+        samples_per_dump = self.config['n_chans'] * 8
+         # not related to actual value. just for calculation purposes
+        n = np.arange(samples_per_dump)
+        x = np.cos(2 * np.pi * self.tone_freq / self.sample_rate * n)
+        data = np.fft.fft(x, self.config['n_chans'])[:self.config['n_chans']]
+        data = (data.view(np.float64)*1000).astype(np.int32).reshape((512,2))
+        data = np.tile(data, self.config['n_bls'] * self.config['n_stokes'])
+        data = data.reshape((self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2), order='C')
+        return data
 
     def get_bl_order(self):
         """Return the order of baseline data output by a CASPER correlator X engine."""
@@ -33,7 +126,8 @@ class K7Correlator:
         pol2=self.config['rev_pol_map'][1]
         return (pol1+pol1,pol2+pol2,pol1+pol2,pol2+pol1)
 
-    def send_spead(self):
+    def spead_issue(self):
+        print "Issuing SPEAD meta data to %s\n" % self.config['rx_meta_ip_str']
         self.spead_static_meta_issue()
         self.spead_time_meta_issue()
         self.spead_data_descriptor_issue()
@@ -215,7 +309,7 @@ class K7Correlator:
                 ig.add_item(name="eq_coef_%i%c"%(ant,pol),id=0x1400+ant*self.config['n_pols']+pn,
                     description="The unitless per-channel digital scaling factors implemented prior to requantisation, post-FFT, for input %i%c. Complex number real,imag 32 bit integers."%(ant,pol),
                     shape=[self.config['n_chans'],2],fmt=spead.mkfmt(('u',32)),
-                    init_val=[[numpy.real(coeff),numpy.imag(coeff)] for coeff in numpy.zeros(512, dtype=numpy.complex64)])
+                    init_val=[[np.real(coeff),np.imag(coeff)] for coeff in np.zeros(512, dtype=np.complex64)])
 
 
         self.tx.send_heap(ig.get_heap())
@@ -223,8 +317,12 @@ class K7Correlator:
 
     def send_dump(self):
         """Send a single correlator dump..."""
-        self.data_ig['timestamp'] = int((time.time() - self.sync_time()) * self.config['spead_timestamp_scale_factor'])
-        self.data_ig['xeng_raw'] = np.random.random((self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2), dtype=numpy.int32)
+        self.data_ig['timestamp'] = int((time.time() - self.sync_time) * self.config['spead_timestamp_scale_factor'])
+        self.data_ig['xeng_raw'] = self.data
+        self.tx.send_heap(self.data_ig.get_heap())
+
+    def send_stop(self):
+        self.tx.end()
 
     def init_data_descriptor(self):
         """ Issues the SPEAD data descriptors for the HW 10GbE output, to enable receivers to decode the data."""
@@ -238,8 +336,35 @@ class K7Correlator:
 
         self.data_ig.add_item(name=("xeng_raw"),id=0x1800,
             description="Raw data for %i xengines in the system. This item represents a full spectrum (all frequency channels) assembled from lowest frequency to highest frequency. Each frequency channel contains the data for all baselines (n_bls given by SPEAD ID 0x100B). For a given baseline, -SPEAD ID 0x1040- stokes parameters are calculated (nominally 4 since xengines are natively dual-polarisation; software remapping is required for single-baseline designs). Each stokes parameter consists of a complex number (two real and imaginary unsigned integers)."%(self.config['n_xeng']),
-            ndarray=(numpy.dtype(numpy.int32),(self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2)))
+            ndarray=(np.dtype(np.int32),(self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2)))
+
+        self._data_meta_descriptor = self.data_ig.get_heap()
 
     def spead_data_descriptor_issue(self):
-        self.tx.send_heap(self.data_ig.get_heap())
+        self.tx.send_heap(self._data_meta_descriptor)
+
+if __name__ == '__main__':
+    opts, args = parse_opts(sys.argv)
+    restart_queue = Queue.Queue()
+    server = SimulatorDeviceServer(opts.host, opts.port, config_file=opts.config)
+    server.set_restart_queue(restart_queue)
+    server.start()
+    print "Started k7-capture server."
+    try:
+        while True:
+            try:
+                device = restart_queue.get(timeout=0.5)
+            except Queue.Empty:
+                device = None
+            if device is not None:
+                print "Stopping ..."
+                device.stop()
+                device.join()
+                print "Restarting ..."
+                device.start()
+                print "Started."
+    except KeyboardInterrupt:
+        print "Shutting down ..."
+        server.stop()
+        server.join()
 

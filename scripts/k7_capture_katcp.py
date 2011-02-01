@@ -51,7 +51,7 @@ def small_build(system):
 def parse_opts(argv):
     parser = optparse.OptionParser()
     parser.add_option('--include_cfg', action='store_true', default=False, help='pull configuration information via katcp from the configuration server')
-    parser.add_option('--ip', default='192.168.4.20', help='signal display ip')
+    parser.add_option('--ip', default='127.0.0.1', help='signal display ip')
     parser.add_option('--data-port', default=7148, type=int, help='port to receive data on')
     parser.add_option('--acc-scale', action='store_true', default=False, help='scale by the reported number of accumulations per dump')
     parser.add_option("-s", "--system", default="systems/local.conf", help="system configuration file to use. [default=%default]")
@@ -71,7 +71,13 @@ class k7Capture(threading.Thread):
         self.status_sensor = status_sensor
         self.status_sensor.set_value("init")
         self.fname = "None"
+        self._sd_metadata = None
+        self._tx_sd = None
         threading.Thread.__init__(self)
+
+    def send_sd_metadata(self):
+        print "Sending",self._sd_metadata
+        self._tx_sd.send_heap(self._sd_metadata)
 
     def remap(self, name):
         return name in mapping and mapping[name] or correlator_map + name
@@ -109,6 +115,7 @@ class k7Capture(threading.Thread):
         rx = spead.TransportUDPrx(self.data_port, pkt_count=1024, buffer_size=51200000)
         print "Sending Signal Display data to", self.sd_ip
         tx_sd = spead.Transmitter(spead.TransportUDPtx(self.sd_ip, 7149))
+        self._tx_sd = tx_sd
         ig = spead.ItemGroup()
         ig_sd = spead.ItemGroup()
         idx = 0
@@ -185,7 +192,9 @@ class k7Capture(threading.Thread):
                         ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
                         t_it = ig_sd.get_item('sd_data')
                         print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent."
-                        tx_sd.send_heap(ig_sd.get_heap())
+                        self._sd_metadata = ig_sd.get_heap()
+                        print "Setup:",self._sd_metadata
+                        tx_sd.send_heap(self._sd_metadata)
                     print "Sending signal display frame with timestamp %i. %s. Max: %i, Mean: %i" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
                     ig_sd['sd_data'] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
                     ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
@@ -250,6 +259,12 @@ class CaptureDeviceServer(DeviceServer):
         for sensor in self._my_sensors:
             self.add_sensor(self._my_sensors[sensor])
         self._my_sensors["label"].set_value("no_thread")
+
+    @return_reply(Str())
+    def request_sd_metadata_issue(self, sock, msg):
+        """Resend the signal display metadata packets..."""
+        self.rec_thread.send_sd_metadata()
+        return ("ok", "SD Metadata resent")
 
     @return_reply(Str())
     def request_capture_start(self, sock, msg):
