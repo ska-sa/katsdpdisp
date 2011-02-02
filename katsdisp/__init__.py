@@ -1,7 +1,9 @@
 import logging
 import sys
 import atexit
-from .data import *
+from .data import quitter, Archive, DataFile, DataArchive, CorrProdRef, SignalDisplayFrame, SignalDisplayStore, NullReceiver
+from .data import SpeadSDReceiver, SignalDisplayReceiver, AnimatablePlot, AnimatableSensorPlot, PlotAnimator
+from .data import DataHandler, KATData
 
 # Setup library logger, and suppress spurious logger messages via a null handler
 class _NullHandler(logging.Handler):
@@ -29,4 +31,3 @@ except:
 atexit.register(quitter)
 sys.excepthook = quitter.excepthook
 
-from .data import *
