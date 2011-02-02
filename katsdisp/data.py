@@ -559,7 +559,7 @@ class SignalDisplayStore(object):
                         dt = data[i]
                         for id in range(len(dt[0])):
                             d_float = np.ravel(np.array([np.real(dt[str(id)]),np.imag(dt[str(id)])]), order='F')
-                            self.add_data(t, id, 0, len(d_float), d_float)
+                            self.add_data(t / 1000, id, 0, len(d_float), d_float)
         except OSError:
             print "Specified file (%s) could not be found." % filename
 
@@ -575,7 +575,7 @@ class SignalDisplayStore(object):
         print "".center(7,"="), "".center(6,"="), "".center(26,"="), "".center(26,"=")
         for id in self.corr_prod_frames.keys():
             times = self.corr_prod_frames[id].keys()
-            print str(id).center(7),str(len(times)).center(6),time.ctime(min(times)).center(26), time.ctime(max(times)).center(26)
+            print str(id).center(7),str(len(times)).center(6),time.ctime(min(times)/1000).center(26), time.ctime(max(times)/1000).center(26)
 
 class NullReceiver(object):
     """Null class used when loading historical data into signal displays...
