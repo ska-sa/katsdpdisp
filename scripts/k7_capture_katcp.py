@@ -68,6 +68,7 @@ class k7Capture(threading.Thread):
         self.acc_scale = acc_scale
         self.cfg = cfg
         self._label_idx = 0
+        self._log_idx = 0
         self._current_hdf5 = None
         self.pkt_sensor = pkt_sensor
         self.status_sensor = status_sensor
@@ -99,7 +100,17 @@ class k7Capture(threading.Thread):
 
     def write_obs_param(self, sensor_string, value_string):
         f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
-        f['/MetaData/Observation'].attrs[sensor_string] = value_string
+        f['/MetaData/Observation'].attrs[sensor_string.replace("-","_")] = value_string
+        if sensor_string == "script-experiment-id":
+            f.attrs['experiment_id'] = value_string
+             # duplicated for easy use by the archiver. Note change of name from script-experiment-id
+
+    def write_log(self, label):
+        """Write a log value directly into the current hdf5 file."""
+        f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
+        f['/History/script_log'][self._log_idx] = (time.time(), log)
+        self._log_idx += 1
+        f['/History/script_log'].resize(self._log_idx+1,axis=0)
 
     def write_label(self, label):
         """Write a sensor value directly into the current hdf5 at the specified locations.
@@ -121,6 +132,8 @@ class k7Capture(threading.Thread):
         f['/'].create_group('Markup')
         f['/Markup'].create_dataset('labels', [1], maxshape=[None], dtype=np.dtype([('timestamp', np.float64), ('label', h5py.new_vlen(str))]))
          # create a label storage of variable length strings
+        f['/'].create_group('History')
+        f['/History'].create_dataset('script_log', [1], maxshape=[None], dtype=np.dtype([('timestamp', np.float64), ('log', h5py.new_vlen(str))]))
         self._current_hdf5 = f
         return f
 
@@ -266,6 +279,7 @@ class CaptureDeviceServer(DeviceServer):
         self._my_sensors["packets-captured"] = Sensor(Sensor.INTEGER, "packets_captured", "The number of packets captured so far by the current session.","",default=0, params=[0,2**63])
         self._my_sensors["status"] = Sensor(Sensor.STRING, "status", "The current status of the capture thread.","","")
         self._my_sensors["label"] = Sensor(Sensor.STRING, "label", "The label applied to the data as currently captured.","","")
+        self._my_sensors["script-log"] = Sensor(Sensor.STRING, "script-log", "The most recent script log entry.","","")
         self._my_sensors["script-name"] = Sensor(Sensor.STRING, "script-name", "Current script name", "")
         self._my_sensors["script-experiment-id"] = Sensor(Sensor.STRING, "script-experiment-id", "Current experiment id", "")
         self._my_sensors["script-observer"] = Sensor(Sensor.STRING, "script-observer", "Current experiment observer", "")
@@ -336,6 +350,15 @@ class CaptureDeviceServer(DeviceServer):
         except ValueError, e:
             return ("fail", "Could not parse sensor name or value string '%s=%s': %s" % (sensor_string, value_string, e))
         return ("ok", "%s=%s" % (sensor_string, value_string))
+
+    @request(Str(), Str())
+    @return_reply(Str())
+    def request_script_log(self, sock, log):
+        """Add an entry to the script log."""
+        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_start")
+        self._my_sensors["script-log"].set_value(label)
+        self.rec_thread.write_log(log)
+        return ("ok")
 
     @request(Str())
     @return_reply(Str())
