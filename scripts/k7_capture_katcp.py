@@ -17,6 +17,7 @@ import time
 import optparse
 import threading
 import Queue
+import copy
 from katcp import DeviceServer, Sensor, Message
 from katcp.kattypes import request, return_reply, Str
 
@@ -32,6 +33,8 @@ observation_map = '/MetaData/Configuration/Observation/'
  # default path for things that are not mentioned above
 config_sensors = ['script_arguments','script_description','script_experiment_id','script_name','script_nd_params','script_observer','script_rf_params','script_starttime','script_status']
  # sensors to pull from the cfg katcp device
+sdisp_ips = {}
+ # dict storing the configured signal destination ip addresses
 
 def small_build(system):
     print "Creating KAT connections..."
@@ -51,7 +54,7 @@ def small_build(system):
 def parse_opts(argv):
     parser = optparse.OptionParser()
     parser.add_option('--include_cfg', action='store_true', default=False, help='pull configuration information via katcp from the configuration server')
-    parser.add_option('--ip', default='127.0.0.1', help='signal display ip')
+    #parser.add_option('--ip', default='127.0.0.1', help='signal display ip')
     parser.add_option('--data-port', default=7148, type=int, help='port to receive data on')
     parser.add_option('--acc-scale', action='store_true', default=False, help='scale by the reported number of accumulations per dump')
     parser.add_option("-s", "--system", default="systems/local.conf", help="system configuration file to use. [default=%default]")
@@ -60,10 +63,9 @@ def parse_opts(argv):
     return parser.parse_args(argv)
 
 class k7Capture(threading.Thread):
-    def __init__(self, data_port, acc_scale, sd_ip, cfg, pkt_sensor, status_sensor):
+    def __init__(self, data_port, acc_scale, cfg, pkt_sensor, status_sensor):
         self.data_port = data_port
         self.acc_scale = acc_scale
-        self.sd_ip = sd_ip
         self.cfg = cfg
         self._label_idx = 0
         self._current_hdf5 = None
@@ -72,12 +74,25 @@ class k7Capture(threading.Thread):
         self.status_sensor.set_value("init")
         self.fname = "None"
         self._sd_metadata = None
-        self._tx_sd = None
+        self.sdisp_ips = {}
+        self._sd_count = 0
         threading.Thread.__init__(self)
 
+    def send_sd_data(self, data):
+        if self._sd_count % 10 == 0:
+            print "Sending metadata heartbeat..."
+            self.send_sd_metadata()
+
+        for tx in self.sdisp_ips.itervalues():
+            tx.send_heap(data)
+
+        self._sd_count += 1
+
     def send_sd_metadata(self):
-        print "Sending",self._sd_metadata
-        self._tx_sd.send_heap(self._sd_metadata)
+        if self._sd_metadata is not None:
+            for tx in self.sdisp_ips.itervalues():
+                mdata = copy.deepcopy(self._sd_metadata)
+                tx.send_heap(mdata)
 
     def remap(self, name):
         return name in mapping and mapping[name] or correlator_map + name
@@ -109,13 +124,21 @@ class k7Capture(threading.Thread):
         self._current_hdf5 = f
         return f
 
+    def add_sdisp_ip(self, ip, port):
+        print "Adding %s:%s to signal display list. Starting transport..." % (ip,port)
+        self.sdisp_ips[ip] = spead.Transmitter(spead.TransportUDPtx(ip, port))
+        if self._sd_metadata is not None:
+            mdata = copy.deepcopy(self._sd_metadata)
+            self.sdisp_ips[ip].send_heap(mdata)
+             # new connection requires headers...
+
     def run(self):
         print 'Initalising SPEAD transports...'
         print "Data reception on port", self.data_port
         rx = spead.TransportUDPrx(self.data_port, pkt_count=1024, buffer_size=51200000)
-        print "Sending Signal Display data to", self.sd_ip
-        tx_sd = spead.Transmitter(spead.TransportUDPtx(self.sd_ip, 7149))
-        self._tx_sd = tx_sd
+        #print "Sending Signal Display data to", self.sd_ip
+        #tx_sd = spead.Transmitter(spead.TransportUDPtx(self.sd_ip, 7149))
+        #self._tx_sd = tx_sd
         ig = spead.ItemGroup()
         ig_sd = spead.ItemGroup()
         idx = 0
@@ -191,14 +214,14 @@ class k7Capture(threading.Thread):
                         ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(sd_frame.dtype,sd_frame.shape))
                         ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
                         t_it = ig_sd.get_item('sd_data')
-                        print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent."
-                        self._sd_metadata = ig_sd.get_heap()
-                        print "Setup:",self._sd_metadata
-                        tx_sd.send_heap(self._sd_metadata)
+                        self._sd_metadata = copy.deepcopy(ig_sd.get_heap())
+                         # proper deep copy needed as heaps get reused later on...
+                        print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
+                        self.send_sd_data(self._sd_metadata)
                     print "Sending signal display frame with timestamp %i. %s. Max: %i, Mean: %i" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
                     ig_sd['sd_data'] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
                     ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
-                    tx_sd.send_heap(ig_sd.get_heap())
+                    self.send_sd_data(ig_sd.get_heap())
                 f[self.remap(name)][datasets_index[name]] = ig[name]
                 if name == 'timestamp':
                     try:
@@ -237,6 +260,7 @@ class CaptureDeviceServer(DeviceServer):
     def __init__(self, *args, **kwargs):
         self.rec_thread = None
         self.current_file = "None"
+        self.sdisp_ips = {}
         self._my_sensors = {}
         self._my_sensors["capture-active"] = Sensor(Sensor.INTEGER, "capture_active", "Is there a currently active capture thread.","",default=0, params = [0,1])
         self._my_sensors["packets-captured"] = Sensor(Sensor.INTEGER, "packets_captured", "The number of packets captured so far by the current session.","",default=0, params=[0,2**63])
@@ -269,10 +293,13 @@ class CaptureDeviceServer(DeviceServer):
     @return_reply(Str())
     def request_capture_start(self, sock, msg):
         """Spawns a new capture thread that waits for a SPEAD start stream packet."""
-        self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, opts.ip, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
+        self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
         self.rec_thread.setDaemon(True)
         self.rec_thread.start()
         self._my_sensors["capture-active"].set_value(1)
+         # add in existing signal display recipients...
+        for (ip,port) in self.sdisp_ips.iteritems():
+            self.rec_thread.add_sdisp_ip(ip,port)
         return ("ok", "Capture started at %s" % time.ctime())
 
     @request(Str(), Str())
@@ -309,6 +336,20 @@ class CaptureDeviceServer(DeviceServer):
         except ValueError, e:
             return ("fail", "Could not parse sensor name or value string '%s=%s': %s" % (sensor_string, value_string, e))
         return ("ok", "%s=%s" % (sensor_string, value_string))
+
+    @request(Str())
+    @return_reply(Str())
+    def request_add_sdisp_ip(self, sock, ip):
+        """Add the supplied ip and port (ip[:port]) to the list of signal display data recipients.If not port is supplied default of 7149 is used."""
+        ipp = ip.split(":")
+        ip = ipp[0]
+        if len(ipp) > 1: port = int(ipp[1])
+        else: port = 7149
+        if self.sdisp_ips.has_key(ip): return ("ok","The supplied IP is already in the active list of recipients.")
+        self.sdisp_ips[ip] = port
+        if self.rec_thread is not None:
+            self.rec_thread.add_sdisp_ip(ip, port)
+        return ("ok","Added IP address %s (port: %i) to list of signal display data recipients." % (ip, port))
 
     @request(Str())
     @return_reply(Str())
