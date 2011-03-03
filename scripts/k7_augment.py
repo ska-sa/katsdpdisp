@@ -231,6 +231,8 @@ parser.add_option("-s", "--system", default="systems/local.conf", help="System c
 parser.add_option("-m", "--ms", action="store_true", default=False,help="In addition to augmenting the specified file a measurement set of the data will be produced. Note that in this case a file must be specified and all the baselines associated with this file will be augmented.")
 parser.add_option("-o", "--override", dest="force", action="store_true", default=False, help="If set, previously augmented files will be re-augmented. Only useful in conjunction with a single specified file.")
 parser.add_option("-v", "--verbose", action="store_true", default=False, help="Verbose output.")
+parser.add_option("-n", "--nd_dir", default="/var/kat/conf/noise-diode-models", help="Directory in which csv noise diode models are stored. Naming is expected to follow: ant\w.[pin|coupler].[h|v].csv")
+
 
 (options, args) = parser.parse_args()
 signal.signal(signal.SIGTERM, terminate)
@@ -247,6 +249,8 @@ enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_hum
  # a list of pointing sensors to insert
 pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
  # a list of pedestal sensors to insert
+beam_sensors = ["dbe_target"]
+ # a list of sensor for beam 0
 
 sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors}
  # mapping from sensors to proxy
@@ -327,6 +331,9 @@ ms_dict['MAIN'] = []
 ms_dict['FIELD'] = []
  # this is all we can do for now. The remainder requires input from the file itself...
 
+inputs = 16
+input_map = [('ant' + str(int(x/2) + 1) + (x % 2 == 0 and 'H' or 'V'), str(int(x / 2)) + (x % 2 == 0 and 'x' or 'y')) for x in range(inputs)]
+
 while(len(files) > 0 or options.batch):
     for file in files:
         errors = 0
@@ -350,39 +357,62 @@ while(len(files) > 0 or options.batch):
 
             obs_start = f['/Data/timestamps'].value[1]
              # first timestamp is currently suspect
+            f['/Data'].attrs['ts_of_first_timeslot'] = obs_start
             obs_end = f['/Data/timestamps'].value[-1]
             print "Observation session runs from %s to %s\n" % (time.ctime(obs_start), time.ctime(obs_end))
             int_time = f['/MetaData/Configuration/Correlator'].attrs['int_time']
+            f['/MetaData/Configuration/Correlator'].attrs['input_map'] = input_map
+             # TODO: default input mapping for now. Once config system has input_map sensor we pull from there
 
             hist = create_group(f,"/History")
             sg = create_group(f, "/MetaData/Sensors")
             ag = create_group(sg, "Antennas")
+            acg = create_group(f, "/MetaData/Configuration/Antennas")
             pg = create_group(sg, "Pedestals")
             eg = create_group(sg, "Enviro")
+            bg = create_group(sg, "Beams")
 
             for antenna in range(1,8):
                 antenna = str(antenna)
                 ant_name = 'ant' + antenna
                 try:
-                    a = ag.create_group("Antenna" + antenna)
+                    a = ag.create_group(ant_name)
+                    ac = acg.create_group(ant_name)
                 except:
-                    a = ag["Antenna" + antenna]
+                    a = ag[ant_name]
+                    ac = acg.create_group(ant_name)
                 stime = time.time()
                 for sensor in pointing_sensors:
                     insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for antenna " + antenna + " took " + str(time.time()-stime) + "s"
+                # noise diode models
+                for pol in ['h','v']:
+                    for nd in ['coupler','pin']:
+                        fname = "%s/%s.%s.%s.csv" % (options.nd_dir, ant_name, nd, pol)
+                        nd_a = np.zeros((1,2), dtype=np.float32)
+                        try:
+                            f = open(fname)
+                            nd_a = np.array([(x.split(",")[0],x.split(",")[1]) for x in s.read().split("\r\n")[:-1] if not x.startswith('#')][:-1]).astype(np.float32)
+                        except Exception, e:
+                            print "Failed to open noise diode model file %s. Inserting null noise diode model. (%s)" % (fname, e)
+                        ac.create_dataset("%s_%s_noise_diode_model" % (pol, nd), data=nd_a)
 
             for ped in range(1,8):
                 ped = str(ped)
                 ped_name = 'ped' + ped
                 try:
-                    p = pg.create_group("Pedestal" + ped)
+                    p = pg.create_group(ped_name)
                 except:
-                    p = pg["Pedestal" + ped]
+                    p = pg[ped_name]
                 stime = time.time()
                 for sensor in pedestal_sensors:
                     insert_sensor(ped_name + "_" + sensor, p, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for pedestal " + ped + " took " + str(time.time()-stime) + "s"
+
+            b0 = bg.create_group("Beam0")
+            for sensor in beam_sensors:
+                insert_sensor("dbe" + "_" + sensor, b0, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
+
             stime = time.time()
             for sensor in enviro_sensors:
                 insert_sensor("anc_" + sensor, eg, obs_start, obs_end, int_time)
