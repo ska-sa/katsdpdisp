@@ -118,7 +118,10 @@ def load_csv_with_header(csv_file):
         Key-value pairs extracted from header
 
     """
-    csv_file = file(csv_file) if isinstance(csv_file, basestring) else csv_file
+    try:
+        csv_file = open(csv_file) if isinstance(csv_file, basestring) else csv_file
+    except Exception, e:
+        print "Failed to load csv_file (%s). %s\n" % (csv_file, e)
     start = csv_file.tell()
     csv = np.loadtxt(csv_file, comments='#', delimiter=',')
     csv_file.seek(start)
@@ -335,13 +338,13 @@ inputs = 16
 input_map = [('ant' + str(int(x/2) + 1) + (x % 2 == 0 and 'H' or 'V'), str(int(x / 2)) + (x % 2 == 0 and 'x' or 'y')) for x in range(inputs)]
 
 while(len(files) > 0 or options.batch):
-    for file in files:
+    for fname in files:
         errors = 0
         fst = time.time()
-        print "\nStarting augment of file",file
+        print "\nStarting augment of file",fname
         new_extension = "h5"
         try:
-            f = File(file, 'r+')
+            f = File(fname, 'r+')
             if f['/'].attrs.get('version_number',"0.0") == str(major_version):
                 print "This version of augment required HDF5 files of version %i to augment. Your file has major version %s\n" % (major_version, current_version[0])
                 sys.exit(0)
@@ -388,14 +391,15 @@ while(len(files) > 0 or options.batch):
                 # noise diode models
                 for pol in ['h','v']:
                     for nd in ['coupler','pin']:
-                        fname = "%s/%s.%s.%s.csv" % (options.nd_dir, ant_name, nd, pol)
-                        nd_a = np.zeros((1,2), dtype=np.float32)
+                        nd_fname = "%s/%s.%s.%s.csv" % (options.nd_dir, ant_name, nd, pol)
+                        model = np.zeros((1,2), dtype=np.float32)
+                        attrs = {}
                         try:
-                            f = open(fname)
-                            nd_a = np.array([(x.split(",")[0],x.split(",")[1]) for x in s.read().split("\r\n")[:-1] if not x.startswith('#')][:-1]).astype(np.float32)
+                            model, attrs = load_csv_with_header(nd_fname)
                         except Exception, e:
-                            print "Failed to open noise diode model file %s. Inserting null noise diode model. (%s)" % (fname, e)
-                        ac.create_dataset("%s_%s_noise_diode_model" % (pol, nd), data=nd_a)
+                            print "Failed to open noise diode model file %s. Inserting null noise diode model. (%s)" % (nd_fname, e)
+                        nd = ac.create_dataset("%s_%s_noise_diode_model" % (pol, nd), data=model)
+                        for key,val in attrs.iteritems(): nd.attrs[key] = val
 
             for ped in range(1,8):
                 ped = str(ped)
@@ -411,7 +415,7 @@ while(len(files) > 0 or options.batch):
 
             b0 = bg.create_group("Beam0")
             for sensor in beam_sensors:
-                insert_sensor("dbe" + "_" + sensor, b0, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
+                insert_sensor(sensor, b0, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
 
             stime = time.time()
             for sensor in enviro_sensors:
@@ -423,7 +427,7 @@ while(len(files) > 0 or options.batch):
         except Exception, err:
             section_reports["general"] = "Exception: " + str(err)
             errors += 1
-            "Failed to run augment. File will be  marked as 'failed' and ignored:  (" + str(err) + ")"
+            print "Failed to run augment. File will be  marked as 'failed' and ignored:  (" + str(err) + ")"
             new_extension = "failed.h5"
         try:
             log = np.rec.fromarrays([np.array(section_reports.keys()), np.array(section_reports.values())], names='section, message')
@@ -451,13 +455,13 @@ while(len(files) > 0 or options.batch):
         try:
             #Drop the last two extensions of the file 123456789.xxxxx.h5 becomes 123456789.
             #And then add the new extension in its place thus 123456789.unaugmented.h5 becomes 123456789.h5 or 123456789.failed.h5
-            lst = file.split(".")
+            lst = fname.split(".")
             y = ".".join(l for l in lst[:-2]) + "."
             renfile = y + new_extension
-            os.rename(file, renfile)
+            os.rename(fname, renfile)
             print "File has been renamed to " + str(renfile) + "\n"
         except:
-            print "Failed to rename " + str(file) + " to " + str(renfile) + ". This is most likely a permissions issue. Please resolve these and either manually rename the file or rerun augment with the -o option."
+            print "Failed to rename " + str(fname) + " to " + str(renfile) + ". This is most likely a permissions issue. Please resolve these and either manually rename the file or rerun augment with the -o option."
             sys.exit()
         print (errors == 0 and "No errors found." or str(errors) + " potential errors found. Please inspect the augment log by running 'h5dump -d /augment_log " + str(renfile) + "'.")
 
