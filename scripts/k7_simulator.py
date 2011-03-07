@@ -1,10 +1,11 @@
 #! /usr/bin/env python
 """
-Hacked out from Jason's correlator package...
-\n"""
+Some of this hacked from Jason's correlator package.
+"""
 
 
 import corr
+import copy
 import time
 import numpy as np
 import spead
@@ -62,6 +63,43 @@ class SimulatorDeviceServer(DeviceServer):
         self.c.dump_period = 1.0 / int(rate)
         return ("ok","Dump rate set to %i Hz" % rate)
 
+    @request(Str())
+    @return_reply(Str())
+    def request_poco_accumulation_length(self, sock, period):
+        """Set the period in ms. Default is 1000."""
+        self.c.dump_period = 1000.0 / float(period)
+        return ("ok","Dump period set to %s ms" % period)
+
+    @return_reply(Str())
+    def request_fire_nd(self, sock, msg):
+        """Insert noise diode spike into output data."""
+        self.c.noise_diode = 2
+        return ("ok","Fired")
+
+    @request(Str(), Str())
+    @return_reply(Str())
+    def request_poco_gain(self, sock, msg1, msg2):
+        """Dummy for compatibility."""
+        return ("ok","OK")
+
+    @request(Str(),Str(),Int())
+    @return_reply(Str())
+    def request_capture_destination(self, sock, destination, ip, port):
+        """Dummy command to enable ff compatibility."""
+        return ("ok","Destination OK")
+
+    @return_reply(Str())
+    def request_capture_start(self, sock, destination):
+        """For compatibility with dbe_proxy. Same as spead_issue."""
+        self.c.spead_issue()
+        return ("ok","SPEAD meta packets sent to %s" % (self.c.config['rx_meta_ip_str']))
+
+    @request(Str())
+    @return_reply(Str())
+    def request_capture_stop(self, sock, destination):
+        """For compatibility with dbe_proxy. Does nothing :)."""
+        return ("ok","Capture stopped. (dummy)")
+
     @return_reply(Str())
     def request_stop_tx(self, sock, msg):
         """Stop the data stream."""
@@ -81,6 +119,7 @@ class K7Correlator(threading.Thread):
         self.dump_period = 1.0
         self.sample_rate = 800e6
         self.tone_freq = 302e6
+        self.noise_diode = 0
         self.data = self.generate_data()
         self._thread_runnable = True
         self._thread_paused = False
@@ -94,6 +133,7 @@ class K7Correlator(threading.Thread):
                 sys.stdout.write(status)
                 sys.stdout.flush()
             time.sleep(self.dump_period)
+            self.data = self.generate_data()
         self.send_stop()
         print "Correlator tx halted."
 
@@ -103,9 +143,16 @@ class K7Correlator(threading.Thread):
         n = np.arange(samples_per_dump)
         x = np.cos(2 * np.pi * self.tone_freq / self.sample_rate * n)
         data = np.fft.fft(x, self.config['n_chans'])[:self.config['n_chans']]
-        data = (data.view(np.float64)*1000).astype(np.int32).reshape((512,2))
+        if self.noise_diode > 0:
+            data = (data.view(np.float64)*2000).astype(np.int32).reshape((512,2))
+            self.noise_diode -= 1
+        else:
+            data = (data.view(np.float64)*1000).astype(np.int32).reshape((512,2))
         data = np.tile(data, self.config['n_bls'] * self.config['n_stokes'])
         data = data.reshape((self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2), order='C')
+        for ib in range (self.config['n_bls']):#for different baselines
+            data[:,ib,:,:]=data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0
+        data = data.astype(np.int32)
         return data
 
     def get_bl_order(self):
@@ -341,7 +388,8 @@ class K7Correlator(threading.Thread):
         self._data_meta_descriptor = self.data_ig.get_heap()
 
     def spead_data_descriptor_issue(self):
-        self.tx.send_heap(self._data_meta_descriptor)
+        mdata = copy.deepcopy(self._data_meta_descriptor)
+        self.tx.send_heap(mdata)
 
 if __name__ == '__main__':
     opts, args = parse_opts(sys.argv)
