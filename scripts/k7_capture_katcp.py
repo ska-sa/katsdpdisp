@@ -100,7 +100,7 @@ class k7Capture(threading.Thread):
 
     def write_obs_param(self, sensor_string, value_string):
         f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
-        f['/MetaData/Observation'].attrs[sensor_string.replace("-","_")] = value_string
+        f['/MetaData/Configuration/Observation'].attrs[sensor_string.replace("-","_")] = value_string
         if sensor_string == "script-experiment-id":
             f.attrs['experiment_id'] = value_string
              # duplicated for easy use by the archiver. Note change of name from script-experiment-id
@@ -127,7 +127,7 @@ class k7Capture(threading.Thread):
         f['/'].create_group('Data')
         f['/'].create_group('MetaData')
         f['/'].create_group('MetaData/Configuration')
-        f['/'].create_group('MetaData/Observation')
+        f['/'].create_group('MetaData/Configuration/Observation')
         f['/'].create_group('MetaData/Configuration/Correlator')
         f['/'].create_group('Markup')
         f['/Markup'].create_dataset('labels', [1], maxshape=[None], dtype=np.dtype([('timestamp', np.float64), ('label', h5py.new_vlen(str))]))
@@ -306,7 +306,15 @@ class CaptureDeviceServer(DeviceServer):
 
     @return_reply(Str())
     def request_capture_start(self, sock, msg):
+        """Dummy capture start command - calls capture init."""
+        self.request_capture_init(sock, msg)
+        return ("ok", "Capture initialised at %s" % time.ctime())
+
+    @return_reply(Str())
+    def request_capture_init(self, sock, msg):
         """Spawns a new capture thread that waits for a SPEAD start stream packet."""
+        if self.rec_thread is not None:
+            return ("fail", "Existing capture session found. If you really want to init, stop the current capture using capture_stop.")
         self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
         self.rec_thread.setDaemon(True)
         self.rec_thread.start()
@@ -314,7 +322,7 @@ class CaptureDeviceServer(DeviceServer):
          # add in existing signal display recipients...
         for (ip,port) in self.sdisp_ips.iteritems():
             self.rec_thread.add_sdisp_ip(ip,port)
-        return ("ok", "Capture started at %s" % time.ctime())
+        return ("ok", "Capture initialised at %s" % time.ctime())
 
     @request(Str(), Str())
     @return_reply(Str())
@@ -343,7 +351,7 @@ class CaptureDeviceServer(DeviceServer):
         !set_script_param ok script-name
         
         """
-        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_start")
+        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_init")
         try:
             self._my_sensors[sensor_string].set_value(value_string)
             self.rec_thread.write_obs_param(sensor_string, value_string)
