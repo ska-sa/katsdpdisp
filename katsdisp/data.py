@@ -24,6 +24,7 @@ try:
     import matplotlib.lines
     import matplotlib.dates
     import matplotlib.ticker
+    from matplotlib import cm
 except:
     pl = None
     warnings.warn("Could not import matplotlib.pyplot -- plotting functions will not work.")
@@ -629,7 +630,7 @@ class SpeadSDReceiver(threading.Thread):
                 if self.ig['sd_data'] is not None:
                     data = self.ig['sd_data']
                     data = data.reshape(data.shape[0],data.shape[1]*data.shape[2],data.shape[3]).swapaxes(0,1)
-                    ts = self.ig['sd_timestamp'] / 100.0
+                    ts = self.ig['sd_timestamp'] * 10.0
                      # timestamp is in centiseconds since epoch (40 bit spead limitation)
                     for id in range(data.shape[0]):
                         fdata = data[id].flatten()
@@ -1616,6 +1617,89 @@ class DataHandler(object):
         if include_ts:
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
+
+    def get_baseline_matrix(self, start_channel=0, stop_channel=512):
+        map = np.array([[0, 0],
+           [0, 1],
+           [1, 1],
+           [0, 2],
+           [1, 2],
+           [2, 2],
+           [0, 3],
+           [1, 3],
+           [2, 3],
+           [3, 3],
+           [0, 4],
+           [1, 4],
+           [2, 4],
+           [3, 4],
+           [4, 4],
+           [1, 5],
+           [2, 5],
+           [3, 5],
+           [4, 5],
+           [5, 5],
+           [2, 6],
+           [3, 6],
+           [4, 6],
+           [5, 6],
+           [6, 6],
+           [3, 7],
+           [4, 7],
+           [5, 7],
+           [6, 7],
+           [7, 7],
+           [0, 5],
+           [0, 6],
+           [0, 7],
+           [1, 6],
+           [1, 7],
+           [2, 7]])
+
+        def idx(bl, pol):
+            (a,b) = map[bl]
+            i1 = a * 2 + (pol % 2 == 0 and 1 or 2) - 1
+            i2 = b * 2 + (pol % 3 == 0 and 1 or 2) - 1
+            return i1,i2
+
+        im = np.zeros((16,16),dtype=np.float32)
+        for bl in range(36):
+            for pol in range(4):
+                (a,b) = idx(bl,pol)
+                if a < b:
+                    im[a,b] = np.average(self.storage.cur_frames[bl * 4 + pol].get_phase())
+                    im[b,a] = np.average(self.storage.cur_frames[bl * 4 + pol].get_mag()) / 1000
+                else:
+                    im[a,b] = np.average(self.storage.cur_frames[bl * 4 + pol].get_mag()) / 1000
+                    im[b,a] = np.average(self.storage.cur_frames[bl * 4 + pol].get_phase())
+                if a == b: im[a,b] = -2 + (np.average(self.storage.cur_frames[bl * 4 + pol].get_mag()) / 1000)
+        return im
+
+    def plot_baseline_matrix(self, start_channel=0, stop_channel=512):
+        """Plot a matrix showing auto correlation power on the diagonal and cross correlation
+        phase and power in the upper and lower segments."""
+        if self.storage is not None:
+            im = self.get_baseline_matrix(start_channel=0, stop_channel=512)
+            pl.ion()
+            fig = pl.figure()
+            ax = fig.gca()
+            ax.set_title("Baseline matrix")
+            cax = ax.matshow(im, cmap=cm.spectral)
+            cbar = fig.colorbar(cax)
+            ax.set_yticks(np.arange(16))
+            ax.set_yticklabels(['A' + str(x) + (x % 2 == 0 and 'x' or 'y') for x in range(16)])
+            ax.set_xticks(np.arange(16))
+            ax.set_xticklabels(['A' + str(x) + (x % 2 == 0 and 'x' or 'y') for x in range(16)])
+            ax.set_ylim((15.5,-0.5))
+            fig.show()
+            pl.draw()
+            ap = AnimatablePlot(fig, self.get_baseline_matrix, start_channel=start_channel, stop_channel=stop_channel)
+            ap.set_colorbar(cbar)
+            self._add_plot(sys._getframe().f_code.co_name, ap)
+            return ap
+        else:
+            print "No stored data available..."
+
 
     def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=512):
         """Show a waterfall plot for the specified baseline and polarisation.
