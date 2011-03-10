@@ -911,6 +911,8 @@ class AnimatablePlot(object):
         ymin = xmin = np.inf
         ymax = xmax = None
         self._last_update = time.time()
+        stamppos = 0.9
+        if self.ax.get_yscale() == 'log': stamppos = 0.1
         for slot in self.update_functions.keys():
             offset = 0
             for override in override_args.keys():
@@ -952,6 +954,8 @@ class AnimatablePlot(object):
                                 self.ax.set_ylim(self.ymin,self.ymax)
                         if len(new_data) > 2 and slot == 0:
                             self.ax.set_xlabel("Time since " + time.ctime(new_data[2]))
+                        else:
+                            self.ax.annotate("Timestamp:" + time.ctime(new_data[2]), xy=((xmax*0.2),(ymax*stamppos)))
                     else:
                         self.ax.lines[slot].set_ydata(new_data)
                 elif len(self.ax.images) > 0:
@@ -1456,7 +1460,7 @@ class DataHandler(object):
         ax_wfall = pl.axes(rect_wfall)
         cax = ax_wfall.imshow(wfall_data[1], aspect='auto', interpolation='bicubic', animated=True)
         cbar = pl.colorbar(cax, pad=0.02, fraction=0.05)
-        ax_wfall.set_title("Xcorr phase spectrogram")
+        ax_wfall.set_title("Xcorr phase spectrogram: Click waterfall plot to update other graphs.")
 
         ax_mag_t = pl.axes(rect_mag_t, sharey = ax_wfall)
         ax_mag_t.set_ylabel("Xcorr mag vs time")
@@ -1701,7 +1705,7 @@ class DataHandler(object):
             print "No stored data available..."
 
 
-    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=512):
+    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=512):
         """Show a waterfall plot for the specified baseline and polarisation.
 
         A waterfall plot shows frequency vs time with intensity represented by colour. The frequency channels run along
@@ -1723,7 +1727,7 @@ class DataHandler(object):
             If a positive number then the time window is (start_time - end_time). If negative then start_time is ignored and the most
             recent abs(end_time) entries from the store are selected.
         start_channel : integer
-            default: 0
+            default: 1
         stop_channel : integer
             default: 512
         Returns
@@ -2141,7 +2145,6 @@ class DataHandler(object):
             If a single integer is specified it is treated as a correlation product id directly (ordered as it comes out of the correlator)
             If a tuple is provided this should be either (baseline, pol) or (antenna1, antenna2, pol).
             Pol can be either an integer from 0 to 3 or one of {'HH','VV','HV','VH'}
-            e.g. products = [9, (2,'VV'), (2,2,1)] are actually all product id 9
         dumps : integer
             The number of dumps to include in the calculation
             default: 120
@@ -2320,12 +2323,36 @@ class KATData(object):
         if self.sd is not None:
             self.sd.stop()
 
-    def get_snapshot(self, type='adc', input='0x'):
+    def get_last_dump(self, block=False):
+        """Pull the last complete correlator dump from k7writer."""
+        st = time.time()
+        result = None
+        ts = 0
+        data = None
+        if self.dbe is not None:
+            while block or result is None:
+                result = self.dbe.req.k7w_get_last_dump()
+                if result.succeeded:
+                    try:
+                        ts = int(result.messages[1].arguments[0]) / 1000.0
+                        data = np.frombuffer(result.messages[2].arguments[0], dtype=np.float32).reshape((512,12,2)).view(np.complex64).squeeze()
+                    except IndexError:
+                        logger.error("Command returned invalid data. Please try again.")
+                    return (ts,data)
+                else:
+                    result = None
+                    if time.time() > st + block:
+                        logger.error("Failed to retrieve data within the blocking interval.")
+                        break
+                    time.sleep(1)
+        return (ts,data)
+
+    def get_snapshot(self, dtype='adc', input='0x'):
         """Get snapshot data from the dbe and interpret according to type.
 
         Parameters
         ----------
-        type : string
+        dtype : string
             Either 'adc' (raw 8-bit signed integers from the ADC) or 'quant' (real part 8 consecutive 512 channel spectra taken post quantisation) or 'quanti' (imaginary part) are available.
             default: 'adc'
         input : string
@@ -2339,8 +2366,8 @@ class KATData(object):
         """
 
         raw = []
-        rettype = type
-        if type == 'quanti': rettype = 'quant'
+        rettype = dtype
+        if dtype == 'quanti': rettype = 'quant'
         if self.dbe is not None:
             try:
                 raw = unpack('>8192b',self.dbe.req.snap_shot(rettype,input,tuple=True)[0][2][1])
@@ -2350,29 +2377,29 @@ class KATData(object):
                 logger.error("snap-shot command failed.")
         else:
             logger.error("No dbe device known. Unable to capture snapshot.")
-        if type == 'quant' or type == 'quanti':
+        if dtype == 'quant' or dtype == 'quanti':
             rawn = np.array(raw,dtype=np.float32)
             raw = rawn.view(dtype=np.complex64)
-            if type == 'quant': return [x.real for x in raw]
+            if dtype == 'quant': return [x.real for x in raw]
             else: [x.imag for x in raw]
         return raw
 
-    def get_histogram_data(self, type='adc', input='0x'):
+    def get_histogram_data(self, dtype='adc', input='0x'):
         """Get ADC snapshot data and produce a histogram of the data.
         """
-        data = self.get_snapshot(type=type, input=input)
+        data = self.get_snapshot(dtype=dtype, input=input)
         n, bins = np.histogram(data, bins=256, range=(-127,128), new=True)
         if len(n) == len(bins): bins.append(bins[-1])
          # fix for older numpy versions that did not return a rightmost bin edge
         return n,bins
 
-    def plot_hist(self, type='adc', input='0x'):
+    def plot_hist(self, dtype='adc', input='0x'):
         """Plot a histogram of the ADC sampling bins for the specified input.
         This plots a histogram of an 8192 sample snapshot of raw signed 8 bit ADC data.
 
         Parameters
         ----------
-        type : string
+        dtype : string
             Either 'adc' (raw 8-bit signed integers from the ADC) or 'quant' (real part 8 consecutive 512 channel spectra taken post quantisation) or 'quanti' (imaginary part) are available.
             default: 'adc'
         input : string
@@ -2388,12 +2415,12 @@ class KATData(object):
          # in order to animate this plot we are going to use a path instead of
          # using pl.hist which produces a whole wack of individual patches
         pl.figure()
-        pl.title("Histogram (" + type + ") for input " + input)
+        pl.title("Histogram (" + dtype + ") for input " + input)
         pl.xlabel("Bins")
         pl.ylabel("Count")
         f = pl.gcf()
         ax = f.gca()
-        n, bins = self.get_histogram_data(type=type, input=input)
+        n, bins = self.get_histogram_data(dtype=dtype, input=input)
         left = np.array(bins[:-1])
         right = np.array(bins[1:])
         bottom = np.zeros(len(left))
@@ -2426,18 +2453,18 @@ class KATData(object):
         ax.set_ylim(bottom.min(), top.max())
         f.show()
         pl.draw()
-        ap = AnimatablePlot(f, self.get_histogram_data, type=type, input=input)
+        ap = AnimatablePlot(f, self.get_histogram_data, dtype=dtype, input=input)
         if self.sd is not None: self.sd._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
-    def plot_snapshot(self, type='adc', input='0x'):
+    def plot_snapshot(self, dtype='adc', input='0x'):
         """Plot a snapshot of the specified type for the specified dbe input.
         A snapshot is basically a katcp dump of a particular block of dbe memory. At the moment a snapshot of the current ADC
         sampling and of the post quantisation data is available.
 
         Parameters
         ----------
-        type : string
+        dtype : string
             Either 'adc' (raw 8-bit signed integers from the ADC) or 'quant' (real part 8 consecutive 512 channel spectra taken post quantisation)  or 'quanti' (imaginary part) are available.
             default: 'adc'
         input : string
@@ -2449,31 +2476,31 @@ class KATData(object):
         ap : AnimatablePlot
         """
         pl.figure()
-        pl.title("Snapshot (" + type + ") " + input)
-        pl.xlabel((type == 'adc' and "Time" or 'Channel (groups of 512)'))
+        pl.title("Snapshot (" + dtype + ") " + input)
+        pl.xlabel((dtype == 'adc' and "Time" or 'Channel (groups of 512)'))
         pl.ylabel("Voltage")
         ax = pl.gca()
-        raw = self.get_snapshot(type=type, input=input)
+        raw = self.get_snapshot(dtype=dtype, input=input)
         pl.plot(raw)
-        if type == 'quant' or type == 'quanti':
+        if dtype == 'quant' or dtype == 'quanti':
             for x in range(0,4096,512):
                 pl.axvline(x,color='green', lw=1, alpha=0.5)
             pl.xticks(range(0,4096,256),[x % 512 for x in range(0,4096,256)])
         f = pl.gcf()
         f.show()
         pl.draw()
-        ap = AnimatablePlot(f, self.get_snapshot, type=type, input=input)
+        ap = AnimatablePlot(f, self.get_snapshot, dtype=dtype, input=input)
         self._add_plot(sys._getframe().f_code.co_name, ap)
         if self.sd is not None: self.sd._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
-    def plot_snapshots(self, type='adc', interval=1):
+    def plot_snapshots(self, dtype='adc', interval=1):
         """Plot snapshots of the specified type for each of the four input channels available
         in the KAT pocket correlator.
 
         Parameters
         ----------
-        type : string
+        dtype : string
             Either 'adc' (raw 8-bit signed integers from the ADC) or 'quant' (8 consecutive 512 channel spectra taken post quantisation) are available.
             default: 'adc'
         interval : integer
@@ -2486,10 +2513,10 @@ class KATData(object):
             A collection of animatable plots representing the four produced snapshots.
         """
         pa = PlotAnimator(interval=interval)
-        pa.add_plot('snap 0x',self.plot_snapshot(type=type, input='0x'))
-        pa.add_plot('snap 0y',self.plot_snapshot(type=type, input='0y'))
-        pa.add_plot('snap 1x',self.plot_snapshot(type=type, input='1x'))
-        pa.add_plot('snap 1y',self.plot_snapshot(type=type, input='1y'))
+        pa.add_plot('snap 0x',self.plot_snapshot(dtype=dtype, input='0x'))
+        pa.add_plot('snap 0y',self.plot_snapshot(dtype=dtype, input='0y'))
+        pa.add_plot('snap 1x',self.plot_snapshot(dtype=dtype, input='1x'))
+        pa.add_plot('snap 1y',self.plot_snapshot(dtype=dtype, input='1y'))
         return pa
 
 
