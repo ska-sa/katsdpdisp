@@ -166,15 +166,21 @@ def get_sensor_data(sensor, start_time, end_time, dither=1, initial_value=False)
     print "Retrieved data of length",len(data[1]),"in",time.time()-stime,"s"
     return np.rec.fromarrays([initial_data[0] + data[0], initial_data[1] + data[1], initial_data[2] + data[2]], names='timestamp, value, status')
 
-def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False):
+def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False, default=None):
     global errors
     pstime = time.time()
+    sensor_len = 0
     try:
         sensor_i = kat.sensors.__dict__[name]
         data = get_sensor_data(sensor_i, obs_start, obs_end, int_time, initial_value=iv)
-        if np.multiply.reduce(data.shape) == 0:
-            section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting empty dataset."
-            s_dset = dataset.create_dataset(sensor_i.name, [], maxshape=None)
+        sensor_len = np.multiply.reduce(data.shape)
+        if sensor_len == 0:
+            if default is not None:
+                section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting default value of", default
+                s_dset = dataset.create_dataset(sensor_i.name, data=np.rec.fromarrays([[time.time()],[default],[0]], names='timestamp, value, status'))
+            else:
+                section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting empty dataset."
+                s_dset = dataset.create_dataset(sensor_i.name, [], maxshape=None)
         else:
             s_dset = dataset.create_dataset(sensor_i.name, data=data)
             section_reports[name] = "Success"
@@ -193,6 +199,7 @@ def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False):
         else:
             section_reports[name] = "Success (Note: Existing data for this sensor was not changed.)"
     if options.verbose: print "Creation of dataset for sensor " + name + " took " + str(time.time() - pstime) + "s"
+    return sensor_len
 
 def create_group(f, name):
     try:
@@ -247,15 +254,16 @@ signal.signal(signal.SIGINT, terminate)
 state = ["|","/","-","\\"]
 batch_count = 0
 
-pointing_sensors = ["activity","target","observer","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
+pointing_sensors = ["activity","target","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
 enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_humidity","asc_wind_speed","asc_wind_direction"]
  # a list of pointing sensors to insert
 pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
  # a list of pedestal sensors to insert
+rfe_sensors = ["rfe7_lo1_frequency"]
 beam_sensors = ["dbe_target"]
  # a list of sensor for beam 0
 
-sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors}
+sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors, 'rfe7':rfe_sensors}
  # mapping from sensors to proxy
 
 sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True, "activity":True, "target":True,"observer":True,"lock":True}
@@ -308,6 +316,8 @@ while not kat.ant1.katcpobj.is_connected() or not kat.ant2.katcpobj.is_connected
     sys.stdout.flush()
     time.sleep(30)
     batch_count += 1
+initial_lo1 = kat.rfe7.sensor.rfe7_lo1_frequency.get_value()
+ # get initial lo1 frequency value (mostly due to simulated system not providing it...)
 kat.disconnect()
  # we dont need live connection anymore
 section_reports['configuration'] = str(options.system)
@@ -345,10 +355,11 @@ while(len(files) > 0 or options.batch):
         new_extension = "h5"
         try:
             f = File(fname, 'r+')
-            if f['/'].attrs.get('version_number',"0.0") == str(major_version):
+            if f['/'].attrs.get('version',"0.0") == str(major_version):
                 print "This version of augment required HDF5 files of version %i to augment. Your file has major version %s\n" % (major_version, current_version[0])
                 sys.exit(0)
             last_run = f['/'].attrs.get('augment_ts',None)
+            f['/'].attrs['augment_errors'] = 0
             if last_run:
                 print "Warning: This file has already been augmented: " + str(last_run)
                 if not options.force:
@@ -356,7 +367,7 @@ while(len(files) > 0 or options.batch):
                     sys.exit()
                 else:
                     section_reports['reaugment'] = "Augment was previously done in this file on " + str(last_run)
-            f['/'].attrs['version_number'] = "%i.%i" % (major_version, augment_version)
+            f['/'].attrs['version'] = "%i.%i" % (major_version, augment_version)
 
             obs_start = f['/Data/timestamps'].value[1]
              # first timestamp is currently suspect
@@ -372,6 +383,7 @@ while(len(files) > 0 or options.batch):
             ag = create_group(sg, "Antennas")
             acg = create_group(f, "/MetaData/Configuration/Antennas")
             pg = create_group(sg, "Pedestals")
+            rfeg = create_group(sg, "RFE")
             eg = create_group(sg, "Enviro")
             bg = create_group(sg, "Beams")
 
@@ -389,6 +401,10 @@ while(len(files) > 0 or options.batch):
                     insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for antenna " + antenna + " took " + str(time.time()-stime) + "s"
                 # noise diode models
+                try:
+                    ac.attrs['description'] = antennas[ant_name].description
+                except:
+                    section_reports[ant_name + ' description'] = "Error: Cannot find description for antenna",ant_name
                 for pol in ['h','v']:
                     for nd in ['coupler','pin']:
                         nd_fname = "%s/%s.%s.%s.csv" % (options.nd_dir, ant_name, nd, pol)
@@ -416,6 +432,10 @@ while(len(files) > 0 or options.batch):
             b0 = bg.create_group("Beam0")
             for sensor in beam_sensors:
                 insert_sensor(sensor, b0, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
+
+            for sensor in rfe_sensors:
+                sensor_len = insert_sensor("rfe7_" + sensor, rfeg, obs_start, obs_end, int_time, default=initial_lo1)
+                rfeg.create_dataset('center-frequency-hz', data=np.rec.fromarrays([[obs_start], [initial_lo1 - 4.2e9], [0]], names='timestamp, value, status'))
 
             stime = time.time()
             for sensor in enviro_sensors:
