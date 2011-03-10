@@ -18,8 +18,12 @@ import optparse
 import threading
 import Queue
 import copy
+import os
+import logging
 from katcp import DeviceServer, Sensor, Message
 from katcp.kattypes import request, return_reply, Str
+
+logging.basicConfig(level=logging.WARNING)
 
 hdf5_version = "2.0"
  # initial version describing indicating compatibility with our HDF5v2 spec. Minor revision may be incremented by augment at a later stage.
@@ -73,10 +77,11 @@ class k7Capture(threading.Thread):
         self.pkt_sensor = pkt_sensor
         self.status_sensor = status_sensor
         self.status_sensor.set_value("init")
-        self.fname = "None"
+        self.fname = None
         self._sd_metadata = None
         self.sdisp_ips = {}
         self._sd_count = 0
+        self.init_file()
         threading.Thread.__init__(self)
 
     def send_sd_data(self, data):
@@ -93,6 +98,7 @@ class k7Capture(threading.Thread):
         if self._sd_metadata is not None:
             for tx in self.sdisp_ips.itervalues():
                 mdata = copy.deepcopy(self._sd_metadata)
+                print mdata
                 tx.send_heap(mdata)
 
     def remap(self, name):
@@ -105,25 +111,27 @@ class k7Capture(threading.Thread):
             f.attrs['experiment_id'] = value_string
              # duplicated for easy use by the archiver. Note change of name from script-experiment-id
 
-    def write_log(self, label):
+    def write_log(self, log):
         """Write a log value directly into the current hdf5 file."""
         f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
+        if self._log_idx > 0:
+            f['/History/script_log'].resize(self._log_idx+1,axis=0)
         f['/History/script_log'][self._log_idx] = (time.time(), log)
         self._log_idx += 1
-        f['/History/script_log'].resize(self._log_idx+1,axis=0)
 
     def write_label(self, label):
         """Write a sensor value directly into the current hdf5 at the specified locations.
            Note that this will create a new HDF5 file if one does not already exist..."""
         f = (self._current_hdf5 is None and self.init_file() or self._current_hdf5)
+        if self._label_idx > 0:
+            f['/Markup/labels'].resize(self._label_idx+1,axis=0)
         f['/Markup/labels'][self._label_idx] = (time.time(), label)
         self._label_idx += 1
-        f['/Markup/labels'].resize(self._label_idx+1,axis=0)
 
     def init_file(self):
-        self.fname = str(int(time.time())) + ".pc.h5"
+        self.fname = "/var/kat/data/" + str(int(time.time())) + ".writing.h5"
         f = h5py.File(self.fname, mode="w")
-        f['/'].attrs['version_number'] = hdf5_version
+        f['/'].attrs['version'] = hdf5_version
         f['/'].create_group('Data')
         f['/'].create_group('MetaData')
         f['/'].create_group('MetaData/Configuration')
@@ -183,7 +191,7 @@ class k7Capture(threading.Thread):
                     meta[name] = ig[name]
                     meta_required.remove(name)
                     if not meta_required:
-                        sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.int32)
+                        sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.float32)
                         print "Initialised sd frame to shape",sd_frame.shape
                         meta_required = set(['n_chans','n_bls','n_stokes'])
                         sd_slots = None
@@ -204,13 +212,17 @@ class k7Capture(threading.Thread):
                     datasets_index[name] = 0
                     if name == 'timestamp':
                         f.create_dataset(timestamps,[1] + new_shape, maxshape=[None] + new_shape, dtype=np.float64)
+                        item._changed = False
                     if not item._changed:
                         continue
                      # if we built from and empty descriptor
                 else:
+                    if not item._changed:
+                        continue
                     print "Adding",name,"to dataset. New size is",datasets_index[name]+1
                     f[self.remap(name)].resize(datasets_index[name]+1, axis=0)
                     if name == 'timestamp':
+                        print "Timestamp:",ig[name]
                         f[timestamps].resize(datasets_index[name]+1, axis=0)
                 if sd_frame is not None and name.startswith("xeng_raw"):
                     sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
@@ -230,12 +242,12 @@ class k7Capture(threading.Thread):
                         self._sd_metadata = copy.deepcopy(ig_sd.get_heap())
                          # proper deep copy needed as heaps get reused later on...
                         print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
-                        self.send_sd_data(self._sd_metadata)
-                    print "Sending signal display frame with timestamp %i. %s. Max: %i, Mean: %i" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
+                        self.send_sd_metadata()
+                    print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
                     ig_sd['sd_data'] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
                     ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                     self.send_sd_data(ig_sd.get_heap())
-                f[self.remap(name)][datasets_index[name]] = ig[name]
+                f[self.remap(name)][datasets_index[name]] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
                 if name == 'timestamp':
                     try:
                         f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
@@ -272,13 +284,14 @@ class CaptureDeviceServer(DeviceServer):
 
     def __init__(self, *args, **kwargs):
         self.rec_thread = None
-        self.current_file = "None"
+        self.current_file = None
         self.sdisp_ips = {}
         self._my_sensors = {}
         self._my_sensors["capture-active"] = Sensor(Sensor.INTEGER, "capture_active", "Is there a currently active capture thread.","",default=0, params = [0,1])
         self._my_sensors["packets-captured"] = Sensor(Sensor.INTEGER, "packets_captured", "The number of packets captured so far by the current session.","",default=0, params=[0,2**63])
         self._my_sensors["status"] = Sensor(Sensor.STRING, "status", "The current status of the capture thread.","","")
         self._my_sensors["label"] = Sensor(Sensor.STRING, "label", "The label applied to the data as currently captured.","","")
+        self._my_sensors["script-ants"] = Sensor(Sensor.STRING, "script-ants","The antennas specified by the user for use by the executed script.","","")
         self._my_sensors["script-log"] = Sensor(Sensor.STRING, "script-log", "The most recent script log entry.","","")
         self._my_sensors["script-name"] = Sensor(Sensor.STRING, "script-name", "Current script name", "")
         self._my_sensors["script-experiment-id"] = Sensor(Sensor.STRING, "script-experiment-id", "Current experiment id", "")
@@ -332,7 +345,7 @@ class CaptureDeviceServer(DeviceServer):
         Parameters
         ----------
         sensor_string : str
-            The script parameter to be set. [script-name, script-experiment-id, script-observer, script-description, script-rf-params, script-nd-params, script-arguments, script-status, script-starttime, script-endtime]
+            The script parameter to be set. [script-ants, script-name, script-experiment-id, script-observer, script-description, script-rf-params, script-nd-params, script-arguments, script-status, script-starttime, script-endtime]
         value_string : str
             A string containing the value to be set
             
@@ -359,14 +372,14 @@ class CaptureDeviceServer(DeviceServer):
             return ("fail", "Could not parse sensor name or value string '%s=%s': %s" % (sensor_string, value_string, e))
         return ("ok", "%s=%s" % (sensor_string, value_string))
 
-    @request(Str(), Str())
+    @request(Str())
     @return_reply(Str())
     def request_script_log(self, sock, log):
         """Add an entry to the script log."""
         if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_start")
-        self._my_sensors["script-log"].set_value(label)
+        self._my_sensors["script-log"].set_value(log)
         self.rec_thread.write_log(log)
-        return ("ok")
+        return ("ok","Log entry written")
 
     @request(Str())
     @return_reply(Str())
@@ -395,19 +408,45 @@ class CaptureDeviceServer(DeviceServer):
     def request_get_current_file(self, sock, msg):
         """Return the name of the current (or most recent) capture file."""
         if self.rec_thread is not None: self.current_file = self.rec_thread.fname
+        if self.current_file is None:
+            return ("fail", "No currently active file.")
         return ("ok", self.current_file)
 
     @return_reply(Str())
     def request_capture_stop(self, sock, msg):
         """Attempts to gracefully shut down current capture thread by sending a SPEAD stop packet to local receiver."""
+        if self.rec_thread is None:
+            return ("ok","Thread was already stopped.")
         self.current_file = self.rec_thread.fname
          # preserve current file before shutting thread for use in get_current_file
         tx = spead.Transmitter(spead.TransportUDPtx('localhost',7148))
         tx.end()
+        time.sleep(2)
+         # wait for thread to settle...
         self.rec_thread.join()
         self.rec_thread = None
         self._my_sensors["capture-active"].set_value(0)
         return ("ok", "Capture stoppped at %s" % time.ctime())
+
+    @return_reply(Str())
+    def request_capture_done(self, sock, msg):
+        """Closes the current capture file and renames it for use by augment."""
+        markup = ""
+        if self.rec_thread is not None:
+            print "Capture done is killing thread..."
+            self.request_capture_stop(sock, msg)
+             # perform a hard stop if we have not stopped yet.
+            markup = "(Capture thread was killed.)"
+        if self.current_file is None:
+            return ("ok","File was already closed.")
+        output_file = self.current_file[:self.current_file.find(".writing.h5")] + ".unaugmented.h5"
+        try:
+            os.rename(self.current_file, output_file)
+        except Exception, e:
+            return ("fail","Failed to rename output file from %s to %s." % (self.current_file, output_file))
+        finally:
+            self.current_file = None
+        return ("ok","File renamed to %s" % (output_file))
 
 if __name__ == '__main__':
     opts, args = parse_opts(sys.argv)
