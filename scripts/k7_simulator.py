@@ -14,7 +14,7 @@ import threading
 import sys
 import optparse
 from katcp import DeviceServer, Sensor, Message
-from katcp.kattypes import request, return_reply, Str, Int
+from katcp.kattypes import request, return_reply, Str, Int, Float
 
 def parse_opts(argv):
     parser = optparse.OptionParser()
@@ -70,10 +70,11 @@ class SimulatorDeviceServer(DeviceServer):
         self.c.dump_period = 1000.0 / float(period)
         return ("ok","Dump period set to %s ms" % period)
 
+    @request(Float(optional=True, default=5.0))
     @return_reply(Str())
-    def request_fire_nd(self, sock, msg):
+    def request_fire_nd(self, sock, duration):
         """Insert noise diode spike into output data."""
-        self.c.noise_diode = 2
+        self.c.noise_diode = duration
         return ("ok","Fired")
 
     @request(Str(), Str())
@@ -82,22 +83,47 @@ class SimulatorDeviceServer(DeviceServer):
         """Dummy for compatibility."""
         return ("ok","OK")
 
+    @request(Float(),Float(),Float(optional=True,default=20.0))
+    @return_reply(Str())
+    def request_test_target(self, sock, az, el, flux):
+        """Add a test target to the simulator. ?test-target <az> <el> [<flux_scale>]"""
+        self.c.target_az = az
+        self.c.target_el = el
+        self.c.target_flux = flux
+        return ("ok","Target set to (%f, %f, %f)" % (az, el, flux))
+
+    @request(Float())
+    @return_reply(Str())
+    def request_pointing_el(self, sock, el):
+        """Sets the current simulator elevation pointing."""
+        self.c.test_el = el
+        return ("ok","Elevation set to %f" % el)
+
+    @request(Float())
+    @return_reply(Str())
+    def request_pointing_az(self, sock, az):
+        """Sets the current simulator azimuth pointing."""
+        self.c.test_az = az
+        return ("ok","Azimuth set to %f" % az)
+
+
     @request(Str(),Str(),Int())
     @return_reply(Str())
     def request_capture_destination(self, sock, destination, ip, port):
         """Dummy command to enable ff compatibility."""
         return ("ok","Destination OK")
 
-    @return_reply(Str())
+    @return_reply(Str(optional=True))
     def request_capture_start(self, sock, destination):
         """For compatibility with dbe_proxy. Same as spead_issue."""
         self.c.spead_issue()
         return ("ok","SPEAD meta packets sent to %s" % (self.c.config['rx_meta_ip_str']))
 
-    @request(Str())
+    @request(Str(optional=True))
     @return_reply(Str())
     def request_capture_stop(self, sock, destination):
         """For compatibility with dbe_proxy. Does nothing :)."""
+        self.c.send_stop()
         return ("ok","Capture stopped. (dummy)")
 
     @return_reply(Str())
@@ -120,39 +146,75 @@ class K7Correlator(threading.Thread):
         self.sample_rate = 800e6
         self.tone_freq = 302e6
         self.noise_diode = 0
+        self.target_az = 0
+        self.target_el = 0
+        self.target_flux = 0
+        self.test_az = 0
+        self.test_el = 0
+        self.multiplier = 100
+        self.bls_ordering = [[bl[0],bl[1]] for bl in self.get_bl_order()]
         self.data = self.generate_data()
         self._thread_runnable = True
         self._thread_paused = False
         threading.Thread.__init__(self)
 
+    def get_bl_order(self):
+        """Return the order of baseline data output by a CASPER correlator X engine."""
+        n_ants=self.config['n_ants']
+        order1, order2 = [], []
+        for i in range(n_ants):
+            for j in range(int(n_ants/2),-1,-1):
+                k = (i-j) % n_ants
+                if i >= k: order1.append((k, i))
+                else: order2.append((i, k))
+        order2 = [o for o in order2 if o not in order1]
+        return tuple([o for o in order1 + order2])
+
     def run(self):
         while self._thread_runnable:
             if not self._thread_paused:
                 self.send_dump()
-                status = "\rSending correlator dump at %s (dump period: %f s)" % (time.ctime(), self.dump_period)
+                status = "\rSending correlator dump at %s (dump period: %f s, multiplier: %i)" % (time.ctime(), self.dump_period, self.multiplier)
                 sys.stdout.write(status)
                 sys.stdout.flush()
-            time.sleep(self.dump_period)
+            st = time.time()
             self.data = self.generate_data()
+            time.sleep(self.dump_period - (time.time() - st))
         self.send_stop()
         print "Correlator tx halted."
 
+    def gaussian(self,x,y):
+         # for now a gaussian of height 1 and width 1
+         # beam width is 0.8816 degrees (sigma of 0.374) at 1.53 GHZ
+         #equates to coefficient of
+        return np.exp(-(0.5/(0.374*0.374)) * (x*x + y*y))
+
     def generate_data(self):
+        source_value = self.target_flux * self.gaussian(self.target_az - self.test_az, self.target_el - self.test_el)
+         # generate a flux contribution from the synthetic source (if any)
+        tsys_elev_value = 25 - np.log(self.test_el + 1) * 5
+        nd = 0
+        if self.noise_diode > 0:
+            self.noise_diode -= 1
+            nd = 100
+        self.multiplier = 100 + source_value + tsys_elev_value + nd
         samples_per_dump = self.config['n_chans'] * 8
          # not related to actual value. just for calculation purposes
         n = np.arange(samples_per_dump)
         x = np.cos(2 * np.pi * self.tone_freq / self.sample_rate * n)
         data = np.fft.fft(x, self.config['n_chans'])[:self.config['n_chans']]
-        if self.noise_diode > 0:
-            data = (data.view(np.float64)*2000).astype(np.int32).reshape((512,2))
-            self.noise_diode -= 1
-        else:
-            data = (data.view(np.float64)*1000).astype(np.int32).reshape((512,2))
+        data = (data.view(np.float64)*self.multiplier).astype(np.int32).reshape((512,2))
         data = np.tile(data, self.config['n_bls'] * self.config['n_stokes'])
         data = data.reshape((self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2), order='C')
         for ib in range (self.config['n_bls']):#for different baselines
-            data[:,ib,:,:]=data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0
-        data = data.astype(np.int32)
+            (a1,a2) = self.bls_ordering[ib]
+            if a1 == a2:
+                auto_d=np.abs(data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0) + 1000
+                auto_d[:,:,1] = 0
+                data[:,ib,:,:]=auto_d
+            else:
+                data[:,ib,:,:]=data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0
+        data = data.astype(np.float32)
         return data
 
     def get_bl_order(self):
@@ -320,7 +382,7 @@ class K7Correlator(threading.Thread):
         ig.add_item(name="n_accs",id=0x1015,
             description="The number of spectra that are accumulated per integration.",
             shape=[],fmt=spead.mkfmt(('u',spead.ADDRSIZE)),
-            init_val=self.config['n_accs'])
+            init_val=8)
 
         ig.add_item(name="int_time",id=0x1016,
             description="Approximate (it's a float!) integration time per accumulation in seconds.",
@@ -369,7 +431,7 @@ class K7Correlator(threading.Thread):
         self.tx.send_heap(self.data_ig.get_heap())
 
     def send_stop(self):
-        self.tx.end()
+        self.tx.send_halt()
 
     def init_data_descriptor(self):
         """ Issues the SPEAD data descriptors for the HW 10GbE output, to enable receivers to decode the data."""
@@ -378,12 +440,11 @@ class K7Correlator(threading.Thread):
 
         self.data_ig.add_item(name=('timestamp'), id=0x1600,
             description='Timestamp of start of this integration. uint counting multiples of ADC samples since last sync (sync_time, id=0x1027). Divide this number by timestamp_scale (id=0x1046) to get back to seconds since last sync when this integration was actually started. Note that the receiver will need to figure out the centre timestamp of the accumulation (eg, by adding half of int_time, id 0x1016).',
-            shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)),
-            init_val=0)
+            shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)), init_val=0)
 
         self.data_ig.add_item(name=("xeng_raw"),id=0x1800,
             description="Raw data for %i xengines in the system. This item represents a full spectrum (all frequency channels) assembled from lowest frequency to highest frequency. Each frequency channel contains the data for all baselines (n_bls given by SPEAD ID 0x100B). For a given baseline, -SPEAD ID 0x1040- stokes parameters are calculated (nominally 4 since xengines are natively dual-polarisation; software remapping is required for single-baseline designs). Each stokes parameter consists of a complex number (two real and imaginary unsigned integers)."%(self.config['n_xeng']),
-            ndarray=(np.dtype(np.int32),(self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2)))
+            ndarray=(np.dtype(np.float32),(self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2)))
 
         self._data_meta_descriptor = self.data_ig.get_heap()
 
