@@ -17,17 +17,16 @@ import re
 import time
 import os
 import signal
-import shutil
 import logging
+import traceback
 from optparse import OptionParser
 
 import numpy as np
 from h5py import File
 
 import katuilib
-import katpoint
 import katcore.targets
-from k7augment import ms_extra
+import katconf
 
 major_version = 2
  # only augment files of this major version
@@ -122,6 +121,7 @@ def load_csv_with_header(csv_file):
         csv_file = open(csv_file) if isinstance(csv_file, basestring) else csv_file
     except Exception, e:
         print "Failed to load csv_file (%s). %s\n" % (csv_file, e)
+        raise
     start = csv_file.tell()
     csv = np.loadtxt(csv_file, comments='#', delimiter=',')
     csv_file.seek(start)
@@ -172,11 +172,15 @@ def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False, default
     sensor_len = 0
     try:
         sensor_i = kat.sensors.__dict__[name]
+        if sensor_i.name in dataset:
+            sensor_len = dataset[sensor_i.name].len()
+            section_reports[name] = "Success (Note: Existing data for this sensor was not changed.)"
+            return sensor_len
         data = get_sensor_data(sensor_i, obs_start, obs_end, int_time, initial_value=iv)
         sensor_len = np.multiply.reduce(data.shape)
         if sensor_len == 0:
             if default is not None:
-                section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting default value of", default
+                section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting default value of" % (default,)
                 s_dset = dataset.create_dataset(sensor_i.name, data=np.rec.fromarrays([[time.time()],[default],[0]], names='timestamp, value, status'))
             else:
                 section_reports[name] = "Warning: Sensor %s has no data for the specified time period. Inserting empty dataset."
@@ -190,7 +194,7 @@ def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False, default
         s_dset.attrs['type'] = sensor_i.type
     except KeyError:
          # sensor does not exist
-        section_reports[name] = "Error: Cannot find sensor",name,".This is most likely a configuration issue."
+        section_reports[name] = "Error: Cannot find sensor %s. This is most likely a configuration issue." % (name,)
         errors += 1
     except Exception, err:
         if not str(err).startswith('Name already exists'):
@@ -211,7 +215,7 @@ def create_group(f, name):
 def get_lo1_frequency(start_time):
     try:
         return kat.sensors.rfe7_rfe7_lo1_frequency.get_stored_history(select=False, include_central=True, start_time=start_time, end_time=start_time, last_known=True)[1][0]
-    except Exception, err:
+    except Exception:
         section_reports['lo1_frequency'] = "Warning: Failed to get a stored value for lo1 frequency. Defaulting to 6022000000.0"
         return 6022000000.0
 
@@ -231,37 +235,66 @@ def get_files_in_dir(directory):
             files.append(directory+"/" + x)
     return files
 
+def get_single_value(group, name):
+    """Return a single value from an attribute or dataset of the given name.
+
+       If data is retrieved from a dataset, this functions raises an error
+       if the values in the dataset are not all the same. Otherwise it
+       returns the first value."""
+    value = group.attrs.get(name, None)
+    if value is not None:
+        return value
+    dataset = group.get(name, None)
+    if dataset is None:
+        raise ValueError("Could not find attribute or dataset named %r/%r" % (group.name, name))
+    if not dataset.len():
+        raise ValueError("Found dataset named %r/%r but it was empty" % (group.name, name))
+    if not all(dataset.value == dataset.value[0]):
+        raise ValueError("Not all values in %r/%r are equal. Values found: %r" % (group.name, name, dataset.value))
+    return dataset.value[0]
+
+def print_tb():
+    """Print a traceback if options.verbose is True."""
+    if options.verbose:
+        traceback.print_exc()
+
+######### Start of augment script #########
+
 parser = OptionParser()
 parser.add_option("-b", "--batch", action="store_true", default=False, help="If set augment will process all unaugmented files in the directory specified by -d, and then continue to monitor this directory. Any new files that get created will be augmented in sequence.")
-parser.add_option("-c", "--config", dest='config', default=None, help='look for configuration files in folder CONF [default is KATCONF environment variable or /var/kat/conf]')
+parser.add_option("-c", "--config", dest='config', default='/var/kat/conf', help='look for configuration files in folder CONF [default is KATCONF environment variable or /var/kat/conf]')
 parser.add_option("-u", "--central_monitor_url", default=None, help="Override the central monitor url in the configuration with the one specified.")
 parser.add_option("-d", "--dir", default=katuilib.defaults.kat_directories["data"], help="Process all unaugmented files in the specified directory. [default=%default]")
 parser.add_option("-f", "--file", default="", help="Fully qualified path to a specific file to augment. [default=%default]")
 parser.add_option("-s", "--system", default="systems/local.conf", help="System configuration file to use. [default=%default]")
-parser.add_option("-m", "--ms", action="store_true", default=False,help="In addition to augmenting the specified file a measurement set of the data will be produced. Note that in this case a file must be specified and all the baselines associated with this file will be augmented.")
 parser.add_option("-o", "--override", dest="force", action="store_true", default=False, help="If set, previously augmented files will be re-augmented. Only useful in conjunction with a single specified file.")
+parser.add_option("--kat7-test", action="store_true", default=False, help="Use the test KAT7 correlator setup on kat-dc1. Remove this option in the final system.")
 parser.add_option("-v", "--verbose", action="store_true", default=False, help="Verbose output.")
-parser.add_option("-n", "--nd_dir", default="/var/kat/conf/noise-diode-models", help="Directory in which csv noise diode models are stored. Naming is expected to follow: ant\w.[pin|coupler].[h|v].csv")
 
+options, args = parser.parse_args()
 
-(options, args) = parser.parse_args()
 signal.signal(signal.SIGTERM, terminate)
 signal.signal(signal.SIGINT, terminate)
 
-#### Setup configuration source
-###katconf.set_config(katconf.environ(options.config))
+# Setup configuration source
+katconf.set_config(katconf.environ(options.config))
 
 state = ["|","/","-","\\"]
 batch_count = 0
 
 pointing_sensors = ["activity","target","pos_actual_scan_azim","pos_actual_scan_elev","pos_actual_refrac_azim","pos_actual_refrac_elev","pos_actual_pointm_azim","pos_actual_pointm_elev","pos_request_scan_azim","pos_request_scan_elev","pos_request_refrac_azim","pos_request_refrac_elev","pos_request_pointm_azim","pos_request_pointm_elev"]
-enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_humidity","asc_wind_speed","asc_wind_direction"]
  # a list of pointing sensors to insert
+enviro_sensors = ["asc_air_temperature","asc_air_pressure","asc_air_relative_humidity","asc_wind_speed","asc_wind_direction"]
+ # a list of enviro sensors to insert
 pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
  # a list of pedestal sensors to insert
 rfe_sensors = ["rfe7_lo1_frequency"]
+ # a list of RFE sensors to insert
 beam_sensors = ["dbe_target"]
  # a list of sensor for beam 0
+if options.kat7_test:
+    beam_sensors = ["dbe7_target"]
+
 
 sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors, 'rfe7':rfe_sensors}
  # mapping from sensors to proxy
@@ -272,38 +305,17 @@ sensors_iv = {"rfe3_rfe15_noise_pin_on":True, "rfe3_rfe15_noise_coupler_on":True
 ######### Start of augment code #########
 
 files = []
-if options.ms:
-    if ms_extra.pyrap_fail == True:
-        print "Failed to import pyrap. You need to have both casacore and pyrap installed in order to produce measurement sets."
-        sys.exit(0)
-    options.override = True
- # we need to force an augment so that data will be read from the specified files and inserted into the ms
-
-if options.ms and options.file == "":
-    print "You must use the -f specified to choose a specific file when creating measurement set output."
-    sys.exit(0)
 
 if options.file == "":
     files = get_files_in_dir(options.dir)
 else:
     files.append(options.file)
-    if options.ms:
-        p = os.listdir(options.dir+"/")
-        ms_name = options.file[:options.file.rfind(".")] + ".ms"
-            # first step is to copy the blank template MS to our desired output...
-        try:
-            shutil.copytree("/var/kat/static/blank.ms",ms_name)
-        except Exception, err:
-            print "Failed to copy blank ms to",ms_name,". Cannot write MS output...(",err,")"
-            sys.exit(0)
 
 if len(files) == 0 and not options.batch:
     print "No files matching the specified criteria where found..."
     sys.exit(0)
 
 print "Found",len(files),"files to process"
-if options.ms:
-    print "Will create MS output in",ms_name
 
  # build an kat object for history gathering purposes
 print "Creating KAT connections..."
@@ -322,30 +334,20 @@ kat.disconnect()
  # we dont need live connection anymore
 section_reports['configuration'] = str(options.system)
 
-array_cfg = katuilib.conf.KatuilibConfig(options.system).get_array()
- # get array info from config system
+if not options.kat7_test:
+    array_cfg = katuilib.conf.KatuilibConfig(options.system).get_array()
+else:
+    array_cfg = katcore.targets.ArrayConfig("arrays/karoo.katcorrelator.conf")
+ # get array configuration
+
 config_antennas, dbe_delay, real_to_dbe = get_input_info(array_cfg)
  # return dicts showing the current mapping between dbe inputs and real antennas
 antennas, antenna_positions, antenna_diameter, noise_diode_models = get_antenna_info(array_cfg)
  # build the description and position (in ecef coords) arrays for the antenna in the selected configuration
 diodes = set([name.split('_')[1] for name in noise_diode_models])
-
-#### Non file specific MS stuff ####
-ms_dict = {}
-telescope_name = "KAT-7"
-observer_name = "ffuser"
-project_name = ""
-ms_dict['ANTENNA'] = ms_extra.populate_antenna_dict(antenna_positions, antenna_diameter)
-num_receptors_per_feed = 2
-ms_dict['FEED'] = ms_extra.populate_feed_dict(len(antenna_positions), num_receptors_per_feed)
-ms_dict['DATA_DESCRIPTION'] = ms_extra.populate_data_description_dict()
-ms_dict['POLARIZATION'] = ms_extra.populate_polarization_dict()
-ms_dict['MAIN'] = []
-ms_dict['FIELD'] = []
- # this is all we can do for now. The remainder requires input from the file itself...
-
-inputs = 16
-input_map = [('ant' + str(int(x/2) + 1) + (x % 2 == 0 and 'H' or 'V'), str(int(x / 2)) + (x % 2 == 0 and 'x' or 'y')) for x in range(inputs)]
+ # map of noise diode model names to filenames
+input_map = sorted(('ant' + real, dbe) for real, dbe in real_to_dbe.items())
+ # map of antenna inputs (e.g. ant1H) to dbe inputs (e.g. 0x)
 
 while(len(files) > 0 or options.batch):
     for fname in files:
@@ -355,16 +357,17 @@ while(len(files) > 0 or options.batch):
         new_extension = "h5"
         try:
             f = File(fname, 'r+')
-            if f['/'].attrs.get('version',"0.0") == str(major_version):
+            current_version = f['/'].attrs.get('version', "0.0").split('.', 1)
+            if current_version[0] != str(major_version):
                 print "This version of augment required HDF5 files of version %i to augment. Your file has major version %s\n" % (major_version, current_version[0])
-                sys.exit(0)
+                continue
             last_run = f['/'].attrs.get('augment_ts',None)
             f['/'].attrs['augment_errors'] = 0
             if last_run:
                 print "Warning: This file has already been augmented: " + str(last_run)
                 if not options.force:
                     print "To force reprocessing, please use the -o option."
-                    sys.exit()
+                    continue
                 else:
                     section_reports['reaugment'] = "Augment was previously done in this file on " + str(last_run)
             f['/'].attrs['version'] = "%i.%i" % (major_version, augment_version)
@@ -374,9 +377,8 @@ while(len(files) > 0 or options.batch):
             f['/Data'].attrs['ts_of_first_timeslot'] = obs_start
             obs_end = f['/Data/timestamps'].value[-1]
             print "Observation session runs from %s to %s\n" % (time.ctime(obs_start), time.ctime(obs_end))
-            int_time = f['/MetaData/Configuration/Correlator'].attrs['int_time']
+            int_time = get_single_value(f['/MetaData/Configuration/Correlator'], 'int_time')
             f['/MetaData/Configuration/Correlator'].attrs['input_map'] = input_map
-             # TODO: default input mapping for now. Once config system has input_map sensor we pull from there
 
             hist = create_group(f,"/History")
             sg = create_group(f, "/MetaData/Sensors")
@@ -390,12 +392,8 @@ while(len(files) > 0 or options.batch):
             for antenna in range(1,8):
                 antenna = str(antenna)
                 ant_name = 'ant' + antenna
-                try:
-                    a = ag.create_group(ant_name)
-                    ac = acg.create_group(ant_name)
-                except:
-                    a = ag[ant_name]
-                    ac = acg.create_group(ant_name)
+                a = create_group(ag, ant_name)
+                ac = create_group(acg, ant_name)
                 stime = time.time()
                 for sensor in pointing_sensors:
                     insert_sensor(ant_name + "_" + sensor, a, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
@@ -404,38 +402,47 @@ while(len(files) > 0 or options.batch):
                 try:
                     ac.attrs['description'] = antennas[ant_name].description
                 except:
-                    section_reports[ant_name + ' description'] = "Error: Cannot find description for antenna",ant_name
+                    print_tb()
+                    section_reports[ant_name + ' description'] = "Error: Cannot find description for antenna %r" % (ant_name,)
                 for pol in ['h','v']:
                     for nd in ['coupler','pin']:
-                        nd_fname = "%s/%s.%s.%s.csv" % (options.nd_dir, ant_name, nd, pol)
+                        nd_name = "%s_%s_%s" % (ant_name, nd, pol)
+                        nd_fname = "unknown"
                         model = np.zeros((1,2), dtype=np.float32)
                         attrs = {}
                         try:
-                            model, attrs = load_csv_with_header(nd_fname)
+                            nd_fname = noise_diode_models[nd_name]
+                            model, attrs = load_csv_with_header(katconf.resource_stream(nd_fname))
                         except Exception, e:
-                            print "Failed to open noise diode model file %s. Inserting null noise diode model. (%s)" % (nd_fname, e)
-                        nd = ac.create_dataset("%s_%s_noise_diode_model" % (pol, nd), data=model)
-                        for key,val in attrs.iteritems(): nd.attrs[key] = val
+                            print_tb()
+                            print "Failed to open noise diode model file %s (for %s). Inserting null noise diode model. (%s)" % (nd_fname, nd_name, e)
+                        try:
+                            nd = ac.create_dataset("%s_%s_noise_diode_model" % (pol, nd), data=model)
+                            for key,val in attrs.iteritems(): nd.attrs[key] = val
+                        except Exception:
+                            print_tb()
+                            print "Dataset %s.%s_%s_noise_diode_model already exists. Not replacing existing model." % (ac.name, pol, nd)
 
             for ped in range(1,8):
                 ped = str(ped)
                 ped_name = 'ped' + ped
-                try:
-                    p = pg.create_group(ped_name)
-                except:
-                    p = pg[ped_name]
+                p = create_group(pg, ped_name)
                 stime = time.time()
                 for sensor in pedestal_sensors:
                     insert_sensor(ped_name + "_" + sensor, p, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
                 if options.verbose: print "Overall creation of sensor table for pedestal " + ped + " took " + str(time.time()-stime) + "s"
 
-            b0 = bg.create_group("Beam0")
+            b0 = create_group(bg, "Beam0")
             for sensor in beam_sensors:
                 insert_sensor(sensor, b0, obs_start, obs_end, int_time, iv=(sensors_iv.has_key(sensor) and True or False))
 
             for sensor in rfe_sensors:
                 sensor_len = insert_sensor("rfe7_" + sensor, rfeg, obs_start, obs_end, int_time, default=initial_lo1)
-                rfeg.create_dataset('center-frequency-hz', data=np.rec.fromarrays([[obs_start], [initial_lo1 - 4.2e9], [0]], names='timestamp, value, status'))
+                try:
+                    rfeg.create_dataset('center-frequency-hz', data=np.rec.fromarrays([[obs_start], [initial_lo1 - 4.2e9], [0]], names='timestamp, value, status'))
+                except Exception:
+                    print_tb()
+                    print "Centre frequency already saved. Not replacing existing center-frequency."
 
             stime = time.time()
             for sensor in enviro_sensors:
@@ -445,10 +452,12 @@ while(len(files) > 0 or options.batch):
             f['/'].attrs['augment_ts'] = time.time()
 
         except Exception, err:
+            print_tb()
             section_reports["general"] = "Exception: " + str(err)
             errors += 1
             print "Failed to run augment. File will be  marked as 'failed' and ignored:  (" + str(err) + ")"
             new_extension = "failed.h5"
+
         try:
             log = np.rec.fromarrays([np.array(section_reports.keys()), np.array(section_reports.values())], names='section, message')
             f['/'].attrs['augment_errors'] = errors
@@ -462,6 +471,7 @@ while(len(files) > 0 or options.batch):
             except ValueError:
                 hist['augment_log'].write_direct(log)
         except Exception, err:
+            print_tb()
             print "Warning: Unable to create augment_log dataset. (" + str(err) + ")"
         f.close()
 
@@ -481,14 +491,12 @@ while(len(files) > 0 or options.batch):
             os.rename(fname, renfile)
             print "File has been renamed to " + str(renfile) + "\n"
         except:
+            print_tb()
             print "Failed to rename " + str(fname) + " to " + str(renfile) + ". This is most likely a permissions issue. Please resolve these and either manually rename the file or rerun augment with the -o option."
-            sys.exit()
-        print (errors == 0 and "No errors found." or str(errors) + " potential errors found. Please inspect the augment log by running 'h5dump -d /augment_log " + str(renfile) + "'.")
+            continue
+        print (errors == 0 and "No errors found." or str(errors) + " potential errors found. Please inspect the augment log by running 'h5dump -d /History/augment_log " + str(renfile) + "'.")
 
-    if options.ms:
-        # finally we write the ms as per our created dicts
-        ms_extra.write_dict(ms_dict,ms_name)
-     # if in batch mode check for more files...
+    # if in batch mode check for more files...
     files = []
     if options.batch:
         time.sleep(2)
