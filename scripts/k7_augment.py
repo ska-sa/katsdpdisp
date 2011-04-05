@@ -268,7 +268,7 @@ parser.add_option("-d", "--dir", default=katuilib.defaults.kat_directories["data
 parser.add_option("-f", "--file", default="", help="Fully qualified path to a specific file to augment. [default=%default]")
 parser.add_option("-s", "--system", default="systems/local.conf", help="System configuration file to use. [default=%default]")
 parser.add_option("-o", "--override", dest="force", action="store_true", default=False, help="If set, previously augmented files will be re-augmented. Only useful in conjunction with a single specified file.")
-parser.add_option("--kat7-test", action="store_true", default=False, help="Use the test KAT7 correlator setup on kat-dc1. Remove this option in the final system.")
+parser.add_option("--dbe", dest="dbe_name", default="dbe", help="Name of kat device to use as the correlator proxy.")
 parser.add_option("-v", "--verbose", action="store_true", default=False, help="Verbose output.")
 
 options, args = parser.parse_args()
@@ -290,11 +290,8 @@ pedestal_sensors = ["rfe3_rfe15_noise_pin_on", "rfe3_rfe15_noise_coupler_on"]
  # a list of pedestal sensors to insert
 rfe_sensors = ["rfe7_lo1_frequency"]
  # a list of RFE sensors to insert
-beam_sensors = ["dbe_target"]
+beam_sensors = ["%s_target" % (options.dbe_name,)]
  # a list of sensor for beam 0
-if options.kat7_test:
-    beam_sensors = ["dbe7_target"]
-
 
 sensors = {'ant':pointing_sensors, 'ped':pedestal_sensors, 'ped1':enviro_sensors, 'rfe7':rfe_sensors}
  # mapping from sensors to proxy
@@ -330,16 +327,16 @@ while not kat.ant1.katcpobj.is_connected() or not kat.ant2.katcpobj.is_connected
     batch_count += 1
 initial_lo1 = kat.rfe7.sensor.rfe7_lo1_frequency.get_value()
  # get initial lo1 frequency value (mostly due to simulated system not providing it...)
+dbe_device = getattr(kat, options.dbe_name)
+array_config = dbe_device.sensor.array_config.get_value()
+ # get array config from the correlator we're using
 kat.disconnect()
  # we dont need live connection anymore
 section_reports['configuration'] = str(options.system)
 
-if not options.kat7_test:
-    array_cfg = katuilib.conf.KatuilibConfig(options.system).get_array()
-else:
-    array_cfg = katcore.targets.ArrayConfig("arrays/karoo.katcorrelator.conf")
- # get array configuration
 
+array_cfg = katcore.targets.ArrayConfig(array_config)
+ # retrieve array configuration object for correlator
 config_antennas, dbe_delay, real_to_dbe = get_input_info(array_cfg)
  # return dicts showing the current mapping between dbe inputs and real antennas
 antennas, antenna_positions, antenna_diameter, noise_diode_models = get_antenna_info(array_cfg)
