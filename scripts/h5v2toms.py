@@ -129,7 +129,7 @@ ms_dict['FIELD'] = []
 refant = f['MetaData']['Configuration']['Observation'].attrs['script_ants'].split(",")[0]
 refant_obj = antenna_objs[refant]
 
-print "\nUsing %s as the reference antenna. All targets and activity detection will be based on this antenna.\n"
+print "\nUsing %s as the reference antenna. All targets and activity detection will be based on this antenna.\n" % refant
 
 data_ref = f['/Data/correlator_data']
 data_timestamps = f['/Data/timestamps'].value
