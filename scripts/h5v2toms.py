@@ -4,17 +4,38 @@
 #
 # Uses the pyrap python CASA bindings from the ATNF.
 
+import os
 import sys
 import numpy as np
 import katpoint
 import katcore.targets
 import shutil
+import tarfile
 from k7augment import ms_extra
 from optparse import OptionParser
 from h5py import File
 
+def get_single_value(group, name):
+    """Return a single value from an attribute or dataset of the given name.
+
+       If data is retrieved from a dataset, this functions raises an error
+       if the values in the dataset are not all the same. Otherwise it
+       returns the first value."""
+    value = group.attrs.get(name, None)
+    if value is not None:
+        return value
+    dataset = group.get(name, None)
+    if dataset is None:
+        raise ValueError("Could not find attribute or dataset named %r/%r" % (group.name, name))
+    if not dataset.len():
+        raise ValueError("Found dataset named %r/%r but it was empty" % (group.name, name))
+    if not all(dataset.value == dataset.value[0]):
+        raise ValueError("Not all values in %r/%r are equal. Values found: %r" % (group.name, name, dataset.value))
+    return dataset.value[0]
+
 parser = OptionParser()
 parser.add_option("-w", "--stop_w", dest="stop_w", action="store_true", default=False, help="Use the W term to stop the fringes for each baseline.")
+parser.add_option("-t", "--tar", action="store_true", default=False, help="Tar ball the ms")
 (options, args) = parser.parse_args()
 
  # NOTE: This should be checked before running (only for w stopping) to see how up to date the cable delays are !!!
@@ -36,6 +57,7 @@ if ms_extra.pyrap_fail == True:
 
 ms_name = file[:file.rfind(".")] + ".ms"
  # first step is to copy the blank template MS to our desired output...
+#if os.path.isdir(ms_name) or os.path.isdir(
 try:
     shutil.copytree("/var/kat/static/blank.ms",ms_name)
 except Exception, err:
@@ -69,7 +91,8 @@ project_name = ""
 ms_dict['ANTENNA'] = ms_extra.populate_antenna_dict(antenna_positions, antenna_diameter)
 
 sg = f['/MetaData/Configuration/Correlator']
-dump_rate = 1/sg.attrs['int_time']
+#dump_rate = 1/sg.attrs['int_time']
+dump_rate = 1/get_single_value(sg, 'int_time')
 channels = sg.attrs['n_chans']
 bandwidth = float(sg.attrs['bandwidth']) / channels
 center_frequency = sg.attrs['center_freq'] + 1.5e9
@@ -119,14 +142,13 @@ target_changes = [n for n in xrange(len(target)) if target[n] and ((n== 0) or (t
 target, target_timestamps = target[target_changes],target_timestamps[target_changes]
 compscan_starts = dump_endtimes.searchsorted(target_timestamps)
 compscan_ends = np.r_[compscan_starts[1:] - 1, len(dump_endtimes) - 1]
-
 for i,c_start_id in enumerate(compscan_starts):
-    c_end_id = compscan_ends[i]
+    c_end_id = compscan_ends[i] + 1
     print "Cscan runs from id %i to id %i\n" % (c_start_id, c_end_id)
     tstamps = data_timestamps[c_start_id:c_end_id]
     c_start = tstamps[0]
     c_end = tstamps[-1]
-    tgt = katpoint.Target(target[i])
+    tgt = katpoint.Target(target[i][1:-2]) #[1:-2] strip out " from sensor values
     tgt.antenna = refant_obj
     radec = tgt.radec()
     if fields.has_key(tgt.description):
@@ -142,8 +164,7 @@ for i,c_start_id in enumerate(compscan_starts):
     tstamps = tstamps + (0.5/dump_rate)
              # move timestamps to middle of integration
     mjd_tstamps = [katpoint.Timestamp(t).to_mjd() * 24 * 60 * 60 for t in tstamps]
-
-    data = data_ref[c_start_id:c_end_id].view(np.complex64).swapaxes(1,2).swapaxes(0,1).squeeze()
+    data = data_ref[c_start_id:c_end_id].view(np.complex64).swapaxes(1,2).swapaxes(0,1)[:,:,:,:,0]#.squeeze()
      # pick up the data segement for this compound scan, reorder into bls, timestamp, channels, pol, complex
     for bl in range(n_bls):
         (a1, a2) = bls_ordering[bl]
@@ -151,7 +172,7 @@ for i,c_start_id in enumerate(compscan_starts):
         a1_name = 'ant' + str(a1 + 1)
         a2_name = 'ant' + str(a2 + 1)
         uvw_coordinates = np.array(tgt.uvw(antenna_objs[a2_name], tstamps / 1000, antenna_objs[a1_name]))
-        vis_data = data[bl]
+	vis_data = data[bl]
         if options.stop_w:
             cable_delay_diff = (delays[int(a2)-1] - delays[int(a1)-1])
             w = np.outer(((uvw_coordinates[2] / katpoint.lightspeed) + cable_delay_diff), center_freqs)
@@ -170,3 +191,7 @@ ms_dict['OBSERVATION'] = ms_extra.populate_observation_dict(obs_start, obs_end, 
 
  # finally we write the ms as per our created dicts
 ms_extra.write_dict(ms_dict,ms_name)
+if options.tar:
+    tar = tarfile.open('%s.tar' % ms_name, 'w')
+    tar.add(ms_name, arcname=os.path.basename(ms_name))
+    tar.close()
