@@ -248,7 +248,7 @@ class k7Capture(threading.Thread):
                     ig_sd['sd_data'] = ig[name] if not self.acc_scale else (np.float32(ig[name]) / data_scale_factor)
                     ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                     self.send_sd_data(ig_sd.get_heap())
-                f[self.remap(name)][datasets_index[name]] = ig[name] if not (name == 'xeng_raw' and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
+                f[self.remap(name)][datasets_index[name]] = ig[name] if not (name.startswith("xeng_raw") and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
                 if name == 'timestamp':
                     try:
                         f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
