@@ -224,6 +224,7 @@ class k7Capture(threading.Thread):
                     if name == 'timestamp':
                         print "Timestamp:",ig[name]
                         f[timestamps].resize(datasets_index[name]+1, axis=0)
+                data_scale_factor = np.float32(meta['n_accs'] if meta.has_key('n_accs') else 1)
                 if sd_frame is not None and name.startswith("xeng_raw"):
                     sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                     print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
@@ -243,11 +244,11 @@ class k7Capture(threading.Thread):
                          # proper deep copy needed as heaps get reused later on...
                         print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
                         self.send_sd_metadata()
-                    print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % ((meta['n_accs'] if meta.has_key('n_accs') else 1)), np.max(ig[name]),np.mean(ig[name]))
-                    ig_sd['sd_data'] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
+                    print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % (data_scale_factor,), np.max(ig[name]), np.mean(ig[name]))
+                    ig_sd['sd_data'] = ig[name] if not self.acc_scale else (np.float32(ig[name]) / data_scale_factor)
                     ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                     self.send_sd_data(ig_sd.get_heap())
-                f[self.remap(name)][datasets_index[name]] = ig[name] if not self.acc_scale else (ig[name] / float(meta['n_accs'] if meta.has_key('n_accs') else 1)).astype(np.float32)
+                f[self.remap(name)][datasets_index[name]] = ig[name] if not (name == 'xeng_raw' and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
                 if name == 'timestamp':
                     try:
                         f[timestamps][datasets_index[name]] = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
