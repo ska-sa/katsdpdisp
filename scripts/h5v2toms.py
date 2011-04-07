@@ -164,7 +164,7 @@ for i,c_start_id in enumerate(compscan_starts):
     tstamps = tstamps + (0.5/dump_rate)
              # move timestamps to middle of integration
     mjd_tstamps = [katpoint.Timestamp(t).to_mjd() * 24 * 60 * 60 for t in tstamps]
-    data = data_ref[c_start_id:c_end_id].view(np.complex64).swapaxes(1,2).swapaxes(0,1)[:,:,:,:,0]#.squeeze()
+    data = data_ref[c_start_id:c_end_id].astype(np.float32).view(np.complex64)[:,:,:,:,0].swapaxes(1,2).swapaxes(0,1)
      # pick up the data segement for this compound scan, reorder into bls, timestamp, channels, pol, complex
     for bl in range(n_bls):
         (a1, a2) = bls_ordering[bl]
