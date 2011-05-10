@@ -34,6 +34,10 @@ try:
 except:
     netifaces = None
 
+class InvalidBaseline(Exception):
+    """Specifying and invalid baseline or product id."""
+    pass
+
 class Archive(object):
     """An archive containing telescope data.
 
@@ -134,65 +138,94 @@ class DataArchive(object):
                 self.files[index] = df
                 index += 1
 
-
 class CorrProdRef(object):
-    """A small wrapper class to handle interaction with and
-    conversion to and frame correlator product id's and real world
-    antennas and polarisations.
+    """Another small wrapper class to handle conversion between product id's.
+    This time it will actually be small :)
 
-    The object stores the current mapping between correlator inputs and real antennas.
+    Typically a baseline ordering dictionary (as produced by the correlator) will be provided.
+    This maps a baseline name (e.g. ant1H_ant1V) to a product id.
 
-    A correlation product id refers to a single pol from a single correlated antenna pair.
+    If no dictionary is provided the class starts with a default mapping which has input 0x mapped to
+    antenna 1 H, input 0y to antenna 1 V and so on...
 
     Parameters
     ----------
-    n_ants : integer
-        The number of antenna inputs in the dbe. Usually total number of dbe inputs / 2
-    katconfig : config
-        If supplied then this configuration is used for n_ants as well as for physical antenna to dbe input mapping.
-        default: None
+    bls_ordering : dict
+        A dict mapping antenna description strings to a specific product id
+    n_ants : int
+        The antenna limit for default mapping production.
     """
-
-    def __init__(self, n_ants=2, katconfig=None):
-        self._dbe_to_real = {}
-        self._real_to_dbe = {}
-         # not really necessary to have both, but it is convenient :)
+    def __init__(self, bls_ordering=None, n_ants=8):
+        self.bls_ordering = bls_ordering
         self.n_ants = n_ants
-        self._katconfig = katconfig
-        if katconfig is not None:
-            try:
-                mapping = katconfig.get_input_mapping()
-                for k,v in mapping.iteritems():
-                    dbe = k[5:]
-                    rvals = v.split(",")
-                    real = rvals[0][3:] + rvals[1][-1].capitalize()
-                    self._dbe_to_real[dbe] = real
-                    self._real_to_dbe[real] = dbe
-                self.n_ants = len(self._dbe_to_real) / 2
-            except Exception, err:
-                print "Although a config was supplied, construction of real to dbe mapping failed. (" + str(err) + ")"
-
-        self.bl_order = self._calc_bl_order()
+        if self.bls_ordering is None: self.bls_ordering = self.get_default_bl_map(n_ants)
+        self._id_to_real = {}
+        self._id_to_real_long = {}
+        self._antennas = {}
         self._pol_dict = ['HH','VV','HV','VH']
-        self._dbe_pol_dict = ['xx','yy','xy','yx']
+        self.precompute()
+         # precompute a number of lookups to save processing later on. (Some of these are called a lot...)
+         # populates id_to_real, id_to_real_long, updates n_ants,
 
-    def _ij2bl(i, j): return ((i+1) << 8) | (j+1)
-    def _bl2ij(bl): return ((bl >> 8) & 255) - 1, (bl & 255) - 1
+    def precompute(self):
+        print "Precompute issued against",self.bls_ordering
+        for i,bls in enumerate(self.bls_ordering):
+            a,b = bls.split("_")
+            if not a[:-1] in self._antennas: self._antennas[a[:-1]] = {'H':0,'V':0}
+            self._antennas[a[:-1]][a[-1]] = 1
+            self._id_to_real[i] = a + " * " + b
+            self._id_to_real_long[i] = "%s %s * %s %s" % (a[:-1].replace("ant","Antenna "),a[-1],b[:-1].replace("ant","Antenna "),b[-1])
 
-    def _calc_bl_order(self):
-        """Return the order of baseline data output by a CASPER correlator
-        X engine."""
+    def get_default_bl_map(self, n_ants):
+        """Return a default baseline mapping by replacing inputs with proper antenna names."""
+        bls = []
         order1, order2 = [], []
-        for i in range(self.n_ants):
-            for j in range(int(self.n_ants/2),-1,-1):
-                k = (i-j) % self.n_ants
+        for i in range(n_ants):
+            for j in range(int(n_ants/2),-1,-1):
+                k = (i-j) % n_ants
                 if i >= k: order1.append((k, i))
                 else: order2.append((i, k))
         order2 = [o for o in order2 if o not in order1]
-        return [o for o in order1 + order2]
+        bls_raw = tuple([o for o in order1 + order2])
+        for b in bls_raw:
+            for p in ['HH','HV','VH','VV']:
+                bls.append("ant%i%s_ant%i%s" % (b[0]+1,p[0],b[1]+1,p[1]))
+        return bls
 
-    def list_baselines(self):
-        return self.bl_order
+    def id_to_real_str(self, id, short=False):
+        id = self.user_to_id(id)
+        if self._id_to_real.has_key(id):
+            return (short and self._id_to_real[id] or self._id_to_real_long[id])
+        else:
+            return "Unknown id (%i)" % id
+
+    def _convert_pol(self, pol):
+        """Turn a user specified polarisation into
+        a pol index (0,1,2,3)
+        """
+        if type(pol) == type(""):
+            if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol.upper())
+            elif pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
+            else: pol = -1
+        if pol < 0 or pol > 3:
+            print "Unknown polarisation (" + str(pol) + ") specified."
+            return None
+        return pol
+
+    def _user_to_id(self, inp):
+        if type(inp) != type(()): return inp
+        if len(inp) == 3:
+            pol = self._pol_dict[self._convert_pol(inp[2])]
+            blkey = "ant%s%s_ant%s%s" % (str(inp[0]),pol[0],str(inp[1]),pol[1])
+            try:
+                prod_id = self.bls_ordering.index(blkey)
+            except ValueError:
+                print "Baseline specified by " + str(blkey) + " is invalid."
+                return None
+        else:
+            print "Product specifier " + str(inp) + " not parseable."
+            return None
+        return prod_id
 
     def user_to_id(self, user_input):
         """Convert user input to a correlation product id.
@@ -215,145 +248,6 @@ class CorrProdRef(object):
         for inp in user_input:
             ret.append(self._user_to_id(inp))
         return ret
-
-    def _convert_pol(self, pol):
-        """Turn a user specified polarisation into
-        a pol index (0,1,2,3)
-        """
-        if type(pol) == type(""):
-            if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol.upper())
-            elif pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
-            else: pol = -1
-        if pol < 0 or pol > 3:
-            print "Unknown polarisation (" + str(pol) + ") specified."
-            return None
-        return pol
-
-    def _antenna_to_input(self, antenna, pol):
-        """Turn a user specified antenna into a dbe input number.
-        """
-         # check to see if physical antenna correspsonds to a dbe input
-        #if antenna < 1:
-        #    print "Physical antennas are numbered from 1 upwards. You have specified " + str(antenna)
-        #    return (None,None)
-        if self._katconfig is not None:
-            if self._real_to_dbe.has_key(str(antenna) + str(pol)):
-                inp = self._real_to_dbe[str(antenna) + str(pol)]
-                return (int(inp[0]),inp[1])
-            else:
-                print "The specified physical input (Antenna " + str(antenna) + ", Pol: " + str(pol) + ") does not appear to be connected to the dbe.\n Please check your configuration."
-                raise KeyError
-        else:
-            #print "No antenna mapping config provided. Use direct dbe mapping. "
-            return (int(antenna), {'H':'x','X':'x','x':'x','V':'y','Y':'y','y':'y'}[pol])
-
-    def _user_to_id(self, inp):
-        if type(inp) != type(()): return inp
-        if len(inp) == 2:
-            baseline = inp[0]
-            pol = self._convert_pol(inp[1])
-        elif len(inp) == 3:
-            pol = self._convert_pol(inp[2])
-            (inp1,pol1) = self._antenna_to_input(inp[0], self._pol_dict[pol][0])
-            (inp2,pol2) = self._antenna_to_input(inp[1], self._pol_dict[pol][1])
-            if inp1 is None or inp2 is None: return None
-            pol = self._dbe_pol_dict.index(str(pol1) + str(pol2))
-             # convert dbe input spec (say xy) to a pol number
-            baseline = (inp1,inp2)
-            try:
-                baseline = self.bl_order.index(baseline)
-            except ValueError:
-                print "Baseline specified by " + str(baseline) + " is invalid."
-                return None
-        else:
-            print "Product specifier " + str(inp) + " not parseable."
-            return None
-        if pol is None: return None
-        return (baseline * 4) + pol
-
-    def id_to_real_str(self, id, short=False):
-        id = self.user_to_id(id)
-         # just in case :)
-        m = self.id_to_real(id)
-        mt = (m[3] == "A" and "Antenna" or "Input")
-        a = (short and m[3] or mt)
-        return a + str(m[0]) + " * " + a + str(m[1]) + " " + str(m[2])
-
-    def get_id_to_real_map(self):
-        """Returns a dict with corr prod ids as the key and string antenna description as the value."""
-        prods = len(self._dbe_to_real) * (len(self._dbe_to_real)-1)
-         # the number of products produced by the dbe
-        if prods == 0: prods = (self.n_ants * (self.n_ants+1))*2
-        a = {}
-        for x in range(prods):
-            t = self.id_to_real(x)
-            #a[x] = t[3] + str(t[0]) + ":" + t[3] + str(t[1]) + " " + t[2]
-            a[x] = str(t[0]) + t[2][0] + " * " + str(t[1]) + t[2][1]
-             # our format is Ax:Ay POL (e.g. A1:A2 VV)
-        return a
-
-    def id_to_real(self, id):
-        """Takes a correlator product id and returns the physical inputs it corresponds to.
-
-        Parameters
-        ----------
-        id : integer
-            The correlator product id
-
-        Returns
-        -------
-        (a1, a2, pol, map_type) : tuple
-            Returns the physical antenna pair and the actual polarisation product (HH,VV,HV,VH) and the mapping type [Antenna - real antennas | Input - dbe inputs instead of antennas returned]
-
-        """
-        input = self.id_to_input(id)
-        pol = self._dbe_pol_dict[input[2]]
-        map_type = 'i'
-        try:
-            inp1 = self._dbe_to_real[str(input[0]) + str(pol[0])]
-            inp2 = self._dbe_to_real[str(input[1]) + str(pol[1])]
-            input = (inp1[:-1], inp2[:-1])
-            pol = str(inp1[-1]) + str(inp2[-1])
-            map_type = 'A'
-        except KeyError, err:
-            if self._katconfig is not None:
-                print "Error mapping dbe input to physical antenna. Please ensure your configuration is correct."
-        return tuple([input[0],input[1],pol,map_type])
-         # straight through for antennas for now
-
-    def id_to_input(self, id):
-        """Takes a correlator product id and returns the corresponding physical correlator inputs...
-
-        Parameters
-        ----------
-        id : integer
-            The correlator product id
-
-        Returns
-        -------
-        (inp1, inp2, pol) : tuple
-            Returns the two correlated inputs and the pol number (0-3)
-        """
-        bl = self.bl_order[id / 4]
-         # integer calc on purpose
-        return tuple([bl[0],bl[1],id % 4])
-
-    def real_to_id():
-        pass
-
-    def input_to_id():
-        pass
-
-    def antennas(self):
-        """List the antenna numbers obtained from the config file.
-
-        Returns
-        -------
-        antennas : list of str
-            The list of antennas, e.g. ['1', '2'], ['3', '4']
-        """
-        return list(set(inp[:-1] for inp in self._real_to_dbe))
-
 
 class SignalDisplayFrame(object):
     """A class to store a single frame of signal display data.
@@ -426,10 +320,9 @@ class SignalDisplayStore(object):
         The size of a single, complete dump is: channels * correlation_products * 8 bytes
         default: 3600
     """
-    def __init__(self, n_ants=2, capacity=3600, katconfig=None):
+    def __init__(self, n_ants=2, capacity=3600):
         self.capacity = capacity
         self.n_ants = n_ants
-        self.cpref = CorrProdRef(n_ants, katconfig=katconfig)
         self.time_frames = {}
          # a dictionary of SignalDisplayFrames. Organised by timestamp and then correlation product id
         self.corr_prod_frames = {}
@@ -439,6 +332,7 @@ class SignalDisplayStore(object):
         self._last_offset = None
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
+        self.cpref = None
         self.cur_frames = {}
          # a dict of the most recently completed frames for each corr_prod_id. Not guaranteed to be for the same timestamp...
 
@@ -551,6 +445,21 @@ class SignalDisplayStore(object):
                  # channels mapped in reverse order
             except KeyError:
                 pass # no frequency information
+
+            bls_ordering = None
+            try:
+                ant_to_inp = {}
+                for antenna in d['/Antennas/']:
+                    for pol in d['/Antennas/'][antenna]:
+                        if pol in ['H','V']: ant_to_inp[d['/Antennas'][antenna][pol].attrs['dbe_input']] = "ant" + str(antenna)[7:] + str(pol)
+                im = d['/Correlator/input_map'].value
+                bls_ordering = []
+                for v in im:
+                    bls_ordering.append(ant_to_inp[v[1][:2]] + "_" + ant_to_inp[v[1][2:]])
+            except KeyError:
+                pass #no default baseline information
+            self.cpref = CorrProdRef(bls_ordering=bls_ordering)
+
             for cscan in (cscan in d['Scans'].keys() and [cscan] or d['Scans'].keys()):
                 for s in (scan in d['Scans'][cscan].keys() and [d['Scans'][cscan][scan]] or [d['Scans'][cscan][s] for s in d['Scans'][cscan].keys()]):
                     print "Adding data from %s" % s.name
@@ -560,7 +469,7 @@ class SignalDisplayStore(object):
                         dt = data[i]
                         for id in range(len(dt[0])):
                             d_float = np.ravel(np.array([np.real(dt[str(id)]),np.imag(dt[str(id)])]), order='F')
-                            self.add_data(t / 1000, id, 0, len(d_float), d_float)
+                            self.add_data(t, id, 0, len(d_float), d_float)
         except OSError:
             print "Specified file (%s) could not be found." % filename
 
@@ -581,9 +490,12 @@ class SignalDisplayStore(object):
 class NullReceiver(object):
     """Null class used when loading historical data into signal displays...
     """
-    def __init__(self, storage, channels=512):
+    def __init__(self, storage, channels=512, n_ants=8):
         self.storage = storage
+        self.center_freqs_mhz = self.storage.center_freqs_mhz
+         # trickle loaded center frequencies upwards
         self.channels = channels
+        self.cpref = CorrProdRef(n_ants=n_ants)
         self.current_timestamp = 0
         self.last_ip = None
 
@@ -610,13 +522,32 @@ class SpeadSDReceiver(threading.Thread):
         except Exception, e:
             print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
             return
+        self.cpref = CorrProdRef()
+         # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
         self.rx = spead.TransportUDPrx(self._port, pkt_count=pkt_buffer_count)
         self.ig = spead.ItemGroup()
         self.heap_count = 0
+        self.bls_ordering = None
+        self.center_freq = 0
+        self.n_chans = 0
+        self.channel_bandwidth = 0
+        self.center_freqs_mhz = []
         threading.Thread.__init__(self)
 
     def stop(self):
         if self.rx is not None: self.rx.stop()
+
+    def update_center_freqs(self):
+        """Update the table containing the center frequencies for each channels."""
+        try:
+            self.center_freq = self.ig['center_freq']
+            self.n_chans = self.ig['n_chans']
+            self.channel_bandwidth = self.ig['bandwidth'] / self.n_chans
+            self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.n_chans/2, self.n_chans/2)]
+            self.center_freqs_mhz.reverse()
+             # channels mapped in reverse order
+        except ValueError:
+            print "Failed to update center frequency table due to missing metadata."
 
     def run(self):
         """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
@@ -627,9 +558,18 @@ class SpeadSDReceiver(threading.Thread):
             self.ig.update(heap)
             self.heap_count += 1
             try:
+                if self.ig['center_freq'] is not None:
+                    if self.ig['center_freq'] != self.center_freq:
+                        self.update_center_freqs()
+                if self.ig['bls_ordering'] is not None:
+                    if np.array(self.ig['bls_ordering'] != self.bls_ordering).any():
+                        self.bls_ordering = self.ig['bls_ordering']
+                        self.cpref.bls_ordering = self.bls_ordering.tolist()
+                        self.cpref.precompute()
+                    self.ig['bls_ordering'] = None
                 if self.ig['sd_data'] is not None:
                     data = self.ig['sd_data']
-                    data = data.reshape(data.shape[0],data.shape[1]*data.shape[2],data.shape[3]).swapaxes(0,1)
+                    data = data.swapaxes(0,1)
                     ts = self.ig['sd_timestamp'] * 10.0
                      # timestamp is in centiseconds since epoch (40 bit spead limitation)
                     for id in range(data.shape[0]):
@@ -661,6 +601,8 @@ class SignalDisplayReceiver(threading.Thread):
         self.data_rate = 0
         self.process_time = 0
         self.n_ants = 2
+        self.cpref = CorrProdRef(n_ants=self.n_ants)
+         # default to 2 antennas as this receiver only used by fringe finder
         threading.Thread.__init__(self)
         self.packet_count = 0
         self.recv_buffer = recv_buffer
@@ -668,6 +610,7 @@ class SignalDisplayReceiver(threading.Thread):
         self._one_shot = -1
         self.current_frames = {}
         self.last_timestamp = 0
+        self.center_freqs_mhz = []
         self.last_ip = None
         self._last_frame = None
 
@@ -1300,11 +1243,8 @@ class DataHandler(object):
     store : SignalDisplayStore
         The storage to use in the default receiver. If none specified then a default is created.
         default: None
-    katconfig : config
-        Used to construct physical antenna to dbe input mappings.
-        default: None
     """
-    def __init__(self, dbe=None, port=7006, ip=None, receiver=None, store=None, katconfig=None):
+    def __init__(self, dbe=None, port=7006, ip=None, receiver=None, store=None):
         self.dbe = dbe
         if dbe is not None:
             self._local_ip = ip if ip is not None else external_ip()
@@ -1313,11 +1253,14 @@ class DataHandler(object):
             else:
                 print "Adding IP",self._local_ip,"to K7W listeners..."
                 self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
+        else:
+            print "No connection to DBE proxy supplied (via dbe parameter). Streaming will need to be manually initiated \
+                  using the add_sdisp_ip command on the proxy."
         if store is None:
-            self.storage = SignalDisplayStore(katconfig=katconfig)
+            self.storage = SignalDisplayStore()
         else:
             self.storage = store
-        self.cpref = store.cpref
+        self.cpref = receiver.cpref
         self.receiver = receiver
         if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
@@ -1597,9 +1540,8 @@ class DataHandler(object):
             print "Select data called with product: %i, start_time: %i , end_time: %i, start_channel: %i, end_channel: %i" % (product, start_time, end_time, start_channel, stop_channel)
         try:
             fkeys = self.storage.corr_prod_frames[product].keys()
-        except KeyError:
-            print "\nNo data for the specified product (%s) was found in the data store.\nThis most probably means that data is not flowing through the system. Make sure that the dbe and k7writer are running and a capture_start() has been issued.\nIf data is flowing correctly it may be that k7writer has been instructed to send data to the incorrect IP address.\nCheck to see if kat.dh.sd._local_ip matches the IP address of your machine.\nIf the incorrect IP is set then you can manually set it to the correct one using:  kat.dbe.req.k7w_add_sdisp_ip('<my_local_ip>')\n" % str(orig_product)
-            raise KeyError("No data found. See detailed message above...")
+        except KeyError, exc:
+            raise InvalidBaseline("No data for the specified product (%s) was found. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product),)), None, None
         fkeys.sort()
         ts = []
         if end_time >= 0:
@@ -2074,11 +2016,11 @@ class DataHandler(object):
         else:
             pl.boxplot(s)
         pl.title(source_name + " Phase Closure ("+str(a) + "," + str(b) + "," + str(c) + ")")
-        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.storage.center_freqs_mhz) > 0 else "channel") + "]")
+        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.receiver.center_freqs_mhz) > 0 else "channel") + "]")
         pl.ylabel("Phase [deg]")
         pl.ylim(-180,180)
-        if len(self.storage.center_freqs_mhz) > 0 and not swap:
-            pl.xticks(range(0,s.shape[1],25), [int(self.storage.center_freqs_mhz[start_channel+f]) for f in range(0,s.shape[1],25)])
+        if len(self.receiver.center_freqs_mhz) > 0 and not swap:
+            pl.xticks(range(0,s.shape[1],25), [int(self.receiver.center_freqs_mhz[start_channel+f]) for f in range(0,s.shape[1],25)])
             pl.subplots_adjust(bottom=0.15)
         else:
             pl.xticks(range(0,s.shape[1],4),rotation=90)
@@ -2120,10 +2062,10 @@ class DataHandler(object):
         else:
             pl.boxplot(am)
         pl.title(source_name + " Amplitude Closure (%s)" % (pol))
-        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.storage.center_freqs_mhz) > 0 else "channel") + "]")
+        pl.xlabel("Time [s]" if swap else "Frequency [" + ("MHz" if len(self.receiver.center_freqs_mhz) > 0 else "channel") + "]")
         pl.ylabel("Amplitude")
-        if len(self.storage.center_freqs_mhz) > 0 and not swap:
-            pl.xticks(range(0,am.shape[1],25), [int(self.storage.center_freqs_mhz[start_channel+f]) for f in range(0,am.shape[1],25)])
+        if len(self.receiver.center_freqs_mhz) > 0 and not swap:
+            pl.xticks(range(0,am.shape[1],25), [int(self.receiver.center_freqs_mhz[start_channel+f]) for f in range(0,am.shape[1],25)])
             pl.subplots_adjust(bottom=0.15)
         else:
             pl.xticks(range(0,am.shape[1],4),rotation=90)
@@ -2203,7 +2145,7 @@ class DataHandler(object):
         """
         if products is None: products = self.default_products
         pl.figure()
-        pl.xlabel("Channel Number")
+        pl.xlabel("Frequency [" + ("MHz" if len(self.receiver.center_freqs_mhz) > 0 else "channel") + "]")
         f = pl.gcf()
         ax = f.gca()
         avg = ""
@@ -2214,6 +2156,10 @@ class DataHandler(object):
         else:
             pl.ylabel("Power [arb units]")
             pl.yscale(scale)
+        if len(self.receiver.center_freqs_mhz) > 0:
+            freq_range = self.receiver.center_freqs_mhz[start_channel:stop_channel]
+            pl.xticks(range(0,len(freq_range),25), [int(self.receiver.center_freqs_mhz[start_channel+f]) for f in range(0,len(freq_range),25)])
+
         s = [[0]]
         for i,product in enumerate(products):
             if s == [[0]]:
@@ -2242,9 +2188,8 @@ class KATData(object):
     dbe : KATDevice
         A reference to an KATDevice object connected to the KAT dbe proxy. This is used for making data calls to the dbe.
     """
-    def __init__(self, dbe=None, katconfig=None):
+    def __init__(self, dbe=None):
         self.dbe = dbe
-        self._katconfig = katconfig
         self.sd = None
 
     def register_dbe(self, dbe):
@@ -2257,20 +2202,18 @@ class KATData(object):
         ----------
         port : integer
             default: 7149
-        n_ants : integer
-            The number of antennas in the receive stream
         """
-        st = SignalDisplayStore(n_ants=n_ants)
+        st = SignalDisplayStore()
         r = SpeadSDReceiver(port,st)
         r.setDaemon(True)
         r.start()
-        self.sd = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
+        self.sd = DataHandler(dbe=None, receiver=r, store=st)
 
     def pc_load_data(self, filename, rows=None):
         st = SignalDisplayStore()
         st.pc_load_letter(filename, rows=rows)
         r = NullReceiver(st)
-        self.sd_pc = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
+        self.sd_pc = DataHandler(dbe=None, receiver=r, store=st)
         print "Signal display data available as .sd_pc"
 
     def load_data(self, filename, cscan=None, scan=None, start=None, end=None):
@@ -2284,10 +2227,11 @@ class KATData(object):
             The full qualified root filename (without the baseline number or .h5 extension). (e.g. /var/kat/data/1260384145.00)
             Checks for files of the type <filename>1.h5, <filename>2.h5, and <filename>3.h5
         """
-        st = SignalDisplayStore(katconfig=self._katconfig)
+        st = SignalDisplayStore()
         st.load(filename, cscan=cscan, scan=scan, start=start, end=end)
         r = NullReceiver(st)
-        self.sd_hist = DataHandler(dbe=None, receiver=r, store=st, katconfig=self._katconfig)
+        r.cpref = st.cpref
+        self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
         print "Historical signal display data available as .sd_hist"
 
     def start_sdisp(self, ip=None):
@@ -2313,7 +2257,7 @@ class KATData(object):
         """
         logger.info("Starting signal display capture")
         if self.dbe is not None:
-            self.sd = DataHandler(self.dbe, ip=ip, katconfig=self._katconfig)
+            self.sd = DataHandler(self.dbe, ip=ip)
         else:
             print "No dbe device known. Unable to start capture"
 
