@@ -19,7 +19,7 @@ from katcp.kattypes import request, return_reply, Str, Int, Float
 def parse_opts(argv):
     parser = optparse.OptionParser()
     parser.add_option('-c', '--config', dest='config', type="string", default="./k7-local.conf", help='k7 correlator config file to use.')
-    parser.add_option('-p', '--port', dest='port', type=long, default=2041, metavar='N', help='attach to port N (default=2040)')
+    parser.add_option('-p', '--port', dest='port', type=long, default=2041, metavar='N', help='attach to port N (default=2041)')
     parser.add_option('-a', '--host', dest='host', type="string", default="", metavar='HOST', help='listen to HOST (default="" - all hosts)')
     return parser.parse_args(argv)
 
@@ -136,6 +136,8 @@ class SimulatorDeviceServer(DeviceServer):
 class K7Correlator(threading.Thread):
     def __init__(self, config_file):
         self.config = corr.cn_conf.CorrConf(config_file)
+        self.bls_ordering = np.array(self.get_default_bl_map())
+         # in np form so it will work as a spead item descriptor
         self.sync_time = int(time.time())
         self.adc_value = 0
         self.tx=spead.Transmitter(spead.TransportUDPtx(self.config['rx_meta_ip_str'],self.config['rx_udp_port']))
@@ -152,11 +154,18 @@ class K7Correlator(threading.Thread):
         self.test_az = 0
         self.test_el = 0
         self.multiplier = 100
-        self.bls_ordering = [[bl[0],bl[1]] for bl in self.get_bl_order()]
         self.data = self.generate_data()
         self._thread_runnable = True
         self._thread_paused = False
         threading.Thread.__init__(self)
+
+    def get_default_bl_map(self):
+        """Return a default baseline mapping by replacing inputs with proper antenna names."""
+        bls = []
+        for b in self.get_bl_order():
+            for p in ['HH','HV','VH','VV']:
+                bls.append("ant%i%s_ant%i%s" % (b[0]+1,p[0],b[1]+1,p[1]))
+        return bls
 
     def get_bl_order(self):
         """Return the order of baseline data output by a CASPER correlator X engine."""
@@ -205,29 +214,17 @@ class K7Correlator(threading.Thread):
         data = np.fft.fft(x, self.config['n_chans'])[:self.config['n_chans']]
         data = (data.view(np.float64)*self.multiplier).astype(np.int32).reshape((512,2))
         data = np.tile(data, self.config['n_bls'] * self.config['n_stokes'])
-        data = data.reshape((self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2), order='C')
-        for ib in range (self.config['n_bls']):#for different baselines
-            (a1,a2) = self.bls_ordering[ib]
-            if a1 == a2:
-                auto_d=np.abs(data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0) + 1000
-                auto_d[:,:,1] = 0
-                data[:,ib,:,:]=auto_d
+        data = data.reshape((self.config['n_chans'],self.config['n_bls'] * self.config['n_stokes'],2), order='C')
+        for ib in range (self.config['n_bls'] * self.config['n_stokes']):#for different baselines
+            (a1,a2)= self.bls_ordering[ib].split("_")
+            if a1[:-1] == a2[:-1]:
+                auto_d=np.abs(data[:,ib,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*2).reshape([self.config['n_chans'],2])*500.0) + 1000
+                auto_d[:,1] = 0
+                data[:,ib,:]=auto_d
             else:
-                data[:,ib,:,:]=data[:,ib,:,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*self.config['n_stokes']*2).reshape([self.config['n_chans'],self.config['n_stokes'],2])*500.0
+                data[:,ib,:]=data[:,ib,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*2).reshape([self.config['n_chans'],2])*500.0
         data = data.astype(np.float32)
         return data
-
-    def get_bl_order(self):
-        """Return the order of baseline data output by a CASPER correlator X engine."""
-        n_ants=self.config['n_ants']
-        order1, order2 = [], []
-        for i in range(n_ants):
-            for j in range(int(n_ants/2),-1,-1):
-                k = (i-j) % n_ants
-                if i >= k: order1.append((k, i))
-                else: order2.append((i, k))
-        order2 = [o for o in order2 if o not in order1]
-        return tuple([o for o in order1 + order2])
 
     def get_crosspol_order(self):
         "Returns the order of the cross-pol terms out the X engines"
@@ -273,13 +270,14 @@ class K7Correlator(threading.Thread):
 
         ig.add_item(name="bls_ordering",id=0x100C,
             description="The output ordering of the baselines from each X engine. Packed as a pair of unsigned integers, ant1,ant2 where ant1 < ant2.",
-            shape=[self.config['n_bls'],2],fmt=spead.mkfmt(('u',16)),
-            init_val=[[bl[0],bl[1]] for bl in self.get_bl_order()])
+            init_val=self.bls_ordering)
+#            shape=[self.config['n_bls'],2],fmt=spead.mkfmt(('u',16)),
+#            init_val=[[bl[0],bl[1]] for bl in self.get_bl_order()])
 
-        ig.add_item(name="crosspol_ordering",id=0x100D,
-            description="The output ordering of the cross-pol terms. Packed as a pair of characters, pol1,pol2.",
-            shape=[self.config['n_stokes'],self.config['n_pols']],fmt=spead.mkfmt(('c',8)),
-            init_val=[[bl[0],bl[1]] for bl in self.get_crosspol_order()])
+#        ig.add_item(name="crosspol_ordering",id=0x100D,
+#            description="The output ordering of the cross-pol terms. Packed as a pair of characters, pol1,pol2.",
+#            shape=[self.config['n_stokes'],self.config['n_pols']],fmt=spead.mkfmt(('c',8)),
+#            init_val=[[bl[0],bl[1]] for bl in self.get_crosspol_order()])
 
         ig.add_item(name="center_freq",id=0x1011,
             description="The center frequency of the DBE in Hz, 64-bit IEEE floating-point number.",
@@ -444,7 +442,7 @@ class K7Correlator(threading.Thread):
 
         self.data_ig.add_item(name=("xeng_raw"),id=0x1800,
             description="Raw data for %i xengines in the system. This item represents a full spectrum (all frequency channels) assembled from lowest frequency to highest frequency. Each frequency channel contains the data for all baselines (n_bls given by SPEAD ID 0x100B). For a given baseline, -SPEAD ID 0x1040- stokes parameters are calculated (nominally 4 since xengines are natively dual-polarisation; software remapping is required for single-baseline designs). Each stokes parameter consists of a complex number (two real and imaginary unsigned integers)."%(self.config['n_xeng']),
-            ndarray=(np.dtype(np.float32),(self.config['n_chans'],self.config['n_bls'],self.config['n_stokes'],2)))
+            ndarray=(np.dtype(np.float32),(self.config['n_chans'],self.config['n_bls']*self.config['n_stokes'],2)))
 
         self._data_meta_descriptor = self.data_ig.get_heap()
 
