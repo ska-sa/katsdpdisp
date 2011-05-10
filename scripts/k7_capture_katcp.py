@@ -21,7 +21,7 @@ import copy
 import os
 import logging
 from katcp import DeviceServer, Sensor, Message
-from katcp.kattypes import request, return_reply, Str
+from katcp.kattypes import request, return_reply, Str, Int
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -82,6 +82,10 @@ class k7Capture(threading.Thread):
         self.sdisp_ips = {}
         self._sd_count = 0
         self.init_file()
+        self.center_freq = 0
+        self.meta = {}
+        self.ig_sd = spead.ItemGroup()
+        self.sd_frame = None
         threading.Thread.__init__(self)
 
     def send_sd_data(self, data):
@@ -94,11 +98,28 @@ class k7Capture(threading.Thread):
 
         self._sd_count += 1
 
+    def _update_sd_metadata(self):
+        """Update the itemgroup for the signal display metadata to include any changes since last sent..."""
+        self.ig_sd = spead.ItemGroup()
+         # we need to clear the descriptor so as not to accidently send a signal display frame twice...
+        self.ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(self.sd_frame.dtype,self.sd_frame.shape))
+        self.ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).',
+                            shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
+        self.ig_sd.add_item(name=('bls_ordering'), id=0x100C, description="Mapping of antenna/pol pairs to data output products.", init_val=self.meta['bls_ordering'])
+        self.ig_sd.add_item(name="center_freq",id=0x1011, description="The center frequency of the DBE in Hz, 64-bit IEEE floating-point number.",
+                            shape=[],fmt=spead.mkfmt(('f',64)), init_val=self.center_freq)
+        print "Updating sd metadata. Center freq is %i" % self.center_freq
+        self.ig_sd.add_item(name="bandwidth",id=0x1013, description="The analogue bandwidth of the digitally processed signal in Hz.",
+                            shape=[],fmt=spead.mkfmt(('f',64)), init_val=self.meta['bandwidth'])
+        self.ig_sd.add_item(name="n_chans",id=0x1009, description="The total number of frequency channels present in any integration.",
+                            shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)), init_val=self.meta['n_chans'])
+        return copy.deepcopy(self.ig_sd.get_heap())
+
     def send_sd_metadata(self):
+        self._sd_metadata = self._update_sd_metadata()
         if self._sd_metadata is not None:
             for tx in self.sdisp_ips.itervalues():
                 mdata = copy.deepcopy(self._sd_metadata)
-                print mdata
                 tx.send_heap(mdata)
 
     def remap(self, name):
@@ -161,19 +182,16 @@ class k7Capture(threading.Thread):
         #tx_sd = spead.Transmitter(spead.TransportUDPtx(self.sd_ip, 7149))
         #self._tx_sd = tx_sd
         ig = spead.ItemGroup()
-        ig_sd = spead.ItemGroup()
         idx = 0
         f = None
         self.status_sensor.set_value("idle")
         dump_size = 0
         datasets = {}
         datasets_index = {}
-        meta_required = set(['n_chans','n_bls','n_stokes'])
+        meta_required = set(['n_chans','n_bls','n_stokes','bls_ordering','bandwidth'])
          # we need these bits of meta data before being able to assemble and transmit signal display data
-        meta_desired = ['n_accs']
+        meta_desired = ['n_accs','center_freq']
          # if we find these, then what hey :)
-        meta = {}
-        sd_frame = None
         sd_slots = None
         sd_timestamp = None
         for heap in spead.iterheaps(rx):
@@ -186,14 +204,16 @@ class k7Capture(threading.Thread):
                 if not item._changed and datasets.has_key(name): continue
                  # the item is not marked as changed, and we have a record for it
                 if name in meta_desired:
-                    meta[name] = ig[name]
+                    self.meta[name] = ig[name]
+                    if name == 'center_freq' and self.center_freq == 0:
+                        self.center_freq = self.meta[name]
                 if name in meta_required:
-                    meta[name] = ig[name]
+                    self.meta[name] = ig[name]
                     meta_required.remove(name)
                     if not meta_required:
-                        sd_frame = np.zeros((meta['n_chans'],meta['n_bls'],meta['n_stokes'],2),dtype=np.float32)
-                        print "Initialised sd frame to shape",sd_frame.shape
-                        meta_required = set(['n_chans','n_bls','n_stokes'])
+                        self.sd_frame = np.zeros((self.meta['n_chans'],self.meta['n_bls']*self.meta['n_stokes'],2),dtype=np.float32)
+                        print "Initialised sd frame to shape",self.sd_frame.shape
+                        meta_required = set(['n_chans','n_bls','n_stokes','bls_ordering','bandwidth'])
                         sd_slots = None
                 if not name in datasets:
                  # check to see if we have encountered this type before
@@ -224,30 +244,24 @@ class k7Capture(threading.Thread):
                     if name == 'timestamp':
                         print "Timestamp:",ig[name]
                         f[timestamps].resize(datasets_index[name]+1, axis=0)
-                data_scale_factor = np.float32(meta['n_accs'] if meta.has_key('n_accs') else 1)
-                if sd_frame is not None and name.startswith("xeng_raw"):
+                data_scale_factor = np.float32(self.meta['n_accs'] if self.meta.has_key('n_accs') else 1)
+                if self.sd_frame is not None and name.startswith("xeng_raw"):
                     sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                     print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
                     if sd_slots is None:
-                        ig_sd = spead.ItemGroup()
-                         # reinit the group to force meta data resend
-                        sd_frame.dtype = np.dtype(np.float32) if self.acc_scale else ig[name].dtype
+                        self.sd_frame.dtype = np.dtype(np.float32) if self.acc_scale else ig[name].dtype
                          # make sure we have the right dtype for the sd data
-                        sd_slots = np.zeros(meta['n_chans']/ig[name].shape[0])
+                        sd_slots = np.zeros(self.meta['n_chans']/ig[name].shape[0])
                         n_xeng = len(sd_slots)
                          # this is the first time we know how many x engines there are
                         f[correlator_map].attrs['n_xeng'] = n_xeng
-                        ig_sd.add_item(name=('sd_data'),id=(0x3501), description="Combined raw data from all x engines.", ndarray=(sd_frame.dtype,sd_frame.shape))
-                        ig_sd.add_item(name=('sd_timestamp'), id=0x3502, description='Timestamp of this sd frame in centiseconds since epoch (40 bit limitation).', shape=[], fmt=spead.mkfmt(('u',spead.ADDRSIZE)))
-                        t_it = ig_sd.get_item('sd_data')
-                        self._sd_metadata = copy.deepcopy(ig_sd.get_heap())
-                         # proper deep copy needed as heaps get reused later on...
-                        print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
                         self.send_sd_metadata()
+                        t_it = self.ig_sd.get_item('sd_data')
+                        print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
                     print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % (data_scale_factor,), np.max(ig[name]), np.mean(ig[name]))
-                    ig_sd['sd_data'] = ig[name] if not self.acc_scale else (np.float32(ig[name]) / data_scale_factor)
-                    ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
-                    self.send_sd_data(ig_sd.get_heap())
+                    self.ig_sd['sd_data'] = ig[name] if not self.acc_scale else (np.float32(ig[name]) / data_scale_factor)
+                    self.ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
+                    self.send_sd_data(self.ig_sd.get_heap())
                 f[self.remap(name)][datasets_index[name]] = ig[name] if not (name.startswith("xeng_raw") and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
                 if name == 'timestamp':
                     try:
@@ -337,6 +351,20 @@ class CaptureDeviceServer(DeviceServer):
         for (ip,port) in self.sdisp_ips.iteritems():
             self.rec_thread.add_sdisp_ip(ip,port)
         return ("ok", "Capture initialised at %s" % time.ctime())
+
+    @request(Int())
+    @return_reply(Str())
+    def request_set_center_freq(self, sock, center_freq_hz):
+        """Set the center freq for use in the signal displays.
+    
+        Parameters
+        ----------
+        center_freq_hz : int
+            The current system center frequency in hz
+        """
+        if self.rec_thread is None: return ("fail","No active capture thread. Please start one using capture_init")
+        self.rec_thread.center_freq = center_freq_hz
+        return ("ok","set")
 
     @request(Str(), Str())
     @return_reply(Str())
