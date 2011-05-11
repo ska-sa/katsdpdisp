@@ -66,7 +66,7 @@ def receive(data_port, acc_scale, sd_ip, cfg):
     ig_sd = spead.ItemGroup()
     fname = str(int(time.time())) + ".pc.h5"
     f = h5py.File(fname, mode="w")
-    f['/'].attrs['version_number'] = hdf5_version
+    f['/'].attrs['version'] = hdf5_version
     f['/'].create_group('Data')
     f['/'].create_group('MetaData')
     f['/'].create_group('MetaData/Configuration')

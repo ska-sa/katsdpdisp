@@ -339,6 +339,8 @@ class SignalDisplayStore(object):
         self._last_offset = None
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
+        self.n_chans = 512
+         # a default value, that gets overwritten on loading data
         self.cpref = None
         self.cur_frames = {}
          # a dict of the most recently completed frames for each corr_prod_id. Not guaranteed to be for the same timestamp...
@@ -447,6 +449,7 @@ class SignalDisplayStore(object):
                 cf = d['Correlator'].attrs['center_frequency_hz']
                 bw = d['Correlator'].attrs['channel_bandwidth_hz']
                 nc = d['Correlator'].attrs['num_freq_channels']
+                self.n_chans = nc
                 self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
                 self.center_freqs_mhz.reverse()
                  # channels mapped in reverse order
@@ -553,9 +556,9 @@ class SpeadSDReceiver(threading.Thread):
         """Update the table containing the center frequencies for each channels."""
         try:
             self.center_freq = self.ig['center_freq']
-            self.n_chans = self.ig['n_chans']
-            self.channel_bandwidth = self.ig['bandwidth'] / self.n_chans
-            self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.n_chans/2, self.n_chans/2)]
+            self.channels = self.ig['n_chans']
+            self.channel_bandwidth = self.ig['bandwidth'] / self.channels
+            self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except ValueError:
@@ -2256,6 +2259,7 @@ class KATData(object):
         st = SignalDisplayStore()
         st.pc_load_letter(filename, rows=rows)
         r = NullReceiver(st)
+        r.channels = st.n_chans
         self.sd_pc = DataHandler(dbe=None, receiver=r, store=st)
         print "Signal display data available as .sd_pc"
 
@@ -2274,6 +2278,7 @@ class KATData(object):
         st.load(filename, cscan=cscan, scan=scan, start=start, end=end)
         r = NullReceiver(st)
         r.cpref = st.cpref
+        r.channels = st.n_chans
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
         print "Historical signal display data available as .sd_hist"
 
