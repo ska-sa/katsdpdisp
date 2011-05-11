@@ -38,6 +38,7 @@ class SimulatorDeviceServer(DeviceServer):
         del kwargs['config_file']
         self.c.setDaemon(True)
         self.c.start()
+        self.c.spead_issue()
         super(SimulatorDeviceServer, self).__init__(*args, **kwargs)
 
     def setup_sensors(self):
