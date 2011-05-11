@@ -154,11 +154,14 @@ class CorrProdRef(object):
         A dict mapping antenna description strings to a specific product id
     n_ants : int
         The antenna limit for default mapping production.
+    no_bls : boolean
+        No accurate information is known. Use inp notation (e.g. 0x) instead of real antenna notation
     """
-    def __init__(self, bls_ordering=None, n_ants=8):
+    def __init__(self, bls_ordering=None, n_ants=8, no_bls=False):
         self.bls_ordering = bls_ordering
+        self.no_bls = no_bls
         self.n_ants = n_ants
-        if self.bls_ordering is None: self.bls_ordering = self.get_default_bl_map(n_ants)
+        if self.bls_ordering is None: self.bls_ordering = self.get_default_bl_map(n_ants, no_bls)
         self._id_to_real = {}
         self._id_to_real_long = {}
         self._antennas = {}
@@ -176,7 +179,7 @@ class CorrProdRef(object):
             self._id_to_real[i] = a + " * " + b
             self._id_to_real_long[i] = "%s %s * %s %s" % (a[:-1].replace("ant","Antenna "),a[-1],b[:-1].replace("ant","Antenna "),b[-1])
 
-    def get_default_bl_map(self, n_ants):
+    def get_default_bl_map(self, n_ants, no_bls):
         """Return a default baseline mapping by replacing inputs with proper antenna names."""
         bls = []
         order1, order2 = [], []
@@ -188,8 +191,12 @@ class CorrProdRef(object):
         order2 = [o for o in order2 if o not in order1]
         bls_raw = tuple([o for o in order1 + order2])
         for b in bls_raw:
-            for p in ['HH','HV','VH','VV']:
-                bls.append("ant%i%s_ant%i%s" % (b[0]+1,p[0],b[1]+1,p[1]))
+            if no_bls:
+                for p in ['xx','xy','yx','yy']:
+                    bls.append("inp%i%s_inp%i%s" % (b[0],p[0],b[1],p[1]))
+            else:
+                for p in ['HH','HV','VH','VV']:
+                    bls.append("ant%i%s_ant%i%s" % (b[0]+1,p[0],b[1]+1,p[1]))
         return bls
 
     def id_to_real_str(self, id, short=False):
@@ -513,8 +520,10 @@ class SpeadSDReceiver(threading.Thread):
     pkt_buffer_count : integer
         The buffer size for a single SPEAD heap.
         default: 1024
+    direct : boolean
+        If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, pkt_buffer_count=1024):
+    def __init__(self, port, storage, pkt_buffer_count=1024, direct=False):
         self._port = port
         self.storage = storage
         try:
@@ -532,6 +541,9 @@ class SpeadSDReceiver(threading.Thread):
         self.n_chans = 0
         self.channel_bandwidth = 0
         self.center_freqs_mhz = []
+        self.direct = direct
+        self._direct_meta_required = ['sync_time','scale_factor_timestamp','n_chans','center_freq','bandwidth','bls_ordering']
+        self._direct_meta = {}
         threading.Thread.__init__(self)
 
     def stop(self):
@@ -554,29 +566,53 @@ class SpeadSDReceiver(threading.Thread):
            the storage object.
         """
         import spead
-        for heap in spead.iterheaps(self.rx):
-            self.ig.update(heap)
-            self.heap_count += 1
-            try:
-                if self.ig['center_freq'] is not None:
-                    if self.ig['center_freq'] != self.center_freq:
+        if self.direct:
+            for heap in spead.iterheaps(self.rx):
+                self.ig.update(heap)
+                self.heap_count += 1
+                if self._direct_meta_required == []:
+                 # we have enough meta data to handle direct responses
+                    if self.ig['xeng_raw'] is not None:
+                        data = self.ig['xeng_raw'].swapaxes(0,1)
+                        ts = int((self._direct_meta['sync_time'] + (self.ig['timestamp'] / self._direct_meta['scale_factor_timestamp'])) * 1000)
+                        for id in range(data.shape[0]):
+                            fdata = data[id].flatten()
+                            self.storage.add_data(ts, id, 0, len(fdata), fdata)
+                else:
+                    for name in self.ig.keys():
+                        if name in self._direct_meta_required:
+                            self._direct_meta[name] = self.ig[name]
+                            self._direct_meta_required.remove(name)
+                    if self._direct_meta_required == []:
                         self.update_center_freqs()
-                if self.ig['bls_ordering'] is not None:
-                    if np.array(self.ig['bls_ordering'] != self.bls_ordering).any():
-                        self.bls_ordering = self.ig['bls_ordering']
-                        self.cpref.bls_ordering = self.bls_ordering.tolist()
-                        self.cpref.precompute()
-                    self.ig['bls_ordering'] = None
-                if self.ig['sd_data'] is not None:
-                    data = self.ig['sd_data']
-                    data = data.swapaxes(0,1)
-                    ts = self.ig['sd_timestamp'] * 10.0
-                     # timestamp is in centiseconds since epoch (40 bit spead limitation)
-                    for id in range(data.shape[0]):
-                        fdata = data[id].flatten()
-                        self.storage.add_data(ts, id, 0, len(fdata), fdata)
-            except Exception, e:
-                logger.warning("Failed to add signal display frame. (" + str(e) + ")")
+                        print "\nAll Metadata for direct stream acquired"
+                        print "======================================="
+                        print "Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq'])
+                        print "Sync Time: %i, Scale Factor: %i\n" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp'])
+        else:
+            for heap in spead.iterheaps(self.rx):
+                self.ig.update(heap)
+                self.heap_count += 1
+                try:
+                    if self.ig['center_freq'] is not None:
+                        if self.ig['center_freq'] != self.center_freq:
+                            self.update_center_freqs()
+                    if self.ig['bls_ordering'] is not None:
+                        if np.array(self.ig['bls_ordering'] != self.bls_ordering).any():
+                            self.bls_ordering = self.ig['bls_ordering']
+                            self.cpref.bls_ordering = self.bls_ordering.tolist()
+                            self.cpref.precompute()
+                        self.ig['bls_ordering'] = None
+                    if self.ig['sd_data'] is not None:
+                        data = self.ig['sd_data']
+                        data = data.swapaxes(0,1)
+                        ts = self.ig['sd_timestamp'] * 10.0
+                         # timestamp is in centiseconds since epoch (40 bit spead limitation)
+                        for id in range(data.shape[0]):
+                            fdata = data[id].flatten()
+                            self.storage.add_data(ts, id, 0, len(fdata), fdata)
+                except Exception, e:
+                    logger.warning("Failed to add signal display frame. (" + str(e) + ")")
         self.rx.stop()
 
 class SignalDisplayReceiver(threading.Thread):
@@ -594,14 +630,14 @@ class SignalDisplayReceiver(threading.Thread):
         The size in bytes to set the udp receive buffer to.
         default: 512000
     """
-    def __init__(self, port, storage, recv_buffer=512000):
+    def __init__(self, port, storage, n_ants=2, recv_buffer=512000):
         self.port = port
         self.storage = storage
         self._running = True
         self.data_rate = 0
         self.process_time = 0
-        self.n_ants = 2
-        self.cpref = CorrProdRef(n_ants=self.n_ants)
+        self.n_ants = n_ants
+        self.cpref = CorrProdRef(n_ants=self.n_ants,no_bls=True)
          # default to 2 antennas as this receiver only used by fringe finder
         threading.Thread.__init__(self)
         self.packet_count = 0
@@ -1260,13 +1296,13 @@ class DataHandler(object):
             self.storage = SignalDisplayStore()
         else:
             self.storage = store
-        self.cpref = receiver.cpref
         self.receiver = receiver
         if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
             self.receiver.setDaemon(True)
             self.receiver.start()
             quitter.register_callback("Data Handler", self.stop)
+        self.cpref = self.receiver.cpref
         self.default_product = (1, 2, 'HH')
         self.default_products = [(1, 2, 'HH')]
         self._debug = False
@@ -2158,8 +2194,7 @@ class DataHandler(object):
             pl.yscale(scale)
         if len(self.receiver.center_freqs_mhz) > 0:
             freq_range = self.receiver.center_freqs_mhz[start_channel:stop_channel]
-            pl.xticks(range(0,len(freq_range),25), [int(self.receiver.center_freqs_mhz[start_channel+f]) for f in range(0,len(freq_range),25)])
-
+            pl.xticks(range(0,len(freq_range),25), [int(self.receiver.center_freqs_mhz[start_channel+fc]) for fc in range(0,len(freq_range),25)])
         s = [[0]]
         for i,product in enumerate(products):
             if s == [[0]]:
@@ -2195,7 +2230,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, n_ants=4):
+    def start_spead_receiver(self, port=7149):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -2205,6 +2240,14 @@ class KATData(object):
         """
         st = SignalDisplayStore()
         r = SpeadSDReceiver(port,st)
+        r.setDaemon(True)
+        r.start()
+        self.sd = DataHandler(dbe=None, receiver=r, store=st)
+
+    def start_direct_spead_receiver(self, port=7148):
+        """Starts a SPEAD signal display receiver to handle data directly from the correlator."""
+        st = SignalDisplayStore()
+        r = SpeadSDReceiver(port, st, direct=True)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(dbe=None, receiver=r, store=st)
