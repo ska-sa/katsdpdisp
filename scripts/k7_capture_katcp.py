@@ -210,7 +210,7 @@ class k7Capture(threading.Thread):
                     self.meta[name] = ig[name]
                     meta_required.remove(name)
                     if not meta_required:
-                        self.sd_frame = np.zeros((self.meta['n_chans'],self.meta['n_bls']*4,2),dtype=np.float32)
+                        self.sd_frame = np.zeros((self.meta['n_chans'],self.meta['n_bls'],2),dtype=np.float32)
                         print "Initialised sd frame to shape",self.sd_frame.shape
                         meta_required = set(['n_chans','n_bls','bls_ordering','bandwidth'])
                         sd_slots = None
@@ -259,8 +259,9 @@ class k7Capture(threading.Thread):
                         self.send_sd_metadata()
                         t_it = self.ig_sd.get_item('sd_data')
                         print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
-                    print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % (data_scale_factor,), np.max(ig[name]), np.mean(ig[name]))
-                    self.ig_sd['sd_data'] = np.float32(ig[name]) / data_scale_factor
+                    scaled_data = np.float32(ig[name]) / data_scale_factor
+                    print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % (data_scale_factor,), np.max(scaled_data), np.mean(scaled_data))
+                    self.ig_sd['sd_data'] = scaled_data
                     self.ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                     self.send_sd_data(self.ig_sd.get_heap())
                 f[self.remap(name)][datasets_index[name]] = ig[name] if not (name.startswith("xeng_raw") and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
