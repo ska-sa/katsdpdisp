@@ -208,7 +208,7 @@ def insert_sensor(name, dataset, obs_start, obs_end, int_time, iv=False, default
 def create_group(f, name):
     try:
         ng = f.create_group(name)
-    except:
+    except Exception:
         ng = f[name]
     return ng
 
@@ -330,7 +330,7 @@ initial_lo1 = kat.rfe7.sensor.rfe7_lo1_frequency.get_value()
 dbe_device = getattr(kat, options.dbe_name)
 array_config = dbe_device.sensor.array_config.get_value()
  # get array config from the correlator we're using
-kat.disconnect()
+#kat.disconnect()
  # we dont need live connection anymore
 section_reports['configuration'] = str(options.system)
 
@@ -398,7 +398,7 @@ while(len(files) > 0 or options.batch):
                 # noise diode models
                 try:
                     ac.attrs['description'] = antennas[ant_name].description
-                except:
+                except Exception:
                     print_tb()
                     section_reports[ant_name + ' description'] = "Error: Cannot find description for antenna %r" % (ant_name,)
                 for pol in ['h','v']:
@@ -487,7 +487,7 @@ while(len(files) > 0 or options.batch):
             renfile = y + new_extension
             os.rename(fname, renfile)
             print "File has been renamed to " + str(renfile) + "\n"
-        except:
+        except Exception:
             print_tb()
             print "Failed to rename " + str(fname) + " to " + str(renfile) + ". This is most likely a permissions issue. Please resolve these and either manually rename the file or rerun augment with the -o option."
             continue
