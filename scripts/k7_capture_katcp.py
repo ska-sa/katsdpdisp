@@ -60,16 +60,15 @@ def parse_opts(argv):
     parser.add_option('--include_cfg', action='store_true', default=False, help='pull configuration information via katcp from the configuration server')
     #parser.add_option('--ip', default='127.0.0.1', help='signal display ip')
     parser.add_option('--data-port', default=7148, type=int, help='port to receive data on')
-    parser.add_option('--acc-scale', action='store_true', default=False, help='scale by the reported number of accumulations per dump')
     parser.add_option("-s", "--system", default="systems/local.conf", help="system configuration file to use. [default=%default]")
     parser.add_option('-p', '--port', dest='port', type=long, default=2040, metavar='N', help='attach to port N (default=2040)')
     parser.add_option('-a', '--host', dest='host', type="string", default="", metavar='HOST', help='listen to HOST (default="" - all hosts)')
     return parser.parse_args(argv)
 
 class k7Capture(threading.Thread):
-    def __init__(self, data_port, acc_scale, cfg, pkt_sensor, status_sensor):
+    def __init__(self, data_port, cfg, pkt_sensor, status_sensor):
         self.data_port = data_port
-        self.acc_scale = acc_scale
+        self.acc_scale = True
         self.cfg = cfg
         self._label_idx = 0
         self._log_idx = 0
@@ -222,6 +221,8 @@ class k7Capture(threading.Thread):
                     if dtype is None:
                         dtype = ig[name].dtype
                      # if we can't get a dtype from the descriptor try and get one from the value
+                    if name == 'xeng_raw':
+                        dtype = np.dtype(np.float32)
                     print "Creating dataset for name:",name,", shape:",shape,", dtype:",dtype
                     new_shape = list(shape)
                     if new_shape == [1]:
@@ -249,7 +250,7 @@ class k7Capture(threading.Thread):
                     sd_timestamp = ig['sync_time'] + (ig['timestamp'] / ig['scale_factor_timestamp'])
                     print "SD Timestamp:", sd_timestamp," (",time.ctime(sd_timestamp),")"
                     if sd_slots is None:
-                        self.sd_frame.dtype = np.dtype(np.float32) if self.acc_scale else ig[name].dtype
+                        self.sd_frame.dtype = np.dtype(np.float32) # if self.acc_scale else ig[name].dtype
                          # make sure we have the right dtype for the sd data
                         sd_slots = np.zeros(self.meta['n_chans']/ig[name].shape[0])
                         n_xeng = len(sd_slots)
@@ -259,7 +260,7 @@ class k7Capture(threading.Thread):
                         t_it = self.ig_sd.get_item('sd_data')
                         print "Added SD frame dtype",t_it.dtype,"and shape",t_it.shape,". Metadata descriptors sent: %s" % self._sd_metadata
                     print "Sending signal display frame with timestamp %i. %s. Max: %f, Mean: %f" % (sd_timestamp, "Unscaled" if not self.acc_scale else "Scaled by %i" % (data_scale_factor,), np.max(ig[name]), np.mean(ig[name]))
-                    self.ig_sd['sd_data'] = ig[name] if not self.acc_scale else (np.float32(ig[name]) / data_scale_factor)
+                    self.ig_sd['sd_data'] = np.float32(ig[name]) / data_scale_factor
                     self.ig_sd['sd_timestamp'] = int(sd_timestamp * 100)
                     self.send_sd_data(self.ig_sd.get_heap())
                 f[self.remap(name)][datasets_index[name]] = ig[name] if not (name.startswith("xeng_raw") and self.acc_scale) else (np.float32(ig[name]) / data_scale_factor)
@@ -343,7 +344,7 @@ class CaptureDeviceServer(DeviceServer):
         """Spawns a new capture thread that waits for a SPEAD start stream packet."""
         if self.rec_thread is not None:
             return ("fail", "Existing capture session found. If you really want to init, stop the current capture using capture_stop.")
-        self.rec_thread = k7Capture(opts.data_port, opts.acc_scale, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
+        self.rec_thread = k7Capture(opts.data_port, cfg, self._my_sensors["packets-captured"], self._my_sensors["status"])
         self.rec_thread.setDaemon(True)
         self.rec_thread.start()
         self._my_sensors["capture-active"].set_value(1)
