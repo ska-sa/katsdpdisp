@@ -187,7 +187,7 @@ class k7Capture(threading.Thread):
         dump_size = 0
         datasets = {}
         datasets_index = {}
-        meta_required = set(['n_chans','n_bls','n_stokes','bls_ordering','bandwidth'])
+        meta_required = set(['n_chans','n_bls','bls_ordering','bandwidth'])
          # we need these bits of meta data before being able to assemble and transmit signal display data
         meta_desired = ['n_accs','center_freq']
          # if we find these, then what hey :)
@@ -210,9 +210,9 @@ class k7Capture(threading.Thread):
                     self.meta[name] = ig[name]
                     meta_required.remove(name)
                     if not meta_required:
-                        self.sd_frame = np.zeros((self.meta['n_chans'],self.meta['n_bls']*self.meta['n_stokes'],2),dtype=np.float32)
+                        self.sd_frame = np.zeros((self.meta['n_chans'],self.meta['n_bls']*4,2),dtype=np.float32)
                         print "Initialised sd frame to shape",self.sd_frame.shape
-                        meta_required = set(['n_chans','n_bls','n_stokes','bls_ordering','bandwidth'])
+                        meta_required = set(['n_chans','n_bls','bls_ordering','bandwidth'])
                         sd_slots = None
                 if not name in datasets:
                  # check to see if we have encountered this type before
