@@ -303,6 +303,8 @@ class CaptureDeviceServer(DeviceServer):
         self.rec_thread = None
         self.current_file = None
         self.sdisp_ips = {}
+        self.sdisp_ips['127.0.0.1'] = 7149
+         # add default signal display destination
         self._my_sensors = {}
         self._my_sensors["capture-active"] = Sensor(Sensor.INTEGER, "capture_active", "Is there a currently active capture thread.","",default=0, params = [0,1])
         self._my_sensors["packets-captured"] = Sensor(Sensor.INTEGER, "packets_captured", "The number of packets captured so far by the current session.","",default=0, params=[0,2**63])
