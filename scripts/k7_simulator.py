@@ -108,6 +108,16 @@ class SimulatorDeviceServer(DeviceServer):
         return ("ok","Azimuth set to %f" % az)
 
 
+    @request(Str(),Str())
+    @return_reply(Str())
+    def request_label_input(self, sock, inp, label):
+        """Label the specified input with a string."""
+        if self.c.labels.has_key(inp):
+            self.c.labels[inp] = label
+            self.c.update_bls_ordering()
+            return ("ok","Label set.")
+        return ("fail","Input %s does not follow \d[x|y] form" % inp)
+
     @request(Str(),Str(),Int())
     @return_reply(Str())
     def request_capture_destination(self, sock, destination, ip, port):
@@ -137,10 +147,11 @@ class SimulatorDeviceServer(DeviceServer):
 class K7Correlator(threading.Thread):
     def __init__(self, config_file):
         self.config = corr.cn_conf.CorrConf(config_file)
-        self.bls_ordering = np.array(self.get_default_bl_map())
+        self.labels = dict([[str(x)+y,str(x)+y] for x in range(8) for y in ['x','y']])
          # in np form so it will work as a spead item descriptor
         self.sync_time = int(time.time())
         self.adc_value = 0
+        self.update_bls_ordering()
         self.tx=spead.Transmitter(spead.TransportUDPtx(self.config['rx_meta_ip_str'],self.config['rx_udp_port']))
         self.data_ig=spead.ItemGroup()
         self._data_meta_descriptor = None
@@ -160,12 +171,17 @@ class K7Correlator(threading.Thread):
         self._thread_paused = False
         threading.Thread.__init__(self)
 
+    def update_bls_ordering(self):
+        """Update the mapping based on the specified input labelling."""
+        self.bls_ordering = np.array(self.get_default_bl_map())
+
     def get_default_bl_map(self):
         """Return a default baseline mapping by replacing inputs with proper antenna names."""
         bls = []
         for b in self.get_bl_order():
-            for p in ['HH','HV','VH','VV']:
-                bls.append("ant%i%s_ant%i%s" % (b[0]+1,p[0],b[1]+1,p[1]))
+            for p in ['xx','yy','xy','yx']:
+                bls.append([self.labels[str(b[0])+p[0]], self.labels[str(b[1])+p[1]]])
+        print bls
         return bls
 
     def get_bl_order(self):
@@ -217,7 +233,7 @@ class K7Correlator(threading.Thread):
         data = np.tile(data, self.config['n_bls'] * self.config['n_stokes'])
         data = data.reshape((self.config['n_chans'],self.config['n_bls'] * self.config['n_stokes'],2), order='C')
         for ib in range (self.config['n_bls'] * self.config['n_stokes']):#for different baselines
-            (a1,a2)= self.bls_ordering[ib].split("_")
+            (a1,a2)= self.bls_ordering[ib]
             if a1[:-1] == a2[:-1]:
                 auto_d=np.abs(data[:,ib,:]+((ib*32131+48272)%1432)/1432.0*200.0+np.random.randn(self.config['n_chans']*2).reshape([self.config['n_chans'],2])*500.0) + 1000
                 auto_d[:,1] = 0
