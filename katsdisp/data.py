@@ -1296,21 +1296,21 @@ class DataHandler(object):
             if self._local_ip is None:
                 print "DataHandler failed to determine external IP address."
             else:
-                print "Adding IP",self._local_ip,"to K7W listeners..."
+                print "Adding IP",self._local_ip,"to list of signal display destination addresses."
                 self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
-        else:
-            pass
-             # brave new world... k7 does not require dbe connection so don't bother letting the user know
+
+        self.storage = store
         if store is None:
             self.storage = SignalDisplayStore()
-        else:
-            self.storage = store
+
         self.receiver = receiver
         if receiver is None:
             self.receiver = SignalDisplayReceiver(port, self.storage)
             self.receiver.setDaemon(True)
             self.receiver.start()
-            quitter.register_callback("Data Handler", self.stop)
+
+        quitter.register_callback("Data Handler", self.stop)
+
         self.cpref = self.receiver.cpref
         self.default_product = (1, 2, 'HH')
         self.default_products = [(1, 2, 'HH')]
@@ -2236,6 +2236,33 @@ class KATData(object):
         self.dbe = dbe
         self.sd = None
 
+    def find_dbe(self, dbe):
+        """Attempts to find an active connection to the dbe proxy in the current session.
+
+        Parameters
+        ----------
+        dbe : string
+            The name of the dbe proxy to find. Typically dbe / dbe7
+        """
+        print "Checking local environment for active dbe proxy named %s" % dbe
+        try:
+            import IPython
+            ip_api = IPython.ipapi.get()
+        except ImportError:
+            print "Proxy detection only works for IPython sessions."
+            return
+
+        try:
+            active_hosts = dict([(k, v) for k, v in ip_api.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
+            if len(active_hosts) > 0:
+                k = active_hosts[max(active_hosts)]
+                try:
+                    self.dbe = getattr(k,dbe)
+                except AttributeError:
+                    print "Active katuilib seesion found, but no dbe proxy available."
+        except (KeyError, AttributeError):
+            print "No active katuilib session found."
+
     def register_dbe(self, dbe):
         self.dbe = dbe
 
@@ -2247,11 +2274,17 @@ class KATData(object):
         port : integer
             default: 7149
         """
+        if self.dbe is None:
+            self.find_dbe("dbe7")
+
+        if self.dbe is None:
+            print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
+
         st = SignalDisplayStore()
         r = SpeadSDReceiver(port,st)
         r.setDaemon(True)
         r.start()
-        self.sd = DataHandler(dbe=None, receiver=r, store=st)
+        self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
     def start_direct_spead_receiver(self, port=7148):
         """Starts a SPEAD signal display receiver to handle data directly from the correlator."""
@@ -2297,7 +2330,7 @@ class KATData(object):
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
         print "Historical signal display data available as .sd_hist"
 
-    def start_sdisp(self, ip=None):
+    def start_ff_receiver(self, port=7006):
         """Connect the data handler object to the signal display data stream and create a new DataHandler service
         for the incoming data.
 
@@ -2305,24 +2338,36 @@ class KATData(object):
         A new DataHandler is created to receive and interpret the incoming signal display frames.
 
         Once this command has executed successfully the signal display data will be available under the sd name.
+
+        Parameters
+        ----------
+        port : integer
+            default: 7006
         
         Example
         -------
         Start the signal display receiver:
-        >>> kat.dh.start_sdisp()
+        >>> kat.dh.start_ff_receiver()
         Check that the number of packets received increases over time by running a few times:
         >>> kat.dh.sd.receiver.stats()
         Make a waterfall plot of the data:
         >>> kat.dh.sd.plot_waterfall()
         Animate the last plot:
         >>> _.animate()
-        
         """
         logger.info("Starting signal display capture")
-        if self.dbe is not None:
-            self.sd = DataHandler(self.dbe, ip=ip)
-        else:
-            print "No dbe device known. Unable to start capture"
+
+        if self.dbe is None:
+            self.find_dbe("dbe")
+
+        if self.dbe is None:
+            print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
+
+        st = SignalDisplayStore()
+        r = SignalDisplayReceiver(port, st)
+        r.setDaemon(True)
+        r.start()
+        self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
     def stop_sdisp(self):
         """Stop the signal display data receiving thread.
@@ -2552,7 +2597,6 @@ def external_ip(preferred_ifaces=('eth0', 'en0')):
                     else:
                         other_ips.append(addr['addr'])
         ips = preferred_ips + other_ips
-
     if ips:
         return ips[0]
     else:
