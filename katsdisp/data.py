@@ -2572,11 +2572,17 @@ class KATData(object):
         return pa
 
 
-def external_ip(preferred_ifaces=('eth0', 'en0')):
+def external_ip(preferred_prefixes=('eth', 'en')):
     """Return the external IPv4 address of this machine.
 
     Attempts to use netifaces module if available, otherwise
     falls back to socket.
+
+    Parameters
+    ----------
+    preferred_prefixes : tuple
+        A tuple of string prefixes for network interfaces to match. e.g. ('eth','en') matches ethX and enX
+        with a preference for lowest number first (eth0 over eth3).
 
     Returns
     -------
@@ -2592,10 +2598,11 @@ def external_ip(preferred_ifaces=('eth0', 'en0')):
         for iface in netifaces.interfaces():
             for addr in netifaces.ifaddresses(iface).get(netifaces.AF_INET, []):
                 if 'addr' in addr:
-                    if iface in preferred_ifaces:
-                        preferred_ips.append(addr['addr'])
-                    else:
-                        other_ips.append(addr['addr'])
+                    for prefix in preferred_prefixes:
+                        if iface.startswith(prefix): preferred_ips.append(addr['addr'])
+                    other_ips.append(addr['addr'])
+                     # will duplicate those in preferred_ips but this doesn't matter as we only
+                     # use other_ips if preferred is empty.
         ips = preferred_ips + other_ips
     if ips:
         return ips[0]
