@@ -176,6 +176,7 @@ class CorrProdRef(object):
     def precompute(self):
         self.autos = []
         self.ant_pol_autos = []
+        print self.bls_ordering
         for i,bls in enumerate(self.bls_ordering):
             a,b = bls
             self.labels[a] = 1
@@ -485,7 +486,7 @@ class SignalDisplayStore(object):
                 im = d['/Correlator/input_map'].value
                 bls_ordering = []
                 for v in im:
-                    bls_ordering.append(ant_to_inp[v[1][:2]] + "_" + ant_to_inp[v[1][2:]])
+                    bls_ordering.append([ant_to_inp[v[1][:2]],ant_to_inp[v[1][2:]]])
             except KeyError:
                 pass #no default baseline information
             self.cpref = CorrProdRef(bls_ordering=bls_ordering)
