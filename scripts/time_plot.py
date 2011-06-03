@@ -1204,7 +1204,8 @@ elif (datafile=='k7simulator'):
     dh.start_direct_spead_receiver()
     datasd=dh.sd
 else:
-    dh.load_data(datafile)
+    dh.load_ff_data(datafile)
+     # for kat7 data, use load_k7_data
     datasd=dh.sd_hist
 
 if (len(datasd.storage.cur_frames)):

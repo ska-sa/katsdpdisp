@@ -166,17 +166,24 @@ class CorrProdRef(object):
         self._id_to_real_long = {}
         self.antennas = {}
         self.labels = {}
+        self.autos = []
+        self.inputs = []
         self._pol_dict = ['HH','VV','HV','VH']
         self.precompute()
          # precompute a number of lookups to save processing later on. (Some of these are called a lot...)
          # populates id_to_real, id_to_real_long, updates n_ants,
 
     def precompute(self):
+        self.autos = []
+        self.ant_pol_autos = []
         for i,bls in enumerate(self.bls_ordering):
             a,b = bls
             self.labels[a] = 1
-            if not a[:-1] in self.antennas: self.antennas[a[:-1]] = {'H':0,'V':0}
+            if not a[:-1] in self.antennas: self.antennas[a[:-1]] = {}
             self.antennas[a[:-1]][a[-1]] = 1
+            if a == b:
+                self.autos.append(i)
+                self.inputs.append(a)
             self._id_to_real[i] = a + " * " + b
             self._id_to_real_long[i] = "%s %s * %s %s" % (a[:-1].replace("ant","Antenna "),a[-1],b[:-1].replace("ant","Antenna "),b[-1])
 
@@ -199,6 +206,13 @@ class CorrProdRef(object):
                 for p in ['HH','HV','VH','VV']:
                     bls.append(["ant%i%s" % (b[0]+1,p[0]), "ant%i%s" % (b[1]+1,p[1])])
         return bls
+
+    def get_auto_from_cross(self, id):
+        """Returns the pair of ids that are correspond to the auto correlations of the two inputs used
+        in the specified baseline."""
+        i1,i2 = self.bls_ordering[id]
+        a1,a2 = self.autos[self.inputs.index(i1)], self.autos[self.inputs.index(i2)]
+        return (a1,a2)
 
     def id_to_real_str(self, id, short=False):
         id = self.user_to_id(id)
@@ -1586,6 +1600,7 @@ class DataHandler(object):
         try:
             fkeys = self.storage.corr_prod_frames[product].keys()
         except KeyError, exc:
+            print self.storage.corr_prod_frames
             raise InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product),)), None, None
         fkeys.sort()
         ts = []
