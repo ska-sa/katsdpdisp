@@ -175,7 +175,10 @@ class CorrProdRef(object):
 
     def precompute(self):
         self.autos = []
+        self.inputs = []
         self.ant_pol_autos = []
+        self._id_to_real = {}
+        self._id_to_real_long = {}
         print self.bls_ordering
         for i,bls in enumerate(self.bls_ordering):
             a,b = bls
@@ -622,9 +625,9 @@ class SpeadSDReceiver(threading.Thread):
                         if self.ig['center_freq'] != self.center_freq:
                             self.update_center_freqs()
                     if self.ig['bls_ordering'] is not None:
-                        if np.array(self.ig['bls_ordering'] != self.bls_ordering).any():
-                            self.bls_ordering = self.ig['bls_ordering']
-                            self.cpref.bls_ordering = self.bls_ordering.tolist()
+                        if self.ig['bls_ordering'].tolist() != self.bls_ordering:
+                            self.bls_ordering = self.ig['bls_ordering'].tolist()
+                            self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
