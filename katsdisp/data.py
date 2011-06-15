@@ -347,14 +347,36 @@ class SignalDisplayStore(object):
     ----------
     n_ants : integer
         The number of antennas in the system. used for conversion. !!To be replaced by antenna config file!!
-    capacity : integer
-        The overall number of correlator dumps to store.
-        The size of a single, complete dump is: channels * correlation_products * 8 bytes
-        default: 3600
+    capacity : float
+        The fraction of total physical memory to use for data storage on this machine.
+        default: 0.2
     """
-    def __init__(self, n_ants=2, capacity=3600):
-        self.capacity = capacity
+    def __init__(self, n_ants=2, capacity=0.2):
+        try:
+            import psutil
+            self.mem_cap = int(psutil.avail_phymem() * capacity)
+        except ImportError:
+            self.mem_cap = 1024*1024*128
+             # default to 128 megabytes if we cannot determine system memory
+        print "Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0))
         self.n_ants = n_ants
+        self.center_freqs_mhz = []
+         # currently this only gets populated on loading historical data
+        self.n_chans = 512
+         # a default value, that gets overwritten on loading data
+        self.cpref = None
+        self.init_storage()
+
+    def get_capacity(self):
+        """Print out the current store capacity..."""
+        print "Used %.2f/%.2f MB." % (self.bytes_used / (1024.0*1024), self.mem_cap / (1024.0*1024))
+        if self._frame_size_bytes is not None:
+            print "In total %is of data can be stored." % (self.mem_cap / (self._frame_size_bytes * len(self.cur_frames)))
+        else:
+            print "Unable to estimate number of integrations to be stored until capture has started."
+
+    def init_storage(self):
+        """Clear all data storage structures in the store."""
         self.time_frames = {}
          # a dictionary of SignalDisplayFrames. Organised by timestamp and then correlation product id
         self.corr_prod_frames = {}
@@ -362,11 +384,9 @@ class SignalDisplayStore(object):
         self._last_frame = None
         self._last_data = None
         self._last_offset = None
-        self.center_freqs_mhz = []
-         # currently this only gets populated on loading historical data
-        self.n_chans = 512
-         # a default value, that gets overwritten on loading data
-        self.cpref = None
+        self._frame_size_bytes = None
+        self._frame_count = 0
+        self.bytes_used = 0
         self.cur_frames = {}
          # a dict of the most recently completed frames for each corr_prod_id. Not guaranteed to be for the same timestamp...
 
@@ -395,6 +415,7 @@ class SignalDisplayStore(object):
 
         if not self.time_frames[timestamp_ms].has_key(corr_prod_id):
             frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length)
+            self._frame_count += 1
             self.time_frames[timestamp_ms][corr_prod_id] = frame
             self.corr_prod_frames[corr_prod_id][timestamp_ms] = frame
              # add the blank frame
@@ -406,13 +427,18 @@ class SignalDisplayStore(object):
             self.cur_frames[corr_prod_id] = frame
              # always point to the most recently completed valid frame
          # if we have run up against our storage capacity we should complete the current frame and the pop the earliest frame from the stack...
-        if len(self.time_frames) > self.capacity:
+        if self._frame_size_bytes is None:
+            self._frame_size_bytes = data.dtype.itemsize * length
+        self.bytes_used = self._frame_count * self._frame_size_bytes
+        if self.bytes_used > self.mem_cap:
             ts = min(self.time_frames.keys())
             x = self.time_frames.pop(ts)
              # pop out the oldest time element
             for prod_id in x.iterkeys():
                 self.corr_prod_frames[prod_id].pop(ts)
+                self._frame_count -= 1
              # remove the stale timestamps from individual ids
+            del x
 
         self._last_frame = frame
         self._last_data = data
@@ -629,6 +655,8 @@ class SpeadSDReceiver(threading.Thread):
                             self.bls_ordering = self.ig['bls_ordering'].tolist()
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
+                            print "Signal display store data purged due to changed baseline ordering..."
+                            self.storage.init_storage()
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         data = self.ig['sd_data']
@@ -2284,13 +2312,16 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149):
+    def start_spead_receiver(self, port=7149, capacity=0.2):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
         ----------
         port : integer
             default: 7149
+        capacity : float
+            The fraction of total physical memory to use for data storage on this machine.
+            default: 0.2
         """
         if self.dbe is None:
             self.find_dbe("dbe7")
@@ -2298,15 +2329,25 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore()
+        st = SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port,st)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
-    def start_direct_spead_receiver(self, port=7148):
-        """Starts a SPEAD signal display receiver to handle data directly from the correlator."""
-        st = SignalDisplayStore()
+    def start_direct_spead_receiver(self, port=7148, capacity=0.2):
+        """Starts a SPEAD signal display receiver to handle data directly from the correlator.
+
+        Parameters
+        ----------
+        port : integer
+            default: 7149
+        capacity : float
+            The fraction of total physical memory to use for data storage on this machine.
+            default: 0.2
+
+        """
+        st = SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port, st, direct=True)
         r.setDaemon(True)
         r.start()
@@ -2348,7 +2389,7 @@ class KATData(object):
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
         print "Historical signal display data available as .sd_hist"
 
-    def start_ff_receiver(self, port=7006):
+    def start_ff_receiver(self, port=7006, capacity=0.2):
         """Connect the data handler object to the signal display data stream and create a new DataHandler service
         for the incoming data.
 
@@ -2361,6 +2402,10 @@ class KATData(object):
         ----------
         port : integer
             default: 7006
+        capacity : float
+            The fraction of total physical memory to use for data storage on this machine.
+            default: 0.2
+
         
         Example
         -------
@@ -2381,7 +2426,7 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore()
+        st = SignalDisplayStore(capacity=capacity)
         r = SignalDisplayReceiver(port, st)
         r.setDaemon(True)
         r.start()
