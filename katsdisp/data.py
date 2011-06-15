@@ -179,7 +179,6 @@ class CorrProdRef(object):
         self.ant_pol_autos = []
         self._id_to_real = {}
         self._id_to_real_long = {}
-        print self.bls_ordering
         for i,bls in enumerate(self.bls_ordering):
             a,b = bls
             self.labels[a] = 1
