@@ -637,10 +637,14 @@ class SpeadSDReceiver(threading.Thread):
                             self._direct_meta_required.remove(name)
                     if self._direct_meta_required == []:
                         self.update_center_freqs()
+                        self.cpref.bls_ordering = self._direct_meta['bls_ordering']
                         print "\nAll Metadata for direct stream acquired"
                         print "======================================="
                         print "Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq'])
-                        print "Sync Time: %i, Scale Factor: %i\n" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp'])
+                        print "Sync Time: %i, Scale Factor: %i" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp'])
+                        print "Baseline Ordering Mapping: %i entries\n" % len(self.cpref.bls_ordering)
+                        self.cpref.precompute()
+                        self.storage.init_storage()
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
