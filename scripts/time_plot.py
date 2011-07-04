@@ -55,6 +55,7 @@ parser.add_option("-d", "--debug", dest="debug", action="store_true",default=Fal
 html_directory=resource_filename("katsdisp","") + "/html/"
 #html_directory=sys.path[0]+'/'
 #html_directory = '/var/kat/static/'
+#html_directory='/Users/mattieu/svnDS/katsdisp/katsdisp/html/'
 
 ##Disable debug warning messages that clutters the terminal, especially when streaming
 logging.basicConfig()
@@ -246,6 +247,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         s = self.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
     start_time=0
     end_time=s[0][-1]
+    minf1a=np.inf
+    maxf1a=-np.inf
     if (time_absminx>0):
         start_time=time_absminx
     if (time_absmaxx>0):
@@ -262,6 +265,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
             data = get_time_series(self,dtype='phase',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             ap.add_update_function(get_time_series, dtype='phase', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            minf1a=min(minf1a,min(data[1]));
+            maxf1a=max(maxf1a,max(data[1]));
     else:
         if (f1b):
             f1b.clear()
@@ -272,6 +277,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            minf1a=min(minf1a,min(data[1]));
+            maxf1a=max(maxf1a,max(data[1]));
     if (time_legend=='true'):
         f1a.legend(loc=0)
     if (spectrum_abstimeinst>0):
@@ -282,6 +289,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         f1b.axis('tight')
         f1b.set_ylabel('Phase [radians]')
     f1a.axis('tight')
+    extrapadding=(maxf1a-minf1a)*0.025;
+    f1a.set_ylim([minf1a-extrapadding,maxf1a+extrapadding])
     f1a.set_xlabel("Time since " + time.ctime(s[0][-1]))
     if dtype == 'phase':
         f1a.set_ylabel("Phase [radians]")
