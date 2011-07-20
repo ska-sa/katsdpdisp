@@ -260,11 +260,11 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         for i,product in enumerate(products):
             data = get_time_series(self,dtype='pow',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            else: ap.add_update_function(get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#            else: ap.add_update_function(get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             data = get_time_series(self,dtype='phase',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            ap.add_update_function(get_time_series, dtype='phase', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#            ap.add_update_function(get_time_series, dtype='phase', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
     else:
@@ -275,8 +275,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         for i,product in enumerate(products):
             data = get_time_series(self,dtype=dtype,product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#            else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
     if (time_legend=='true'):
@@ -299,7 +299,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
 #    f.show()
 #    pl.draw()
 #    self._add_plot(sys._getframe().f_code.co_name, ap)
-    return ap
+
+#    return ap
 
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg
@@ -362,13 +363,13 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
         for i,product in enumerate(products):
             data=get_spectrum(self,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            if i == 0:
-                ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time,  avg_axis=0)
-            else:
-                ap.add_update_function(get_spectrum, product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
+#            if i == 0:
+#                ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time,  avg_axis=0)
+#            else:
+#                ap.add_update_function(get_spectrum, product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
             data=get_spectrum(self,product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0);
             f2b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            ap.add_update_function(get_spectrum, product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
+#            ap.add_update_function(get_spectrum, product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
     else:
         if (f2b):
             f2b.clear()
@@ -377,10 +378,10 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
         for i,product in enumerate(products):
             data=get_spectrum(self,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-            if i == 0:
-                ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
-            else:
-                ap.add_update_function(get_spectrum, product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
+ #           if i == 0:
+ #               ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
+ #           else:
+ #               ap.add_update_function(get_spectrum, product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
 
     if dtype == 'phase': f2a.set_title("Phase Spectrum at " + time.ctime(s[0][-1]) + avg)
     elif (dtype=='powphase'): f2a.set_title("Power&Phase Spectrum at " + time.ctime(s[0][-1]) + avg)
@@ -394,7 +395,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
 #    f.show()
 #    pl.draw()
 #    self._add_plot(sys._getframe().f_code.co_name, ap)
-    return ap
+#    return ap
 
 
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
@@ -435,9 +436,9 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
         f3a.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
         if (waterfall_seltypemenux!='channel'):
             f3a.set_xlim(f3a.get_xlim()[::-1])
-        ap = katsdisp.AnimatablePlot(f3,get_waterfall,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-        ap.set_colorbar(cbar)
-        return ap
+#        ap = katsdisp.AnimatablePlot(f3,get_waterfall,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+#        ap.set_colorbar(cbar)
+#        return ap
     else:
         print "No stored data available..."
 
@@ -530,10 +531,10 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
         f4a.set_xticks(np.arange(16))
         f4a.set_xticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(16)])
         f4a.set_ylim((15.5,-0.5))
-        ap = katsdisp.AnimatablePlot(f4, get_baseline_matrix, start_channel=start_channel, stop_channel=stop_channel)
-        ap.set_colorbar(cbar)
+#        ap = katsdisp.AnimatablePlot(f4, get_baseline_matrix, start_channel=start_channel, stop_channel=stop_channel)
+#        ap.set_colorbar(cbar)
 #        self._add_plot(sys._getframe().f_code.co_name, ap)
-        return ap
+#        return ap
     else:
         print "No stored data available..."
 
