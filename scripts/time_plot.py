@@ -260,13 +260,13 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         for i,product in enumerate(products):
             data = get_time_series(self,dtype='pow',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
+            minf1a=min(minf1a,min(data[1]));
+            maxf1a=max(maxf1a,max(data[1]));
 #            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
 #            else: ap.add_update_function(get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             data = get_time_series(self,dtype='phase',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
 #            ap.add_update_function(get_time_series, dtype='phase', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            minf1a=min(minf1a,min(data[1]));
-            maxf1a=max(maxf1a,max(data[1]));
     else:
         if (f1b):
             f1b.clear()
