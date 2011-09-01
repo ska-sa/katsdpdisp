@@ -637,7 +637,7 @@ class SpeadSDReceiver(threading.Thread):
                             self._direct_meta_required.remove(name)
                     if self._direct_meta_required == []:
                         self.update_center_freqs()
-                        self.cpref.bls_ordering = self._direct_meta['bls_ordering']
+                        self.cpref.bls_ordering = self._direct_meta['bls_ordering'].tolist()
                         print "\nAll Metadata for direct stream acquired"
                         print "======================================="
                         print "Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq'])
