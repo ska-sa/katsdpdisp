@@ -168,7 +168,7 @@ class CorrProdRef(object):
         self.labels = {}
         self.autos = []
         self.inputs = []
-        self._pol_dict = ['HH','VV','HV','VH']
+        self._pol_dict = ['hh','vv','hv','vh']
         self.precompute()
          # precompute a number of lookups to save processing later on. (Some of these are called a lot...)
          # populates id_to_real, id_to_real_long, updates n_ants,
@@ -206,7 +206,7 @@ class CorrProdRef(object):
                 for p in ['xx','xy','yx','yy']:
                     bls.append(["inp%i%s" % (b[0],p[0]), "inp%i%s" % (b[1],p[1])])
             else:
-                for p in ['HH','HV','VH','VV']:
+                for p in ['hh','hv','vh','vv']:
                     bls.append(["ant%i%s" % (b[0]+1,p[0]), "ant%i%s" % (b[1]+1,p[1])])
         return bls
 
@@ -229,8 +229,7 @@ class CorrProdRef(object):
         a pol index (0,1,2,3)
         """
         if type(pol) == type(""):
-            if pol.upper() in self._pol_dict: pol = self._pol_dict.index(pol.upper())
-            elif pol.lower() in self._dbe_pol_dict: pol = self._dbe_pol_dict.index(pol.lower())
+            if pol.lower() in self._pol_dict: pol = self._pol_dict.index(pol.lower())
             else: pol = -1
         if pol < 0 or pol > 3:
             print "Unknown polarisation (" + str(pol) + ") specified."
@@ -1361,8 +1360,8 @@ class DataHandler(object):
         quitter.register_callback("Data Handler", self.stop)
 
         self.cpref = self.receiver.cpref
-        self.default_product = (1, 2, 'HH')
-        self.default_products = [(1, 2, 'HH')]
+        self.default_product = (1, 2, 'hh')
+        self.default_products = [(1, 2, 'hh')]
         self._debug = False
         self._plots = {}
 
