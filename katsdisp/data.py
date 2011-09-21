@@ -240,7 +240,7 @@ class CorrProdRef(object):
         if type(inp) != type(()): return inp
         if len(inp) == 2:
             try:
-                return self.bls_ordering.index([inp[0],inp[1]])
+                return self.bls_ordering.index([inp[0].lower(),inp[1].lower()])
             except ValueError:
                 print "Unknown label pair (%s,%s) provided. Consult cpref.labels for valid labels (usually located under sd or sd_hist)." % (inp[0],inp[1])
                 return None
@@ -456,9 +456,10 @@ class SignalDisplayStore(object):
 
         try:
             cc = d['/MetaData/Configuration/Correlator']
-            bls_ordering = cc.attrs['bls_ordering'].tolist()
+            bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in cc.attrs['bls_ordering']]
             bw = cc.attrs['bandwidth']
             nc = cc.attrs['n_chans']
+            self.n_chans = nc
             cf = d['/MetaData/Sensors/RFE/center-frequency-hz'][0][1]
             self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
             self.center_freqs_mhz.reverse()
@@ -513,7 +514,7 @@ class SignalDisplayStore(object):
                 im = d['/Correlator/input_map'].value
                 bls_ordering = []
                 for v in im:
-                    bls_ordering.append([ant_to_inp[v[1][:2]],ant_to_inp[v[1][2:]]])
+                    bls_ordering.append([ant_to_inp[v[1][:2]].lower(),ant_to_inp[v[1][2:]].lower()])
             except KeyError:
                 pass #no default baseline information
             self.cpref = CorrProdRef(bls_ordering=bls_ordering)
@@ -636,7 +637,7 @@ class SpeadSDReceiver(threading.Thread):
                             self._direct_meta_required.remove(name)
                     if self._direct_meta_required == []:
                         self.update_center_freqs()
-                        self.cpref.bls_ordering = self._direct_meta['bls_ordering'].tolist()
+                        self.cpref.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self._direct_meta['bls_ordering']]
                         print "\nAll Metadata for direct stream acquired"
                         print "======================================="
                         print "Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq'])
@@ -653,8 +654,8 @@ class SpeadSDReceiver(threading.Thread):
                         if self.ig['center_freq'] != self.center_freq:
                             self.update_center_freqs()
                     if self.ig['bls_ordering'] is not None:
-                        if self.ig['bls_ordering'].tolist() != self.bls_ordering:
-                            self.bls_ordering = self.ig['bls_ordering'].tolist()
+                        if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']] != self.bls_ordering:
+                            self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']]
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
                             print "Signal display store data purged due to changed baseline ordering..."
@@ -1593,7 +1594,7 @@ class DataHandler(object):
         f.show()
         pl.draw()
 
-    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=512, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
+    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
         """Used to select a particular window of data from the store for use in the signal displays...
         Once the window has been chosen then the particular plot will subsample and reformat the data window
         to suit it's requirements.
@@ -1657,7 +1658,7 @@ class DataHandler(object):
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
 
-    def get_baseline_matrix(self, start_channel=0, stop_channel=512):
+    def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
         map = np.array([[0, 0],
            [0, 1],
            [1, 1],
@@ -1714,11 +1715,11 @@ class DataHandler(object):
                 if a == b: im[a,b] = -2 + (np.average(self.storage.cur_frames[bl * 4 + pol].get_mag()) / 1000)
         return im
 
-    def plot_baseline_matrix(self, start_channel=0, stop_channel=512):
+    def plot_baseline_matrix(self, start_channel=0, stop_channel=-1):
         """Plot a matrix showing auto correlation power on the diagonal and cross correlation
         phase and power in the upper and lower segments."""
         if self.storage is not None:
-            im = self.get_baseline_matrix(start_channel=0, stop_channel=512)
+            im = self.get_baseline_matrix(start_channel=0, stop_channel=-1)
             pl.ion()
             fig = pl.figure()
             ax = fig.gca()
@@ -1740,7 +1741,7 @@ class DataHandler(object):
             print "No stored data available..."
 
 
-    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=512):
+    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=-1):
         """Show a waterfall plot for the specified baseline and polarisation.
 
         A waterfall plot shows frequency vs time with intensity represented by colour. The frequency channels run along
@@ -1905,7 +1906,7 @@ class DataHandler(object):
             data = self.select_data(product=product, dtype=dtype, start_channel=channel, stop_channel=channel+1, start_time=start_time, end_time=end_time, avg_axis=1, include_ts=True)
             return [data[0],data[1],data[0][0]]
 
-    def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=512):
+    def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=-1):
         if product is None: product = self.default_product
         tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
         xlabel = tp[0][0]
@@ -1920,7 +1921,7 @@ class DataHandler(object):
         tp = self.get_time_series(product=product, end_time=end_time)
         return abs(np.fft.fft(tp[1]))
 
-    def plot_time_series(self, dtype='mag', products=None, end_time=-120, scale='log', start_channel=0, stop_channel=512):
+    def plot_time_series(self, dtype='mag', products=None, end_time=-120, scale='log', start_channel=0, stop_channel=-1):
         """Plot a time series for the specified correlation products.
 
         To plot a single frequency channel simply make start and stop differ by 1 :) Otherwise the band of interest is averaged together
@@ -2210,7 +2211,7 @@ class DataHandler(object):
         self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
-    def plot_spectrum(self, type='mag', products=None, start_channel=0, stop_channel=512, scale='log', average=1):
+    def plot_spectrum(self, type='mag', products=None, start_channel=0, stop_channel=-1, scale='log', average=1):
         """Plot spectra for the specified products.
         The most recently received signal display data is used for the display.
 
@@ -2228,7 +2229,7 @@ class DataHandler(object):
         start_channel : integer
             default: 0
         stop_channel : integer
-            default: 512
+            default: -1
         average : integer
             The number of dumps to average over (from most recent dump backwards)
             default: None
