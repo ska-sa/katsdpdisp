@@ -1216,7 +1216,7 @@ elif (datafile=='k7simulator'):
 else:
     try:
         dh.load_k7_data(datafile)
-    except KeyError:
+    except:
         dh.load_ff_data(datafile)
     datasd=dh.sd_hist
 
