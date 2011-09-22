@@ -497,7 +497,7 @@ class SignalDisplayStore(object):
             try:
                 cf = d['Correlator'].attrs['center_frequency_hz']
                 bw = d['Correlator'].attrs['channel_bandwidth_hz']
-                nc = d['Correlator'].attrs['num_freq_channels']
+                nc = int(d['Correlator'].attrs['num_freq_channels'])
                 self.n_chans = nc
                 self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
                 self.center_freqs_mhz.reverse()
