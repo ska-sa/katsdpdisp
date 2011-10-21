@@ -2296,11 +2296,16 @@ class KATData(object):
         print "Checking local environment for active dbe proxy named %s" % dbe
         try:
             import IPython
-            ip_api = IPython.ipapi.get()
         except ImportError:
             print "Proxy detection only works for IPython sessions."
             return
 
+        try:
+            ip_api = IPython.ipapi.get()
+        except AttributeError:
+            # newer versions of ipython moved the location of ipapi
+            ip_api = IPython.core.ipapi.get()
+        
         try:
             active_hosts = dict([(k, v) for k, v in ip_api.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
             if len(active_hosts) > 0:
