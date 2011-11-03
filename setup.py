@@ -7,6 +7,7 @@ setup (
     description = "Karoo Array Telescope Online Signal Displays",
     author = "Simon Ratcliffe",
     packages = find_packages(),
+    package_data={'': ['html/*']},
     include_package_data = True,
     scripts = [
         "scripts/time_plot.py",
