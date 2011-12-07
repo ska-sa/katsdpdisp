@@ -59,11 +59,11 @@ html_directory=resource_filename("katsdisp","") + "/html/"
 
 ##Disable debug warning messages that clutters the terminal, especially when streaming
 logging.basicConfig()
-log = logging.getLogger()
+logger = logging.getLogger()
 if (opts.debug):
-    log.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)
 else:
-    log.setLevel(logging.ERROR)
+    logger.setLevel(logging.ERROR)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -168,7 +168,7 @@ def antennamap(antnumber0,antnumber1,prod):
 
 def user_cmd_ret(*args):
     """Handle any data returned from calls to canvas.send_cmd()"""
-    print "Got return from user event:",args
+    logger.debug("Got return from user event: %s" % str(args))
 
 def delayformatter(x,pos):
     global time_now,time_absminx,time_absmaxx
@@ -191,7 +191,8 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
             tp[0]=np.array([0])
             tp[1]=np.array([0])
         else:
-            tp[1]=dot(tp[1],spectrum_flagmask)
+            #tp[1]=dot(tp[1],spectrum_flagmask)
+            tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
     elif (dtype=='phase'):
         if (time_channelphase!=''):
             ch=int(time_channelphase);
@@ -272,13 +273,20 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
             f1b.clear()
             f1.delaxes(f1b)
             f1b=0
+        data_time = 0
+        plot_time = 0
         for i,product in enumerate(products):
+            ts_start = time.time()
             data = get_time_series(self,dtype=dtype,product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            ts_mid = time.time()
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
+            data_time += ts_mid - ts_start
+            plot_time += time.time() - ts_mid
 #            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
 #            else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
+        logger.debug("Data time: %.3fs, Plot time: %.3fs\n" % (data_time, plot_time))
     if (time_legend=='true'):
         f1a.legend(loc=0)
     if (spectrum_abstimeinst>0):
@@ -595,6 +603,7 @@ def setloadpage(cc,newcontent):
 def timeseries_draw():
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx
     global f1,f1a,f1b
+    ts_start = time.time()
     f1a.clear()
     if (f1b):
         f1b.clear()
@@ -602,6 +611,7 @@ def timeseries_draw():
         f1b=0;
     products=[]
     colours=[]
+    ts_loop = time.time()
     for c in range(len(time_antbase0)):
         if (time_corrHH=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'HH'))
@@ -615,8 +625,10 @@ def timeseries_draw():
         if (time_corrVH=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'VH'))
             colours.append(colourlist[c%ncolourlist])
+    ts_plot = time.time()
     if (len(products)):
         plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, colours=colours, end_time=-3600)
+    ts_range = time.time()
     if (time_absminx<=0 and time_minx!=''):
         f1a.set_xlim(xmin=double(time_minx))
     elif (time_absminx>0):
@@ -635,7 +647,10 @@ def timeseries_draw():
     if (f1a.yaxis_inverted()):
         ylim=f1a.get_ylim();
         f1a.set_ylim(ylim[::-1])
+    ts_draw = time.time()
     f1.canvas.draw()
+    ts_end = time.time()
+    logger.debug("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
 
 def spectrum_draw():
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx
@@ -756,9 +771,14 @@ def matrix_draw():
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
     global f4,f4a
     f4.clf()
+    ts_init = time.time()
     f4a=f4.add_subplot(111)
+    ts_start = time.time()
     plot_baseline_matrix(self=datasd, start_channel=1, stop_channel=spectrum_width)
+    ts_plot = time.time()
     f4.canvas.draw()
+    ts_end = time.time()
+    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
 
 def timeseries_event(figno,*args):
     global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
@@ -1211,7 +1231,7 @@ if (datafile=='stream'):
     datasd=dh.sd
 elif (datafile=='k7simulator'):
     datafile='stream'
-    dh.start_direct_spead_receiver()
+    dh.start_direct_spead_receiver(capacity=0.02)
     datasd=dh.sd
 else:
     try:
@@ -1278,6 +1298,7 @@ f5.canvas._custom_content = cc
 
 time_last=time_now
 ifailedframe=0
+loop_time=0
 if (datafile!='stream'):
     show(layout='figure1',open_plot=opts.open_plot)
 else:
@@ -1291,10 +1312,15 @@ else:
                 elif (ifailedframe==0):
                     print "Error: unable to determine number of channels"
             else:
+                ts_start = time.time()
                 timeseries_draw()
+                ts_ts_end = time.time()
                 spectrum_draw()
+                ts_sp_end = time.time()
                 waterfall_draw()
-                matrix_draw()
+                ts_wf_end = time.time()
+                #matrix_draw()
+                ts_end = time.time()
                 if (time_now==time_last):
                     ifailedframe+=1
                 else:
@@ -1310,4 +1336,7 @@ else:
                     f2.canvas.send_cmd('document.getElementById("healthtext").innerHTML="live stream";')
                     f3.canvas.send_cmd('document.getElementById("healthtext").innerHTML="live stream";')
                     f4.canvas.send_cmd('document.getElementById("healthtext").innerHTML="live stream";')
-        time.sleep(1)
+                ts_end2 = time.time()
+                logger.debug("Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start))
+                loop_time = time.time() - ts_start
+        time.sleep((1 - loop_time) if loop_time <= 1 else 0)
