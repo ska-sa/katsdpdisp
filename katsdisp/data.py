@@ -1026,7 +1026,7 @@ class AnimatableSensorPlot(object):
     source : "cached" or "stored"
         How to retrieve data.
         "cached" uses .get_cached_history (i.e. the local cache).
-        "stored" uses .get_stored_history (i.e. the central monitor store).
+        "stored" uses .get_stored_history (i.e. from katstore).
         The default is "cached".
     start_time : datetime or float (seconds since Unix epoch).
         Start of time range (passed to get_cached_histor or get_stored_history).
@@ -1057,15 +1057,15 @@ class AnimatableSensorPlot(object):
     Alternatively, to plot stored sensor histories without a katui configuration:
 
     >>> from katuilib.data import AnimatableSensorPlot
-    >>> site_cm = "http://ff-dc.kat.ac.za/raw_site_ffarchive/central_monitoring/"
+    >>> site_katstore = "postgresql://kat:kat@kat-monctl.karoo.kat.ac.za/katstore"
     >>> ap = AnimatableSensorPlot(title="Temperature Sensors", source="stored")
     >>> rfe3_temp = katuilib.katcp_client.KATBaseSensor(
     ...    "ped2", "rfe3.temperature", "RFE3 Temperature (Pedestal 2)", "degC", "float",
-    ...    central_monitor_url=site_cm)
+    ...    katstore=site_katstore)
     ...
     >>> rfe5_temp = katuilib.katcp_client.KATBaseSensor(
     ...    "ped2", "rfe5.temperature", "RFE5 Temperature (Pedestal 2)", "degC", "float",
-    ...    central_monitor_url=site_cm)
+    ...    katstore=site_katstore)
     ...
     >>> ap.add_sensor(rfe3_temp)
     >>> ap.add_sensor(rfe5_temp)
