@@ -1323,8 +1323,8 @@ class DataHandler(object):
 
     Parameters
     ----------
-    dbe : KATDevice
-        A reference to an KATDevice object connected to a dbe proxy that has a k7writer reference. This is used to add this current host as a signal display data listener.
+    dbe : KATClient
+        A reference to an KATClient object connected to a dbe proxy that has a k7writer reference. This is used to add this current host as a signal display data listener.
     port : integer
         The port on which to receive signal display data.
         default: 7006
@@ -2278,8 +2278,8 @@ class KATData(object):
 
     Parameters
     ----------
-    dbe : KATDevice
-        A reference to an KATDevice object connected to the KAT dbe proxy. This is used for making data calls to the dbe.
+    dbe : KATClient
+        A reference to an KATClient object connected to the KAT dbe proxy. This is used for making data calls to the dbe.
     """
     def __init__(self, dbe=None):
         self.dbe = dbe

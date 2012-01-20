@@ -23,7 +23,7 @@
 #ssh ffuser@kat-dp
 #ipython
 #import katuilib
-#k7w = katuilib.build_device("k7w","kat-dp",2040)
+#k7w = katuilib.build_client("k7w","kat-dp",2040)
 #k7w.req.add_sdisp_ip("192.168.1.156")
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
