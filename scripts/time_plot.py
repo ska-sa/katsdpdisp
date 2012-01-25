@@ -1226,11 +1226,11 @@ f4=figure(4)
 f4a=f4.add_subplot(111)
 dh=katsdisp.KATData()
 if (datafile=='stream'):
-    dh.start_spead_receiver()
+    dh.start_spead_receiver(capacity=0.7,store2=True)
     datasd=dh.sd
 elif (datafile=='k7simulator'):
     datafile='stream'
-    dh.start_direct_spead_receiver(capacity=0.3,store2=True)
+    dh.start_direct_spead_receiver(capacity=0.7,store2=True)
     datasd=dh.sd
 else:
     try:
