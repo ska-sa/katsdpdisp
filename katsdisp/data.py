@@ -338,6 +338,76 @@ class SignalDisplayFrame(object):
 
         #return np.average(np.abs(self.data.view(dtype=np.complex64)[start_channel:stop_channel]))
 
+class SignalDisplayStore2(object):
+    """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
+    This will have issues when the incoming sizes change (different channels, baselines)"""
+    def __init__(self, n_ants=2, capacity=0.2):
+        try:
+            import psutil
+            self.mem_cap = int(psutil.avail_phymem() * capacity)
+        except ImportError:
+            self.mem_cap = 1024*1024*128
+             # default to 128 megabytes if we cannot determine system memory
+        print "Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0))
+        self.n_ants = n_ants
+        self.center_freqs_mhz = []
+         # currently this only gets populated on loading historical data
+        self.n_chans = 0
+        self.n_bls = 0
+        self._last_ts = 0
+        self.roll_point = 0
+        self.cpref = None
+        self.frame_count = 0
+        self.ts = None
+        self.first_pass = True
+
+    def init_storage(self, n_chans=512, n_bls=0):
+        self.n_chans = n_chans
+        self.n_bls = n_bls
+        self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
+        self.slots = self.mem_cap / (self._frame_size_bytes * self.n_bls)
+        self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        self.ts = np.zeros(self.slots, dtype=np.uint64)
+        self.frame_count = 0
+        self.roll_point = 0
+        self._last_ts = 0
+        self.first_pass = True
+
+
+    """Add some data to the store.
+    In general this a fragment of a signal display frame and hence
+    the data must be inserted in the correct location within an existing frame.
+
+    Parameters
+    ----------
+    timestamp_ms :
+        Timestamp of the start of this frame of data in epoch milliseconds.
+    corr_prod_id : integer
+        Each correlation product is the correlation of Ax with *By where A/B is the antenna number and x/y is the polarisation.
+    offset : integer
+        The offset of this chunk of data within the complete frame. This is specified in array index form
+    length : integer
+        The overall array length.
+    data : array
+        A numpy array of complex frequency channels for the specified correlation product.
+    """
+    def add_data(self, timestamp_ms, corr_prod_id, offset, length, data):
+        if timestamp_ms != self._last_ts: self.frame_count += 1
+        if self.first_pass and self.frame_count > self.slots: self.first_pass = False
+        self.roll_point = (self.frame_count-1) % self.slots
+        self.ts[self.roll_point] = timestamp_ms
+        self.data[self.roll_point][corr_prod_id][offset:offset+len(data)] = data.view(np.complex64)
+        self._last_ts = timestamp_ms
+
+    def add_data2(self, timestamp_ms, data):
+        if timestamp_ms != self._last_ts: self.frame_count += 1
+        if self.first_pass and self.frame_count > self.slots: self.first_pass = False
+        self.roll_point = (self.frame_count-1) % self.slots
+        self.ts[self.roll_point] = timestamp_ms
+        self.data[self.roll_point] = data
+        self._last_ts = timestamp_ms
+
+
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
     for it's clients.
@@ -364,6 +434,7 @@ class SignalDisplayStore(object):
          # a default value, that gets overwritten on loading data
         self.cpref = None
         self.init_storage()
+        self.frame_count = 0
 
     def get_capacity(self):
         """Print out the current store capacity..."""
@@ -383,7 +454,7 @@ class SignalDisplayStore(object):
         self._last_data = None
         self._last_offset = None
         self._frame_size_bytes = None
-        self._frame_count = 0
+        self.frame_count = 0
         self.bytes_used = 0
         self.cur_frames = {}
          # a dict of the most recently completed frames for each corr_prod_id. Not guaranteed to be for the same timestamp...
@@ -413,7 +484,7 @@ class SignalDisplayStore(object):
 
         if not self.time_frames[timestamp_ms].has_key(corr_prod_id):
             frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length)
-            self._frame_count += 1
+            self.frame_count += 1
             self.time_frames[timestamp_ms][corr_prod_id] = frame
             self.corr_prod_frames[corr_prod_id][timestamp_ms] = frame
              # add the blank frame
@@ -427,14 +498,14 @@ class SignalDisplayStore(object):
          # if we have run up against our storage capacity we should complete the current frame and the pop the earliest frame from the stack...
         if self._frame_size_bytes is None:
             self._frame_size_bytes = data.dtype.itemsize * length
-        self.bytes_used = self._frame_count * self._frame_size_bytes
+        self.bytes_used = self.frame_count * self._frame_size_bytes
         if self.bytes_used > self.mem_cap:
             ts = min(self.time_frames.keys())
             x = self.time_frames.pop(ts)
              # pop out the oldest time element
             for prod_id in x.iterkeys():
                 self.corr_prod_frames[prod_id].pop(ts)
-                self._frame_count -= 1
+                self.frame_count -= 1
              # remove the stale timestamps from individual ids
             del x
 
@@ -625,11 +696,15 @@ class SpeadSDReceiver(threading.Thread):
                 if self._direct_meta_required == []:
                  # we have enough meta data to handle direct responses
                     if self.ig['xeng_raw'] is not None:
-                        data = self.ig['xeng_raw'].swapaxes(0,1)
                         ts = int((self._direct_meta['sync_time'] + (self.ig['timestamp'] / self._direct_meta['scale_factor_timestamp'])) * 1000)
-                        for id in range(data.shape[0]):
-                            fdata = data[id].flatten()
-                            self.storage.add_data(ts, id, 0, len(fdata), fdata)
+                        if isinstance(self.storage,SignalDisplayStore2):
+                            data = self.ig['xeng_raw'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0]
+                            self.storage.add_data2(ts, data)
+                        else:
+                            data = self.ig['xeng_raw'].swapaxes(0,1)
+                            for id in range(data.shape[0]):
+                                fdata = data[id].flatten()
+                                self.storage.add_data(ts, id, 0, len(fdata), fdata)
                 else:
                     for name in self.ig.keys():
                         if name in self._direct_meta_required:
@@ -644,7 +719,9 @@ class SpeadSDReceiver(threading.Thread):
                         print "Sync Time: %i, Scale Factor: %i" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp'])
                         print "Baseline Ordering Mapping: %i entries\n" % len(self.cpref.bls_ordering)
                         self.cpref.precompute()
-                        self.storage.init_storage()
+                        if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
+                        else:
+                            self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -659,16 +736,22 @@ class SpeadSDReceiver(threading.Thread):
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
                             print "Signal display store data purged due to changed baseline ordering..."
-                            self.storage.init_storage()
+                            if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
+                            else:
+                                self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         data = self.ig['sd_data']
-                        data = data.swapaxes(0,1)
                         ts = self.ig['sd_timestamp'] * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
-                        for id in range(data.shape[0]):
-                            fdata = data[id].flatten()
-                            self.storage.add_data(ts, id, 0, len(fdata), fdata)
+                        if isinstance(self.storage, SignalDisplayStore2):
+                            data = data.view(np.complex64).swapaxes(0,1)[:,:,0]
+                            self.storage.add_data2(ts, data)
+                        else:
+                            data = data.swapaxes(0,1)
+                            for id in range(data.shape[0]):
+                                fdata = data[id].flatten()
+                                self.storage.add_data(ts, id, 0, len(fdata), fdata)
                 except Exception, e:
                     logger.warning("Failed to add signal display frame. (" + str(e) + ")")
         self.rx.stop()
@@ -1594,6 +1677,7 @@ class DataHandler(object):
         f.show()
         pl.draw()
 
+
     def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
         """Used to select a particular window of data from the store for use in the signal displays...
         Once the window has been chosen then the particular plot will subsample and reformat the data window
@@ -1627,6 +1711,10 @@ class DataHandler(object):
         include_ts : boolean
             If set the timestamp of each frame is included as the first column of the array
         """
+        if isinstance(self.storage, SignalDisplayStore2):
+            lv = locals()
+            lv.pop('self')
+            return self._select_data2(**lv)
         if product is None: product = self.default_product
         orig_product = product
         product = self.cpref.user_to_id(product)
@@ -1656,6 +1744,47 @@ class DataHandler(object):
             frames.reverse()
         if include_ts:
             frames = [np.array([t / 1000.0 for t in ts]),frames]
+        return frames
+
+    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return
+        if product is None: product = self.default_product
+        orig_product = product
+        product = self.cpref.user_to_id(product)
+
+        ts = []
+        roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
+         # temp value in case of change during search...
+        rolled_ts = np.roll(self.storage.ts,-roll_point)
+        if end_time >= 0:
+            split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+            split_end = max(np.where(rolled_ts[:(self.storage.frame_count+1 if self.storage.first_pass else None)] <= end_time * 1000)[0]) + roll_point
+        else:
+            split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+            split_start = max(split_end + end_time,0)
+        split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
+
+        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
+        frames = frames.squeeze()
+
+        if dtype == 'mag':
+            frames = np.abs(frames)
+        if dtype == 're':
+            frames = np.real(frames)
+        if dtype == 'imag':
+            frames = np.imag(frames)
+        if dtype == 'phase':
+            frames = np.angle(frames)
+        if avg_axis is not None:
+            frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+        if sum_axis is not None:
+            frames = np.sum(frames, sum_axis)
+        if reverse_order:
+            frames = frames[...,::-1]
+        if include_ts:
+            frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
         return frames
 
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
@@ -2320,7 +2449,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2):
+    def start_spead_receiver(self, port=7149, capacity=0.2, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -2330,6 +2459,8 @@ class KATData(object):
         capacity : float
             The fraction of total physical memory to use for data storage on this machine.
             default: 0.2
+        store2 : boolean
+            Use the updated signal display store version 2
         """
         if self.dbe is None:
             self.find_dbe("dbe7")
@@ -2337,13 +2468,13 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port,st)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
-    def start_direct_spead_receiver(self, port=7148, capacity=0.2):
+    def start_direct_spead_receiver(self, port=7148, capacity=0.2, store2=False):
         """Starts a SPEAD signal display receiver to handle data directly from the correlator.
 
         Parameters
@@ -2353,9 +2484,11 @@ class KATData(object):
         capacity : float
             The fraction of total physical memory to use for data storage on this machine.
             default: 0.2
+        store2 : boolean
+            Use the updated signal display store version 2
 
         """
-        st = SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port, st, direct=True)
         r.setDaemon(True)
         r.start()

@@ -182,7 +182,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
     global spectrum_flagmask,time_timeavg,time_now
     if product is None: product = self.default_product
 #    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
-    if (len(self.storage.corr_prod_frames)==0 or self.cpref.user_to_id(product)<0):
+    if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""]
     if (dtype=='pow' or dtype=='mag'):
         tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
@@ -191,8 +191,8 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
             tp[0]=np.array([0])
             tp[1]=np.array([0])
         else:
-            #tp[1]=dot(tp[1],spectrum_flagmask)
-            tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
+            tp[1]=dot(tp[1],spectrum_flagmask)
+            #tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
     elif (dtype=='phase'):
         if (time_channelphase!=''):
             ch=int(time_channelphase);
@@ -242,7 +242,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
                 title+=", excluding\n("+spectrum_flagstr+")";
     f1a.set_title(title)
     f1a.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
-    if (len(self.storage.corr_prod_frames)==0):
+    if (self.storage.frame_count==0):
         s=[[0]]
     else:
         s = self.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
@@ -312,7 +312,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
 
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg
-    if (len(self.storage.corr_prod_frames)==0 or self.cpref.user_to_id(product)<0):
+    if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""]
 
     if (dtype=='pow'):
@@ -344,7 +344,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
         f2a.set_xlabel("Frequency [GHz]")
     if (spectrum_abstimeinst>0):
         s=[[spectrum_abstimeinst]]
-    elif (len(self.storage.corr_prod_frames)==0):
+    elif (self.storage.frame_count==0):
         s=[[0]]
     else:
         s = self.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
@@ -409,7 +409,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     if product is None: product = self.default_product
 #    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
-    if (len(self.storage.corr_prod_frames)==0 or self.cpref.user_to_id(product)<0):
+    if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
     if (dtype=="pow"):
         tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
@@ -702,7 +702,7 @@ def spectrum_draw():
     #gdb python; set args ./time_plot.py; run; bt;
 #    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
 #    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
-    
+
     if (spectrum_minx!=''):
         f2a.set_xlim(xmin=double(spectrum_minx))
     else:
@@ -721,7 +721,6 @@ def spectrum_draw():
     if (f2a.yaxis_inverted()):
         ylim=f2a.get_ylim();
         f2a.set_ylim(ylim[::-1])
-        
     f2.canvas.draw()
 
 def waterfall_draw():
@@ -918,7 +917,7 @@ def timeseries_event(figno,*args):
         time_absmaxx=-1
         time_tmpmin=-1
         time_tmpmax=-1
-        if (len(datasd.storage.corr_prod_frames)):
+        if (datasd.storage.frame_count > 0):
             fkeys = datasd.storage.corr_prod_frames[0].keys();
             time_now=fkeys[-1]/1000.0;
             if (len(time_minx.split(':'))==3):
@@ -1129,7 +1128,7 @@ def spectrum_event(figno,*args):
         spectrum_timeavg=args[15]
         #args[16]
         spectrum_abstimeinst=-1;
-        if (len(datasd.storage.corr_prod_frames)):
+        if (datasd.storage.frame_count > 0):
             fkeys = datasd.storage.corr_prod_frames[0].keys();
             if (len(spectrum_timeinst.split(':'))==3):
                 for f in fkeys:
@@ -1231,7 +1230,7 @@ if (datafile=='stream'):
     datasd=dh.sd
 elif (datafile=='k7simulator'):
     datafile='stream'
-    dh.start_direct_spead_receiver(capacity=0.02)
+    dh.start_direct_spead_receiver(capacity=0.3,store2=True)
     datasd=dh.sd
 else:
     try:
@@ -1240,7 +1239,7 @@ else:
         dh.load_ff_data(datafile)
     datasd=dh.sd_hist
 
-if (len(datasd.storage.cur_frames)):
+if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
     spectrum_flagmask=numpy.ones([spectrum_width])
 
@@ -1304,9 +1303,9 @@ if (datafile!='stream'):
 else:
     show(layout='figure1',block=False,open_plot=opts.open_plot)
     while True:
-        if (len(datasd.storage.corr_prod_frames)):
+        if (datasd.storage.frame_count > 0):
             if (spectrum_width is None):
-                if(len(datasd.storage.cur_frames)):
+                if(datasd.storage.frame_count > 0):
                     spectrum_width=datasd.receiver.channels
                     spectrum_flagmask=numpy.ones([spectrum_width])
                 elif (ifailedframe==0):
