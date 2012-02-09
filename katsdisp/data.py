@@ -1766,7 +1766,16 @@ class DataHandler(object):
             split_start = max(split_end + end_time,0)
         split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
-        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
+#        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
+#       The following block of code replaces the take command above, which appears to be about 10 times slower.
+        arraylen=self.storage.data.shape[0];
+        _split_start=split_start%arraylen;
+        _split_end=split_end%arraylen;
+        if (_split_start<_split_end):
+            frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel];
+        else:
+            frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0);
+
         frames = frames.squeeze()
 
         if dtype == 'mag':
