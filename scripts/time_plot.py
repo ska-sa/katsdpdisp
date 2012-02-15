@@ -41,6 +41,32 @@ import logging
 import sys
 from pkg_resources import resource_filename
 
+import sys
+import types
+
+def get_refcounts():
+    d = {}
+    sys.modules
+    for m in sys.modules.values():
+        for sym in dir(m):
+            o = getattr (m, sym)
+            if type(o) is types.ClassType:
+                d[o] = sys.getrefcount (o)
+    pairs = map (lambda x: (x[1],x[0]), d.items())
+    pairs.sort()
+    pairs.reverse()
+    return pairs
+
+priors = {}
+def print_top_100():
+    print "Top 100 Changed Reference Counts"
+    print "================================"
+    for n, c in get_refcounts()[:100]:
+        if priors.has_key(c):
+            if priors[c] != n: print '%s\t%10d\t%10d' % (c.__name__,n,priors[c])
+        else: print '%s\t%10d\tnew' % (c.__name__, n)
+        priors[c] = n
+
 # Parse command-line opts and arguments
 parser = optparse.OptionParser(usage="%prog [opts] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. "
@@ -63,7 +89,7 @@ logger = logging.getLogger()
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.WARNING)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -286,7 +312,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
 #            else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
-        logger.debug("Data time: %.3fs, Plot time: %.3fs\n" % (data_time, plot_time))
+        logger.warning("Data time: %.3fs, Plot time: %.3fs\n" % (data_time, plot_time))
     if (time_legend=='true'):
         f1a.legend(loc=0)
     if (spectrum_abstimeinst>0):
@@ -650,7 +676,7 @@ def timeseries_draw():
     ts_draw = time.time()
     f1.canvas.draw()
     ts_end = time.time()
-    logger.debug("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
+    logger.warning("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
 
 def spectrum_draw():
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx
@@ -1303,6 +1329,7 @@ if (datafile!='stream'):
 else:
     show(layout='figure1',block=False,open_plot=opts.open_plot)
     while True:
+        if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
         if (datasd.storage.frame_count > 0):
             if (spectrum_width is None):
                 if(datasd.storage.frame_count > 0):
@@ -1336,6 +1363,6 @@ else:
                     f3.canvas.send_cmd('document.getElementById("healthtext").innerHTML="live stream";')
                     f4.canvas.send_cmd('document.getElementById("healthtext").innerHTML="live stream";')
                 ts_end2 = time.time()
-                logger.debug("Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start))
+                logger.warning("Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start))
                 loop_time = time.time() - ts_start
         time.sleep((1 - loop_time) if loop_time <= 1 else 0)
