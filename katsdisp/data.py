@@ -741,14 +741,12 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
-                        data = self.ig['sd_data']
                         ts = self.ig['sd_timestamp'] * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
-                            data = data.view(np.complex64).swapaxes(0,1)[:,:,0]
-                            self.storage.add_data2(ts, data)
+                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0])
                         else:
-                            data = data.swapaxes(0,1)
+                            data = self.ig['sd_data'].swapaxes(0,1)
                             for id in range(data.shape[0]):
                                 fdata = data[id].flatten()
                                 self.storage.add_data(ts, id, 0, len(fdata), fdata)
