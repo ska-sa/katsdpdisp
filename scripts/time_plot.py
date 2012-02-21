@@ -304,6 +304,9 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         for i,product in enumerate(products):
             ts_start = time.time()
             data = get_time_series(self,dtype=dtype,product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+            if data[1].shape == ():
+                logger.warning("Insufficient data to plot time series")
+                return
             ts_mid = time.time()
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             data_time += ts_mid - ts_start
@@ -444,7 +447,11 @@ def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120
         tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
     ts = tp[0]-tp[0][-1]
     time_now=tp[0][-1]
-    tp[1]=numpy.array(tp[1])[::-1,::]
+    tp[1]=numpy.array(tp[1])
+    if len(tp[1].shape) == 1:
+        logger.warning("Insufficient data to plot waterfall")
+        return [[]]
+    tp[1]=tp[1][::-1,::]
     return [ts,tp[1],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
 
 def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
