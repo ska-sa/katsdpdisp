@@ -96,6 +96,10 @@ if (len(args)==0):
     datafile='stream'
 elif (len(args)==1):
     datafile=args[0]
+    rows=None
+elif (len(args)==2):
+    datafile=args[0]
+    rows=args[1]
 
 datasd=[]
 antennamappingmode=1;#zero means dbe style correlator inputs; 1 means regular antenna layout style
@@ -1267,8 +1271,9 @@ elif (datafile=='k7simulator'):
     datasd=dh.sd
 else:
     try:
-        dh.load_k7_data(datafile)
-    except:
+        dh.load_k7_data(datafile,rows=rows)
+    except Exception,e:
+        print "Failed to load file using k7 loader (%s)" % e
         dh.load_ff_data(datafile)
     datasd=dh.sd_hist
 

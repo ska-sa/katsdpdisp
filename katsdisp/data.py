@@ -528,8 +528,8 @@ class SignalDisplayStore(object):
         try:
             cc = d['/MetaData/Configuration/Correlator']
             bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in cc.attrs['bls_ordering']]
-            bw = cc.attrs['bandwidth']
-            nc = cc.attrs['n_chans']
+            bw = cc.get('bandwidth') and cc['bandwidth'][0] or cc.attrs['bandwidth']
+            nc = cc.get('n_chans') and cc['n_chans'][0] or cc.attrs['n_chans']
             self.n_chans = nc
             cf = d['/MetaData/Sensors/RFE/center-frequency-hz'][0][1]
             self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
@@ -541,7 +541,7 @@ class SignalDisplayStore(object):
         self.cpref = CorrProdRef(bls_ordering=bls_ordering)
 
         frame_len = nc * 2
-        tss = d['/Data/timestamps'].value
+        tss = d['/Data/timestamps'][:rows]
         print "Loading %i integrations..." % tss.shape[0]
         data = d['/Data/correlator_data']
         for i,t in enumerate(tss):
