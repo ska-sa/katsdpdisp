@@ -99,7 +99,7 @@ elif (len(args)==1):
     rows=None
 elif (len(args)==2):
     datafile=args[0]
-    rows=args[1]
+    rows=int(args[1])
 
 datasd=[]
 antennamappingmode=1;#zero means dbe style correlator inputs; 1 means regular antenna layout style
