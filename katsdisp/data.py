@@ -532,7 +532,7 @@ class SignalDisplayStore(object):
             nc = cc.get('n_chans') and cc['n_chans'][0] or cc.attrs['n_chans']
             self.n_chans = nc
             cf = d['/MetaData/Sensors/RFE/center-frequency-hz'][0][1]
-            self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
+            self.center_freqs_mhz = [(cf + (bw/nc*1.0)*c + 0.5*(bw/nc*1.0))/1000000 for c in range(-nc/2, nc/2)]
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except KeyError:
