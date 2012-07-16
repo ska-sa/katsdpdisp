@@ -97,9 +97,15 @@ if (len(args)==0):
 elif (len(args)==1):
     datafile=args[0]
     rows=None
+    startrow=None
 elif (len(args)==2):
     datafile=args[0]
     rows=int(args[1])
+    startrow=None
+elif (len(args)==3):
+    datafile=args[0]
+    rows=int(args[1])
+    startrow=int(args[2])
 
 datasd=[]
 antennamappingmode=1;#zero means dbe style correlator inputs; 1 means regular antenna layout style
@@ -1273,7 +1279,7 @@ elif (datafile=='k7simulator'):
     datasd=dh.sd
 else:
     try:
-        dh.load_k7_data(datafile,rows=rows)
+        dh.load_k7_data(datafile,rows=rows,startrow=startrow)
     except Exception,e:
         print "Failed to load file using k7 loader (%s)" % e
         dh.load_ff_data(datafile)
@@ -1282,6 +1288,10 @@ else:
 if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
     spectrum_flagmask=numpy.ones([spectrum_width])
+
+    minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
+    maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
+    print 'spectrum_width',spectrum_width,"min",minx,"max",maxx
 
 colourlist=[]
 for c in range(ncolourlist):
