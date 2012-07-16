@@ -719,23 +719,25 @@ def spectrum_draw():
 
     if (spectrum_seltypemenux=='channel' or datasd.receiver.center_freqs_mhz==[]):
         if (time_channelphase!=''):
-            f2a.axvspan(int(time_channelphase),int(time_channelphase),0,1,color='g',alpha=0.5)
+            f2a.axvspan(int(time_channelphase)-0.5,int(time_channelphase)-0.5,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
-            f2a.axvspan(spectrum_flag0[c],spectrum_flag1[c],0,1,color='r',alpha=0.5)
+            f2a.axvspan(spectrum_flag0[c]-0.5,spectrum_flag1[c]-0.5,0,1,color='r',alpha=0.5)
     elif (spectrum_seltypemenux=='mhz'):
+        halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/2.0
         minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]
         maxx=datasd.receiver.center_freqs_mhz[0]
         if (time_channelphase!=''):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)],datasd.receiver.center_freqs_mhz[int(time_channelphase)],0,1,color='g',alpha=0.5)
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]],datasd.receiver.center_freqs_mhz[spectrum_flag1[c]],0,1,color='r',alpha=0.5)
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]-halfchanwidth,0,1,color='r',alpha=0.5)
     else:
+        halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/1000.0/2.0
         minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
         maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
         if (time_channelphase!=''):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0,datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0,0,1,color='g',alpha=0.5)
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]/1000.0,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]/1000.0,0,1,color='r',alpha=0.5)
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]/1000.0-halfchanwidth,0,1,color='r',alpha=0.5)
     #gdb python; set args ./time_plot.py; run; bt;
 #    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
 #    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
