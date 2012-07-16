@@ -446,6 +446,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
 
 
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
+    global time_now
     if product is None: product = self.default_product
 #    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
@@ -825,6 +826,7 @@ def matrix_draw():
     print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
 
 def timeseries_event(figno,*args):
+    global dh,datasd,rows,startrow
     global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -940,6 +942,20 @@ def timeseries_event(figno,*args):
         for c in range((len(args)-1)/2):
             time_antbase0.append(int(args[c*2+1]))
             time_antbase1.append(int(args[c*2+2]))
+    elif (rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
+        try:
+#            dh.stop_sdisp()
+#            del dh
+            if (startrow==None):
+                startrow=0
+            if (args[0]=="nextchunk"):
+                startrow=startrow+rows/4
+            else:
+                startrow=startrow-rows/4
+            dh.load_k7_data(datafile,rows=rows,startrow=startrow)
+            datasd=dh.sd_hist
+        except Exception,e:
+            print "Failed to load file using k7 loader (%s)" % e
     else:
         time_corrHH=args[0]
         time_corrVV=args[1]
@@ -1020,6 +1036,7 @@ def converthmstof(hms):
     return val;
     
 def spectrum_event(figno,*args):
+    global dh,datasd,rows,startrow
     global spectrum_abstimeinst,time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend,spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -1154,6 +1171,18 @@ def spectrum_event(figno,*args):
         for c in range((len(args)-1)/2):
             spectrum_antbase0.append(int(args[c*2+1]))
             spectrum_antbase1.append(int(args[c*2+2]))
+    elif (rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
+        try:
+            if (startrow==None):
+                startrow=0
+            if (args[0]=="nextchunk"):
+                startrow=startrow+rows/4
+            else:
+                startrow=startrow-rows/4
+            dh.load_k7_data(datafile,rows=rows,startrow=startrow)
+            datasd=dh.sd_hist
+        except Exception,e:
+            print "Failed to load file using k7 loader (%s)" % e
     else:
         spectrum_corrHH=args[0]
         spectrum_corrVV=args[1]
@@ -1192,6 +1221,7 @@ def spectrum_event(figno,*args):
     f2.canvas.send_cmd(newcontent2)
 
 def waterfall_event(figno,*args):
+    global dh,datasd,rows,startrow
     global time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -1226,6 +1256,18 @@ def waterfall_event(figno,*args):
         for c in range((len(args)-1)/2):
             waterfall_antbase0.append(int(args[c*2+1]))
             waterfall_antbase1.append(int(args[c*2+2]))
+    elif (rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
+        try:
+            if (startrow==None):
+                startrow=0
+            if (args[0]=="nextchunk"):
+                startrow=startrow+rows/4
+            else:
+                startrow=startrow-rows/4
+            dh.load_k7_data(datafile,rows=rows,startrow=startrow)
+            datasd=dh.sd_hist
+        except Exception,e:
+            print "Failed to load file using k7 loader (%s)" % e
     else:
         waterfall_corrHH=args[0]
         waterfall_corrVV=args[1]
@@ -1254,7 +1296,20 @@ def waterfall_event(figno,*args):
     f3.canvas.send_cmd(newcontent3)
 
 def matrix_event(figno,*args):
+    global dh,datasd,rows,startrow
     print(args)
+    if (len(args) and rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
+        try:
+            if (startrow==None):
+                startrow=0
+            if (args[0]=="nextchunk"):
+                startrow=startrow+rows/4
+            else:
+                startrow=startrow-rows/4
+            dh.load_k7_data(datafile,rows=rows,startrow=startrow)
+            datasd=dh.sd_hist
+        except Exception,e:
+            print "Failed to load file using k7 loader (%s)" % e
     if (datafile!='stream'):
         matrix_draw()
     f4.canvas.send_cmd("")
@@ -1289,10 +1344,6 @@ if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
     spectrum_flagmask=numpy.ones([spectrum_width])
 
-    minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
-    maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
-    print 'spectrum_width',spectrum_width,"min",minx,"max",maxx
-
 colourlist=[]
 for c in range(ncolourlist):
     colourlist.append([float(int(colourlist_4html[c][1:3],16))/255.0,float(int(colourlist_4html[c][3:5],16))/255.0,float(int(colourlist_4html[c][5:7],16))/255.0]);
@@ -1301,7 +1352,7 @@ for c in range(ncolourlist):
 f1=figure(1)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"time_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode))
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f1.canvas._custom_content = cc
 f1.canvas._user_event = timeseries_event
@@ -1311,7 +1362,7 @@ f1.canvas._user_event(0,time_corrHH, time_corrVV, time_corrHV, time_corrVH,time_
 f2=figure(2)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"spectrum_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode))
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f2.canvas._custom_content = cc
 f2.canvas._user_event = spectrum_event
@@ -1321,7 +1372,7 @@ f2.canvas._user_event(1,spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spect
 f3=figure(3)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"waterfall_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode))
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f3.canvas._custom_content = cc
 f3.canvas._user_event = waterfall_event
@@ -1331,7 +1382,7 @@ f3.canvas._user_event(2,waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, wa
 f4=figure(4)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"matrix_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode))
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f4.canvas._custom_content = cc
 f4.canvas._user_event = matrix_event
@@ -1341,7 +1392,7 @@ f4.canvas._user_event(3);
 f5=figure(5)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"help.html")
-cc = html_wrap_file.read()
+cc = html_wrap_file.read().replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f5.canvas._custom_content = cc
 

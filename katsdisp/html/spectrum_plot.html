@@ -51,6 +51,7 @@
 	 plot_str+=texttimeavg.value+","
 	 handle_user_event(plot_str,0);
 	}
+			var datafile='<!--datafile-->'
 			var antbase0=[];
 			var antbase1=[];
 			var antennamappingmode=<!--antennamappingmode-->
@@ -88,6 +89,16 @@
 			function myloadpage(){
 				connect_manager();
 				redrawlineCanvas()
+				document.getElementById("healthtext").innerHTML=datafile;
+				if (datafile!='stream')
+				{
+					document.getElementById("nextchunkid").style.display='inline';
+					document.getElementById("prevchunkid").style.display='inline';
+				}else
+				{
+					document.getElementById("nextchunkid").style.display='none';
+					document.getElementById("prevchunkid").style.display='none';
+				}
 				if (antennamappingmode==0)
 				{
 				 document.getElementById("HHtext").innerHTML="XX";
@@ -677,6 +688,12 @@
 				document.body.style.cursor = 'default';
 				return;
 			}
+			function nextchunk(){
+				handle_user_event("nextchunk",0);
+			}
+			function prevchunk(){
+				handle_user_event("prevchunk",0);
+			}
 			function showhideControls(){
 				controls=document.getElementById('controls');
 				if (controls.style.display=='none')
@@ -781,7 +798,7 @@
 	</div>
 	<div align="right" style="position: absolute; right:5px; top:6px"> 
 	<small>
-		<A id="saveid" HREF="#" onClick="saveFigure();">png</A> <A HREF="#" onClick="showhideControls();">Controls</A> <A HREF="figure5">Help</A>
+		<A id="prevchunkid" HREF="#" onClick="prevchunk();" style="display:none">prev</A> <A id="nextchunkid" HREF="#" onClick="nextchunk();" style="display:none">next</A> <A id="saveid" HREF="#" onClick="saveFigure();">png</A> <A HREF="#" onClick="showhideControls();">Controls</A> <A HREF="figure5">Help</A>
 	</small>
 	</div>
 	<div id="controls" align="left" style="position: relative;">
