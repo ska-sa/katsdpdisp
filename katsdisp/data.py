@@ -340,7 +340,8 @@ class SignalDisplayFrame(object):
 
 class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
-    This will have issues when the incoming sizes change (different channels, baselines)"""
+    This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
+    is done whenever channel or baseline count changes."""
     def __init__(self, n_ants=2, capacity=0.2):
         try:
             import psutil
@@ -367,6 +368,7 @@ class SignalDisplayStore2(object):
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         self.slots = self.mem_cap / (self._frame_size_bytes * self.n_bls)
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.frame_count = 0
         self.roll_point = 0
@@ -391,20 +393,23 @@ class SignalDisplayStore2(object):
     data : array
         A numpy array of complex frequency channels for the specified correlation product.
     """
-    def add_data(self, timestamp_ms, corr_prod_id, offset, length, data):
+    def add_data(self, timestamp_ms, corr_prod_id, offset, length, data, flags=None):
         if timestamp_ms != self._last_ts: self.frame_count += 1
         if self.first_pass and self.frame_count > self.slots: self.first_pass = False
         self.roll_point = (self.frame_count-1) % self.slots
         self.ts[self.roll_point] = timestamp_ms
         self.data[self.roll_point][corr_prod_id][offset:offset+len(data)] = data.view(np.complex64)
+        if flags is not None:
+            self.flags[self.roll_point][corr_prod_id][offset:offset+len(data)] = flags
         self._last_ts = timestamp_ms
 
-    def add_data2(self, timestamp_ms, data):
+    def add_data2(self, timestamp_ms, data, flags=None):
         if timestamp_ms != self._last_ts: self.frame_count += 1
         if self.first_pass and self.frame_count > self.slots: self.first_pass = False
         self.roll_point = (self.frame_count-1) % self.slots
         self.ts[self.roll_point] = timestamp_ms
         self.data[self.roll_point] = data
+        if flags is not None: self.flags[self.roll_point] = flags
         self._last_ts = timestamp_ms
 
 
@@ -686,6 +691,7 @@ class SpeadSDReceiver(threading.Thread):
 
     def update_center_freqs(self):
         """Update the table containing the center frequencies for each channels."""
+        print "Attempting to update center frequencies..."
         try:
             self.center_freq = self.ig['center_freq']
             self.channels = self.ig['n_chans']
@@ -756,7 +762,8 @@ class SpeadSDReceiver(threading.Thread):
                         ts = self.ig['sd_timestamp'] * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
-                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0])
+                            flags = self.ig['sd_flags']
+                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags.swapaxes(0,1))
                         else:
                             data = self.ig['sd_data'].swapaxes(0,1)
                             for id in range(data.shape[0]):
@@ -1688,7 +1695,7 @@ class DataHandler(object):
         pl.draw()
 
 
-    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
+    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
         """Used to select a particular window of data from the store for use in the signal displays...
         Once the window has been chosen then the particular plot will subsample and reformat the data window
         to suit it's requirements.
@@ -1720,6 +1727,8 @@ class DataHandler(object):
             default: None
         include_ts : boolean
             If set the timestamp of each frame is included as the first column of the array
+        include_flags : boolean
+            Include flags in the return data if available
         """
         if isinstance(self.storage, SignalDisplayStore2):
             lv = locals()
@@ -1756,7 +1765,7 @@ class DataHandler(object):
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
 
-    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
+    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
@@ -1782,11 +1791,16 @@ class DataHandler(object):
         _split_start=split_start%arraylen;
         _split_end=split_end%arraylen;
         if (_split_start<_split_end):
-            frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel];
+            frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel]
+            if include_flags:
+                flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
         else:
-            frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0);
+            frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0)
+            if include_flags:
+                flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
 
         frames = frames.squeeze()
+        if include_flags: flags = flags.squeeze()
 
         if dtype == 'mag':
             frames = np.abs(frames)
@@ -1804,6 +1818,8 @@ class DataHandler(object):
             frames = frames[...,::-1]
         if include_ts:
             frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+        if include_flags:
+            frames = [frames, flags]
         return frames
 
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
@@ -1889,7 +1905,7 @@ class DataHandler(object):
             print "No stored data available..."
 
 
-    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=-1):
+    def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=-1, include_flags=False):
         """Show a waterfall plot for the specified baseline and polarisation.
 
         A waterfall plot shows frequency vs time with intensity represented by colour. The frequency channels run along
@@ -1914,6 +1930,8 @@ class DataHandler(object):
             default: 1
         stop_channel : integer
             default: 512
+        include_flags : boolean
+            If set to true then produce a seperate plot showing flags as a function of time and frequency...
         Returns
         -------
         ap : AnimatablePlot
@@ -1943,7 +1961,8 @@ class DataHandler(object):
                 'stop_channel': stop_channel,
                 'reverse_order': True,
             }
-            tp = self.select_data(**select_data_kwargs)
+            if include_flags: (tp, flags) = self.select_data(include_flags=include_flags, **select_data_kwargs)
+            else: tp = self.select_data(**select_data_kwargs)
             mapping = self.cpref.id_to_real_str(product)
             pl.ion()
             fig = pl.figure()
@@ -1958,6 +1977,14 @@ class DataHandler(object):
             ap = AnimatablePlot(fig, self.select_data, **select_data_kwargs)
             ap.set_colorbar(cbar)
             self._add_plot(sys._getframe().f_code.co_name, ap)
+            if include_flags:
+                fig_flag = pl.figure()
+                ax_flag = fig_flag.gca()
+                ax_flag.set_title("Flag spectrogram")
+                ax_flag.set_ylabel("Time in seconds before now")
+                ax_flag.set_xlabel("Freq Channel")
+                ax_flag.imshow(flags, aspect='auto')
+                fig_flag.show()
             return ap
         else:
             print "No stored data available..."
@@ -2359,7 +2386,7 @@ class DataHandler(object):
         self._add_plot(sys._getframe().f_code.co_name, ap)
         return ap
 
-    def plot_spectrum(self, type='mag', products=None, start_channel=0, stop_channel=-1, scale='log', average=1):
+    def plot_spectrum(self, type='mag', products=None, start_channel=0, stop_channel=-1, scale='log', average=1, include_flags=False):
         """Plot spectra for the specified products.
         The most recently received signal display data is used for the display.
 
@@ -2381,6 +2408,8 @@ class DataHandler(object):
         average : integer
             The number of dumps to average over (from most recent dump backwards)
             default: None
+        include_flags : boolean
+            If True, and flag information is available, show flag information on the plot
         Returns
         -------
         ap : AnimatablePlot
@@ -2405,7 +2434,13 @@ class DataHandler(object):
         for i,product in enumerate(products):
             if s == [[0]]:
                 s = self.select_data(product=product, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
-            pl.plot(self.select_data(product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0), label=self.cpref.id_to_real_str(product, short=True))
+            if include_flags:
+                (data, flags) = self.select_data(product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0, include_flags=True)
+                pl.plot(data, label=self.cpref.id_to_real_str(product, short=True))
+                for j,flag in enumerate(flags):
+                    if flag > 0: pl.axvspan(j,j+1,facecolor='r',alpha=0.5)
+            else:
+                pl.plot(self.select_data(product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0), label=self.cpref.id_to_real_str(product, short=True))
             if i == 0:
                 ap = AnimatablePlot(f, self.select_data, product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0)
             else:
