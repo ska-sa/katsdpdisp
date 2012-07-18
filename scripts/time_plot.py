@@ -94,6 +94,7 @@ else:
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
     datafile='stream'
+    rows=None
 elif (len(args)==1):
     datafile=args[0]
     rows=None
@@ -448,21 +449,19 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global time_now
     if product is None: product = self.default_product
-#    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
     if (dtype=="pow"):
-        tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
+        tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False)
         tp[1]=10.0*log10(tp[1]);
     else:
-        tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel, reverse_order=True)
+        tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False)
     ts = tp[0]-tp[0][-1]
     time_now=tp[0][-1]
     tp[1]=numpy.array(tp[1])
     if len(tp[1].shape) == 1:
         logger.warning("Insufficient data to plot waterfall")
         return [[]]
-    tp[1]=tp[1][::-1,::]
     return [ts,tp[1],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
 
 def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
