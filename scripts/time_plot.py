@@ -25,6 +25,12 @@
 #import katuilib
 #k7w = katuilib.build_client("k7w","kat-dp",2040)
 #k7w.req.add_sdisp_ip("192.168.1.156")
+#to add center frequency info call
+# import katuilib
+# k7w = katuilib.build_client('k7w','192.168.193.4',4014,controlled=True)
+# k7w.req.k7w_add_sdisp_ip("192.168.1.159")
+#k7w.req.k7w_set_center_freq(1822000000)
+# k7w.req.k7w_sd_metadata_issue()
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
 ##or if crashed then just type debug
@@ -90,6 +96,7 @@ if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.WARNING)
+#    logger.setLevel(logging.ERROR)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -353,14 +360,14 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
-        return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""]
+        return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""],numpy.zeros(97,dtype='int')
 
     if (dtype=='pow'):
-        s = self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts)
+        s,flagarray = self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts,include_flags=True)
         s=10.0*log10(s);
     else:
-        s = self.select_data(product=product, dtype=dtype, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts)
-
+        s,flagarray = self.select_data(product=product, dtype=dtype, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts,include_flags=True)
+            
     if (s.shape==()):
         sx=numpy.nan
     elif (spectrum_seltypemenux=='channel' or self.receiver.center_freqs_mhz==[]):
@@ -369,7 +376,7 @@ def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, s
         sx=[(self.receiver.center_freqs_mhz[start_channel+f]) for f in range(0,s.shape[0])]
     else:
         sx=[(self.receiver.center_freqs_mhz[start_channel+f]/1000.0) for f in range(0,s.shape[0])]
-    return [sx,s,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+    return [sx,s,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])],flagarray
 
 def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channel=spectrum_width, colours=None):
     global f2,f2a,f2b
@@ -405,17 +412,19 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
         start_time=0
         end_time=-average
 
+    flagarray=np.zeros(stop_channel-start_channel,'bool')
     if (dtype=='powphase'):
         if (f2b==0):
             f2b=f2a.twinx()
         for i,product in enumerate(products):
-            data=get_spectrum(self,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            data,flagsa=get_spectrum(self,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
 #            if i == 0:
 #                ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time,  avg_axis=0)
 #            else:
 #                ap.add_update_function(get_spectrum, product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
-            data=get_spectrum(self,product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0);
+            data,flagsa=get_spectrum(self,product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0);
             f2b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
 #            ap.add_update_function(get_spectrum, product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
     else:
@@ -424,13 +433,29 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
             f2.delaxes(f2b)
             f2b=0
         for i,product in enumerate(products):
-            data=get_spectrum(self,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            data,flagsa=get_spectrum(self,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
  #           if i == 0:
  #               ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
  #           else:
  #               ap.add_update_function(get_spectrum, product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
 
+    #
+    flags=[]
+    chanwidth=stop_channel-start_channel
+    flagstart=0
+    flagstop=0
+    
+    while (flagstop<chanwidth):
+        flagstart=flagstop
+        while (flagstart<chanwidth and flagarray[flagstart]==0):
+            flagstart+=1
+        flagstop=flagstart
+        while (flagstop<chanwidth and flagarray[flagstop]!=0):
+            flagstop+=1
+        flags.append((flagstart,flagstop))
+    
     if dtype == 'phase': f2a.set_title("Phase Spectrum at " + time.ctime(s[0][-1]) + avg)
     elif (dtype=='powphase'): f2a.set_title("Power&Phase Spectrum at " + time.ctime(s[0][-1]) + avg)
     else: f2a.set_title("Power Spectrum at " + time.ctime(s[0][-1]) + avg)
@@ -440,6 +465,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
     f2a.axis('tight')
     if (spectrum_legend=='true'):
         f2a.legend(loc=0)
+    return flags
 #    f.show()
 #    pl.draw()
 #    self._add_plot(sys._getframe().f_code.co_name, ap)
@@ -721,13 +747,18 @@ def spectrum_draw():
             products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VH'))
             colours.append(colourlist[c%ncolourlist])
     if (len(products)):
-        plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, colours=colours,start_channel=1,stop_channel=spectrum_width)
+        onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, colours=colours,start_channel=1,stop_channel=spectrum_width)
+    else:
+        onlineflags=[]
 
     if (spectrum_seltypemenux=='channel' or datasd.receiver.center_freqs_mhz==[]):
         if (time_channelphase!=''):
             f2a.axvspan(int(time_channelphase)-0.5,int(time_channelphase)-0.5,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
             f2a.axvspan(spectrum_flag0[c]-0.5,spectrum_flag1[c]-0.5,0,1,color='r',alpha=0.5)
+        for pair in onlineflags:
+            f2a.axvspan(pair[0]-0.5,pair[1]-0.5,0,1,color='y',alpha=0.5)
+            
     elif (spectrum_seltypemenux=='mhz'):
         halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/2.0
         minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]
@@ -736,6 +767,8 @@ def spectrum_draw():
             f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
             f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]-halfchanwidth,0,1,color='r',alpha=0.5)
+        for pair in onlineflags:
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]-halfchanwidth,0,1,color='y',alpha=0.5)
     else:
         halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/1000.0/2.0
         minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
@@ -744,6 +777,8 @@ def spectrum_draw():
             f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,0,1,color='g',alpha=0.5)
         for c in range(len(spectrum_flag0)):
             f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]/1000.0-halfchanwidth,0,1,color='r',alpha=0.5)
+        for pair in onlineflags:
+            f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]/1000.0-halfchanwidth,0,1,color='y',alpha=0.5)
     #gdb python; set args ./time_plot.py; run; bt;
 #    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
 #    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
