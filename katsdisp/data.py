@@ -1761,6 +1761,7 @@ class DataHandler(object):
             frames = np.sum(frames, sum_axis)
         if reverse_order:
             frames.reverse()
+            ts.reverse()
         if include_ts:
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
@@ -1815,9 +1816,10 @@ class DataHandler(object):
         if sum_axis is not None:
             frames = np.sum(frames, sum_axis)
         if reverse_order:
-            frames = frames[...,::-1]
+            frames = frames[::-1,...]
         if include_ts:
             frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+            if reverse_order: frames[0] = frames[0][::-1]
         if include_flags:
             frames = [frames, flags]
         return frames
