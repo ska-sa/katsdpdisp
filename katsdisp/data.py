@@ -1762,6 +1762,8 @@ class DataHandler(object):
         if reverse_order:
             frames.reverse()
             ts.reverse()
+        if include_flags:
+            frames = [frames, np.zeros(np.shape(frames))]
         if include_ts:
             frames = [np.array([t / 1000.0 for t in ts]),frames]
         return frames
