@@ -29,7 +29,7 @@
 # import katuilib
 # k7w = katuilib.build_client('k7w','192.168.193.4',4014,controlled=True)
 # k7w.req.k7w_add_sdisp_ip("192.168.1.159")
-#k7w.req.k7w_set_center_freq(1822000000)
+# k7w.req.k7w_set_center_freq(1822000000)
 # k7w.req.k7w_sd_metadata_issue()
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
@@ -95,8 +95,8 @@ logger = logging.getLogger()
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
-    logger.setLevel(logging.WARNING)
-#    logger.setLevel(logging.ERROR)
+#    logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.ERROR)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -136,11 +136,14 @@ else:
             antdisp.append(1)
         else:
             antdisp.append(0)
-            
-colourlist_4html=['#000000','#FF4444','#44FF44','#4444FF','#FFFF00','#00FFFF','#774444','#447744','#444477','#777700','#007777'];
-colourlist_html='['+''.join('"'+x+'",' for x in colourlist_4html[:-1])+'"'+colourlist_4html[-1]+'"]'
-ncolourlist=len(colourlist_4html)
-colourlist=[]
+
+colourlist_R=[0,255,064,064,255,000,255]
+colourlist_G=[0,064,255,064,255,255,000]
+colourlist_B=[0,064,064,255,000,255,255]
+colourlist_R_html='['+''.join(str(x)+',' for x in colourlist_R[:-1])+str(colourlist_R[-1])+']'
+colourlist_G_html='['+''.join(str(x)+',' for x in colourlist_G[:-1])+str(colourlist_G[-1])+']'
+colourlist_B_html='['+''.join(str(x)+',' for x in colourlist_B[:-1])+str(colourlist_B[-1])+']'
+
 spectrum_width=None;#will be populated below by reading file or waiting for streamed data
 spectrum_flagstr='';
 spectrum_flag0=[]
@@ -682,18 +685,19 @@ def timeseries_draw():
     colours=[]
     ts_loop = time.time()
     for c in range(len(time_antbase0)):
+        RGB=[(colourlist_R[time_antbase0[c]]+colourlist_R[time_antbase1[c]])/(255.0+255.0),(colourlist_G[time_antbase0[c]]+colourlist_G[time_antbase1[c]])/(255.0+255.0),(colourlist_B[time_antbase0[c]]+colourlist_B[time_antbase1[c]])/(255.0+255.0) ]
         if (time_corrHH=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'HH'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (time_corrVV=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'VV'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (time_corrHV=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'HV'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (time_corrVH=='true'):
             products.append(antennamap(time_antbase0[c],time_antbase1[c],'VH'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
     ts_plot = time.time()
     if (len(products)):
         plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, colours=colours, end_time=-3600)
@@ -734,18 +738,19 @@ def spectrum_draw():
     minx=0
     maxx=spectrum_width-1
     for c in range(len(spectrum_antbase0)):
+        RGB=[(colourlist_R[spectrum_antbase0[c]]+colourlist_R[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_G[spectrum_antbase0[c]]+colourlist_G[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_B[spectrum_antbase0[c]]+colourlist_B[spectrum_antbase1[c]])/(255.0+255.0) ]
         if (spectrum_corrHH=='true'):
             products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HH'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (spectrum_corrVV=='true'):
             products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VV'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (spectrum_corrHV=='true'):
             products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HV'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
         if (spectrum_corrVH=='true'):
             products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VH'))
-            colours.append(colourlist[c%ncolourlist])
+            colours.append(RGB)
     if (len(products)):
         onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, colours=colours,start_channel=1,stop_channel=spectrum_width)
     else:
@@ -991,6 +996,7 @@ def timeseries_event(figno,*args):
         except Exception,e:
             print "Failed to load file using k7 loader (%s)" % e
     else:
+        print 'reached this'
         time_corrHH=args[0]
         time_corrVV=args[1]
         time_corrHV=args[2]
@@ -1012,13 +1018,19 @@ def timeseries_event(figno,*args):
         time_absmaxx=-1
         time_tmpmin=-1
         time_tmpmax=-1
+        print 'reached this A'
+        print datasd.storage.frame_count
+        print 'reached this AA'
         if (datasd.storage.frame_count > 0):
-            fkeys = datasd.storage.corr_prod_frames[0].keys();
-            time_now=fkeys[-1]/1000.0;
+            print 'reached this AAA1'
+            tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
+            fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
+            print 'reached this AAAA2'
+            time_now=fkeys[-1];          #get latest element
             if (len(time_minx.split(':'))==3):
                 for f in fkeys:
-                    if (time.ctime(f/1000.0).split(' ')[-2]==time_minx):
-                        time_absminx=f/1000.0;
+                    if (time.ctime(f).split(' ')[-2]==time_minx):    #f is presumably UTC
+                        time_absminx=f;
                         break
                 if (time_absminx==-1):
                     #                'Tue Apr 12 14:13:23 2011'  (2011, 4, 12, 14, 13, 20, 1, 102, -1)
@@ -1033,8 +1045,8 @@ def timeseries_event(figno,*args):
                     time_tmpmin=double(time_minx)
             if (len(time_maxx.split(':'))==3):
                 for f in fkeys:
-                    if (time.ctime(f/1000.0).split(' ')[-2]==time_maxx):
-                        time_absmaxx=f/1000.0;
+                    if (time.ctime(f).split(' ')[-2]==time_maxx):
+                        time_absmaxx=f;
                         break
                 if (time_absmaxx==-1):
                     thesplit=time_maxx.split(':');
@@ -1052,12 +1064,19 @@ def timeseries_event(figno,*args):
                 tmp=time_maxx
                 time_maxx=time_minx
                 time_minx=tmp
+            print 'reached this AAAAA'
     
+    print 'reached thisB'
     if (datafile!='stream'):
         timeseries_draw()
+    print 'reachthis2'
     newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase);
+    print 'reachthis3'
     f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
-    f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
+    print 'reachthis4'
+    print 'new content assigned, VV flag=', time_corrVV
+    myrv=f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
+    print 'returned: ',myrv
    # f1.canvas.send_cmd("alert('Server says: Plot updated...'); document.documentURI;")
 
 #coverts time from hms to a floating point value
@@ -1080,14 +1099,15 @@ def spectrum_event(figno,*args):
     if (args[0]=="settexttimeinst"):
         spectrum_timeinst=args[1]
         spectrum_abstimeinst=-1;
-        if (len(datasd.storage.corr_prod_frames)):
-            fkeys = datasd.storage.corr_prod_frames[0].keys();
+        if (len(datasd.storage.frame_count)>0):
+            tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
+            fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
             if (len(spectrum_timeinst.split(':'))==3):
                 for f in fkeys:
-                    if (time.ctime(f/1000.0).split(' ')[-2]==spectrum_timeinst):
-                        spectrum_abstimeinst=f/1000.0;
+                    if (time.ctime(f).split(' ')[-2]==spectrum_timeinst):
+                        spectrum_abstimeinst=f;
             elif (spectrum_timeinst!=''):#possibly just a negative number (in seconds previous to now)
-                spectrum_abstimeinst=fkeys[-1]/1000.0+double(spectrum_timeinst)
+                spectrum_abstimeinst=fkeys[-1]+double(spectrum_timeinst)
         if (datafile!='stream'):
             timeseries_draw()
     elif (args[0]=="setchannelphase"):
@@ -1237,13 +1257,14 @@ def spectrum_event(figno,*args):
         #args[16]
         spectrum_abstimeinst=-1;
         if (datasd.storage.frame_count > 0):
-            fkeys = datasd.storage.corr_prod_frames[0].keys();
+            tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
+            fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
             if (len(spectrum_timeinst.split(':'))==3):
                 for f in fkeys:
-                    if (time.ctime(f/1000.0).split(' ')[-2]==spectrum_timeinst):
-                        spectrum_abstimeinst=f/1000.0;
+                    if (time.ctime(f).split(' ')[-2]==spectrum_timeinst):
+                        spectrum_abstimeinst=f;
             elif (spectrum_timeinst!=''):#possibly just a negative number (in seconds previous to now)
-                spectrum_abstimeinst=fkeys[-1]/1000.0+double(spectrum_timeinst)
+                spectrum_abstimeinst=fkeys[-1]+double(spectrum_timeinst)
         if (spectrum_seltypemenux!='channel' and datasd.receiver.center_freqs_mhz==[]):
             spectrum_seltypemenux='channel'
             f2.canvas.send_cmd('alert("Warning: no center frequencies available, reverting to channel")')
@@ -1378,15 +1399,11 @@ if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
     spectrum_flagmask=numpy.ones([spectrum_width])
 
-colourlist=[]
-for c in range(ncolourlist):
-    colourlist.append([float(int(colourlist_4html[c][1:3],16))/255.0,float(int(colourlist_4html[c][3:5],16))/255.0,float(int(colourlist_4html[c][5:7],16))/255.0]);
-
 # show a plot
 f1=figure(1)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"time_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f1.canvas._custom_content = cc
 f1.canvas._user_event = timeseries_event
@@ -1396,7 +1413,7 @@ f1.canvas._user_event(0,time_corrHH, time_corrVV, time_corrHV, time_corrVH,time_
 f2=figure(2)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"spectrum_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f2.canvas._custom_content = cc
 f2.canvas._user_event = spectrum_event
@@ -1406,7 +1423,7 @@ f2.canvas._user_event(1,spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spect
 f3=figure(3)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"waterfall_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f3.canvas._custom_content = cc
 f3.canvas._user_event = waterfall_event
@@ -1416,7 +1433,7 @@ f3.canvas._user_event(2,waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, wa
 f4=figure(4)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"matrix_plot.html")
-cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list>",colourlist_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f4.canvas._custom_content = cc
 f4.canvas._user_event = matrix_event

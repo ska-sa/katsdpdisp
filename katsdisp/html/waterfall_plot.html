@@ -96,7 +96,9 @@
 			}
 			
 			function redrawCanvas(){
-			var colourlist=<!--colour-list>
+			var colourlistR=<!--colour-list-R>
+			var colourlistG=<!--colour-list-G>
+			var colourlistB=<!--colour-list-B>
 			var drawingCanvas = document.getElementById('antennaCanvas');
 			if(drawingCanvas.getContext) {
 			var context = drawingCanvas.getContext('2d');
@@ -115,12 +117,12 @@
 			}
 			for (i=0;i<antbase0.length;i++)
 			{
-				context.strokeStyle = colourlist[i%colourlist.length];
+				context.strokeStyle = "#0";
 				context.beginPath();
 				if (antbase0[i]==antbase1[i])
 				{
 					context.lineWidth   = 1
-					context.fillStyle=colourlist[i%colourlist.length];
+					context.fillStyle="#0";
 					context.arc(antposx[antbase0[i]],antposy[antbase1[i]],5,0,Math.PI*2,true);
 				}else
 				{
