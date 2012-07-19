@@ -95,8 +95,8 @@ logger = logging.getLogger()
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
-#    logger.setLevel(logging.WARNING)
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.WARNING)
+#    logger.setLevel(logging.ERROR)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -996,7 +996,6 @@ def timeseries_event(figno,*args):
         except Exception,e:
             print "Failed to load file using k7 loader (%s)" % e
     else:
-        print 'reached this'
         time_corrHH=args[0]
         time_corrVV=args[1]
         time_corrHV=args[2]
@@ -1018,14 +1017,9 @@ def timeseries_event(figno,*args):
         time_absmaxx=-1
         time_tmpmin=-1
         time_tmpmax=-1
-        print 'reached this A'
-        print datasd.storage.frame_count
-        print 'reached this AA'
         if (datasd.storage.frame_count > 0):
-            print 'reached this AAA1'
             tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
             fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
-            print 'reached this AAAA2'
             time_now=fkeys[-1];          #get latest element
             if (len(time_minx.split(':'))==3):
                 for f in fkeys:
@@ -1064,19 +1058,12 @@ def timeseries_event(figno,*args):
                 tmp=time_maxx
                 time_maxx=time_minx
                 time_minx=tmp
-            print 'reached this AAAAA'
-    
-    print 'reached thisB'
+
     if (datafile!='stream'):
         timeseries_draw()
-    print 'reachthis2'
     newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase);
-    print 'reachthis3'
     f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
-    print 'reachthis4'
-    print 'new content assigned, VV flag=', time_corrVV
-    myrv=f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
-    print 'returned: ',myrv
+    f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
    # f1.canvas.send_cmd("alert('Server says: Plot updated...'); document.documentURI;")
 
 #coverts time from hms to a floating point value
