@@ -505,8 +505,13 @@ def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     else:
         start_time=0
         end_time=-average
-    im = np.zeros((16,16),dtype=np.float32)
-    antindices=np.sort([int(c[3])-1 for c in self.cpref.antennas.keys()])
+    im = np.zeros((14,14),dtype=np.float32)
+    keys=self.cpref.antennas.keys()
+    if ('0' in keys):
+        keys.remove('0')
+    if ('ant8' in keys):
+        keys.remove('ant8')
+    antindices=np.sort([int(c[3])-1 for c in keys])
     pol=['H','V']
     for ip0 in range(2):
         for ip1 in range(2):
@@ -514,7 +519,7 @@ def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
                 product=antennamap(a0,a0,pol[ip0]+pol[ip1])
                 magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
                 im[a0*2+ip0][a0*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
-                for a1 in range(a0+1,8):
+                for a1 in range(a0+1,7):
                     if (a1 in antindices):
                         product=antennamap(a0,a1,pol[ip0]+pol[ip1])
                         magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
@@ -538,11 +543,11 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
                 f4a.set_xlabel("Excluding ("+spectrum_flagstr+")");
         cax = f4a.matshow(im, cmap=cm.spectral)
         cbar = f4.colorbar(cax)
-        f4a.set_yticks(np.arange(16))
-        f4a.set_yticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(16)])
-        f4a.set_xticks(np.arange(16))
-        f4a.set_xticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(16)])
-        f4a.set_ylim((15.5,-0.5))
+        f4a.set_yticks(np.arange(14))
+        f4a.set_yticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(14)])
+        f4a.set_xticks(np.arange(14))
+        f4a.set_xticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(14)])
+        f4a.set_ylim((13.5,-0.5))
     else:
         print "No stored data available..."
 
@@ -778,7 +783,6 @@ def waterfall_draw():
         f3a.set_ylim(ylim[::-1])
     f3.canvas.draw()
 
-#
 def matrix_draw():
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
     global f4,f4a
@@ -1386,7 +1390,7 @@ else:
                 ts_sp_end = time.time()
                 waterfall_draw()
                 ts_wf_end = time.time()
-                #matrix_draw()
+                matrix_draw()
                 ts_end = time.time()
                 if (time_now==time_last):
                     ifailedframe+=1
