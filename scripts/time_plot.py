@@ -95,8 +95,8 @@ logger = logging.getLogger()
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
-    logger.setLevel(logging.WARNING)
-#    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.ERROR)
+#    logger.setLevel(logging.WARNING)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
 if (len(args)==0):
@@ -137,9 +137,9 @@ else:
         else:
             antdisp.append(0)
 
-colourlist_R=[0,255,064,064,255,000,255]
-colourlist_G=[0,064,255,064,255,255,000]
-colourlist_B=[0,064,064,255,000,255,255]
+colourlist_R=[204,000,000,255,000,051,128]
+colourlist_G=[000,102,000,000,255,051,064]
+colourlist_B=[000,051,255,255,255,051,000]
 colourlist_R_html='['+''.join(str(x)+',' for x in colourlist_R[:-1])+str(colourlist_R[-1])+']'
 colourlist_G_html='['+''.join(str(x)+',' for x in colourlist_G[:-1])+str(colourlist_G[-1])+']'
 colourlist_B_html='['+''.join(str(x)+',' for x in colourlist_B[:-1])+str(colourlist_B[-1])+']'
@@ -310,11 +310,8 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
-#            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-#            else: ap.add_update_function(get_time_series, dtype='pow', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             data = get_time_series(self,dtype='phase',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             f1b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-#            ap.add_update_function(get_time_series, dtype='phase', product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
     else:
         if (f1b):
             f1b.clear()
@@ -332,8 +329,6 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
             f1a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             data_time += ts_mid - ts_start
             plot_time += time.time() - ts_mid
-#            if i == 0: ap = katsdisp.AnimatablePlot(f1, get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-#            else: ap.add_update_function(get_time_series, dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
             minf1a=min(minf1a,min(data[1]));
             maxf1a=max(maxf1a,max(data[1]));
         logger.warning("Data time: %.3fs, Plot time: %.3fs\n" % (data_time, plot_time))
@@ -354,11 +349,6 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         f1a.set_ylabel("Phase [radians]")
     elif (dtype=='pow' or dtype=='powphase'): f1a.set_ylabel("dB")
     else: f1a.set_ylabel("Magitude [arbitrary units]")
-#    f.show()
-#    pl.draw()
-#    self._add_plot(sys._getframe().f_code.co_name, ap)
-
-#    return ap
 
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg
@@ -423,13 +413,8 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
             data,flagsa=get_spectrum(self,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
             flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-#            if i == 0:
-#                ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time,  avg_axis=0)
-#            else:
-#                ap.add_update_function(get_spectrum, product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
             data,flagsa=get_spectrum(self,product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0);
             f2b.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
-#            ap.add_update_function(get_spectrum, product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
     else:
         if (f2b):
             f2b.clear()
@@ -439,12 +424,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
             data,flagsa=get_spectrum(self,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
             flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
- #           if i == 0:
- #               ap = katsdisp.AnimatablePlot(f2, get_spectrum,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
- #           else:
- #               ap.add_update_function(get_spectrum, product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0)
 
-    #
     flags=[]
     chanwidth=stop_channel-start_channel
     flagstart=0
@@ -469,11 +449,6 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
     if (spectrum_legend=='true'):
         f2a.legend(loc=0)
     return flags
-#    f.show()
-#    pl.draw()
-#    self._add_plot(sys._getframe().f_code.co_name, ap)
-#    return ap
-
 
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global time_now
@@ -516,78 +491,36 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
         f3a.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
         if (waterfall_seltypemenux!='channel'):
             f3a.set_xlim(f3a.get_xlim()[::-1])
-#        ap = katsdisp.AnimatablePlot(f3,get_waterfall,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-#        ap.set_colorbar(cbar)
-#        return ap
     else:
         print "No stored data available..."
 
 def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
-    map = np.array([[0, 0],
-       [0, 1],
-       [1, 1],
-       [0, 2],
-       [1, 2],
-       [2, 2],
-       [0, 3],
-       [1, 3],
-       [2, 3],
-       [3, 3],
-       [0, 4],
-       [1, 4],
-       [2, 4],
-       [3, 4],
-       [4, 4],
-       [1, 5],
-       [2, 5],
-       [3, 5],
-       [4, 5],
-       [5, 5],
-       [2, 6],
-       [3, 6],
-       [4, 6],
-       [5, 6],
-       [6, 6],
-       [3, 7],
-       [4, 7],
-       [5, 7],
-       [6, 7],
-       [7, 7],
-       [0, 5],
-       [0, 6],
-       [0, 7],
-       [1, 6],
-       [1, 7],
-       [2, 7]])
-
-    def idx(bl, pol):
-        (a,b) = map[bl]
-        i1 = a * 2 + (pol % 2 == 0 and 1 or 2) - 1
-        i2 = b * 2 + (pol % 3 == 0 and 1 or 2) - 1
-        return i1,i2
-
+    global spectrum_abstimeinst,spectrum_timeavg
+    average=1;
+    if (spectrum_timeavg!=''):
+        average=int(spectrum_timeavg);
+    if (spectrum_abstimeinst>0):
+        start_time=spectrum_abstimeinst
+        end_time=spectrum_abstimeinst+average
+    else:
+        start_time=0
+        end_time=-average
     im = np.zeros((16,16),dtype=np.float32)
-    for bl in range(36):
-        for pol in range(4):
-            (a,b) = idx(bl,pol)
-            ind=bl * 4 + pol
-            if (ind<len(self.storage.cur_frames)):
-                if a < b:
-                    im[a,b] = dot(self.storage.cur_frames[ind].get_phase(),spectrum_flagmask)
-                    im[b,a] = dot(self.storage.cur_frames[ind].get_mag(),spectrum_flagmask) / 1000
-#                    im[a,b] = np.average(self.storage.cur_frames[ind].get_phase())
-#                    im[b,a] = np.average(self.storage.cur_frames[ind].get_mag()) / 1000
-                else:
-                    im[a,b] = dot(self.storage.cur_frames[ind].get_mag(),spectrum_flagmask) / 1000
-                    im[b,a] = dot(self.storage.cur_frames[ind].get_phase(),spectrum_flagmask)
-#                    im[a,b] = np.average(self.storage.cur_frames[ind].get_mag()) / 1000
-#                    im[b,a] = np.average(self.storage.cur_frames[ind].get_phase())
-                if a == b:
-                    im[a,b] = -2 + (dot(self.storage.cur_frames[ind].get_mag(),spectrum_flagmask) / 1000)
-#                    im[a,b] = -2 + (np.average(self.storage.cur_frames[ind].get_mag()) / 1000)
-            else:
-                im[a,b]=0
-                im[b,a]=0
+    antindices=np.sort([int(c[3])-1 for c in self.cpref.antennas.keys()])
+    pol=['H','V']
+    for ip0 in range(2):
+        for ip1 in range(2):
+            for a0 in antindices:
+                product=antennamap(a0,a0,pol[ip0]+pol[ip1])
+                magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
+                im[a0*2+ip0][a0*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
+                for a1 in range(a0+1,8):
+                    if (a1 in antindices):
+                        product=antennamap(a0,a1,pol[ip0]+pol[ip1])
+                        magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
+                        phasedata=self.select_data(product=product, dtype="phase", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
+                        im[a0*2+ip0][a1*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
+                        im[a1*2+ip0][a0*2+ip1]=dot(phasedata,spectrum_flagmask)
     return im
 
 def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
@@ -596,7 +529,6 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     global f4,f4a
     if self.storage is not None:
         im = get_baseline_matrix(self,start_channel=0, stop_channel=spectrum_width)
-#        pl.ion()
         title="Baseline matrix, summed "+str(numpy.sum(spectrum_flagmask,dtype='int'))+" channels";
         f4a.set_title(title)
         if (len(spectrum_flagstr)):
@@ -611,10 +543,6 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
         f4a.set_xticks(np.arange(16))
         f4a.set_xticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(16)])
         f4a.set_ylim((15.5,-0.5))
-#        ap = katsdisp.AnimatablePlot(f4, get_baseline_matrix, start_channel=start_channel, stop_channel=stop_channel)
-#        ap.set_colorbar(cbar)
-#        self._add_plot(sys._getframe().f_code.co_name, ap)
-#        return ap
     else:
         print "No stored data available..."
 
