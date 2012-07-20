@@ -1784,6 +1784,8 @@ class DataHandler(object):
             split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
             split_end = max(np.where(rolled_ts[:(self.storage.frame_count+1 if self.storage.first_pass else None)] <= end_time * 1000)[0]) + roll_point
         else:
+            if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
+             # ensure we do not ask for more data than is available
             split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
             split_start = max(split_end + end_time,0)
         split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
