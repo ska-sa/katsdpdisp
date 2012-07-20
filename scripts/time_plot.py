@@ -1379,7 +1379,7 @@ if (datafile!='stream'):
 else:
     show(layout='figure1',block=False,open_plot=opts.open_plot)
     while True:
-        if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
+        #if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
         if (datasd.storage.frame_count > 0):
             if (spectrum_width is None):
                 if(datasd.storage.frame_count > 0):
