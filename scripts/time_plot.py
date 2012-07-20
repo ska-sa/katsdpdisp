@@ -411,6 +411,8 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
             f2b=f2a.twinx()
         for i,product in enumerate(products):
             data,flagsa=get_spectrum(self,product=product, dtype='pow', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            if np.shape(flagsa)!=np.shape(flagarray):
+                flagsa=flagsa.any(axis=0)
             flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
             data,flagsa=get_spectrum(self,product=product, dtype='phase', start_channel=start_channel, stop_channel=stop_channel, start_time=start_time, end_time=end_time, avg_axis=0);
@@ -422,6 +424,8 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
             f2b=0
         for i,product in enumerate(products):
             data,flagsa=get_spectrum(self,product=product, dtype=dtype, start_channel=start_channel, stop_channel=stop_channel, start_time=start_time,end_time=end_time, avg_axis=0);
+            if np.shape(flagsa)!=np.shape(flagarray):
+                flagsa=flagsa.any(axis=0)
             flagarray|=np.array(flagsa,dtype='bool')
             f2a.plot(data[0],data[1],color=colours[i],label=data[2],linewidth=linewidthdict[product[2]],linestyle=linestyledict[product[2]])
 
@@ -487,8 +491,9 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
             extent=[self.receiver.center_freqs_mhz[start_channel]/1000.0,self.receiver.center_freqs_mhz[stop_channel-1]/1000.0,tp[0][-1],tp[0][0]]
         cax = f3a.imshow(tp[1], aspect='auto', interpolation='bicubic', animated=True,extent=extent)
         cbar = f3.colorbar(cax)
-        f3a.set_ylim(f3a.get_ylim()[::-1])
         f3a.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
+        theylim=f3a.get_ylim()
+        f3a.set_ylim((max(theylim),min(theylim)))
         if (waterfall_seltypemenux!='channel'):
             f3a.set_xlim(f3a.get_xlim()[::-1])
     else:
@@ -794,7 +799,7 @@ def matrix_draw():
     ts_plot = time.time()
     f4.canvas.draw()
     ts_end = time.time()
-    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
+#    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
 
 def timeseries_event(figno,*args):
     global dh,datasd,rows,startrow
