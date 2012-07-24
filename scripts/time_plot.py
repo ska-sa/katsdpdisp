@@ -1381,12 +1381,9 @@ else:
     while True:
         #if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
         if (datasd.storage.frame_count > 0):
-            if (spectrum_width is None):
-                if(datasd.storage.frame_count > 0):
-                    spectrum_width=datasd.receiver.channels
-                    spectrum_flagmask=numpy.ones([spectrum_width])
-                elif (ifailedframe==0):
-                    print "Error: unable to determine number of channels"
+            if (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
+                spectrum_width=datasd.receiver.channels
+                spectrum_flagmask=numpy.ones([spectrum_width])
             else:
                 ts_start = time.time()
                 timeseries_draw()
