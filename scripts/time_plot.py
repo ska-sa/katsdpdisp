@@ -1392,7 +1392,7 @@ else:
                 ts_sp_end = time.time()
                 waterfall_draw()
                 ts_wf_end = time.time()
-                matrix_draw()
+                #matrix_draw()
                 ts_end = time.time()
                 if (time_now==time_last):
                     ifailedframe+=1
