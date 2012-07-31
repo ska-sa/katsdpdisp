@@ -678,7 +678,7 @@ class SpeadSDReceiver(threading.Thread):
         self.heap_count = 0
         self.bls_ordering = None
         self.center_freq = 0
-        self.n_chans = 0
+        self.channels = 0
         self.channel_bandwidth = 0
         self.center_freqs_mhz = []
         self.direct = direct
