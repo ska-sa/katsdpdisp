@@ -28,7 +28,7 @@
 #to add center frequency info call
 # import katuilib
 # k7w = katuilib.build_client('k7w','192.168.193.4',4014,controlled=True)
-# k7w.req.k7w_add_sdisp_ip("192.168.1.159")
+# k7w.req.k7w_add_sdisp_ip("192.168.9.124")
 # k7w.req.k7w_set_center_freq(1822000000)
 # k7w.req.k7w_sd_metadata_issue()
 #####################################################################################
@@ -226,7 +226,7 @@ def delayformatter(x,pos):
         return str(x)+' \n'+time.ctime(x+time_now).split(' ')[-2]
     
 def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
-    global spectrum_flagmask,time_timeavg,time_now
+    global spectrum_flagmask,time_timeavg,time_now,spectrum_flagstr,spectrum_width
     if product is None: product = self.default_product
 #    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
@@ -238,6 +238,10 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
             tp[0]=np.array([0])
             tp[1]=np.array([0])
         else:
+            if (np.shape(tp[1])[1]!=spectrum_width):
+                spectrum_width=np.shape(tp[1])[1]
+                spectrum_flagmask=numpy.ones([spectrum_width])
+                spectrum_flagstr=''
             tp[1]=dot(tp[1],spectrum_flagmask)
             #tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
     elif (dtype=='phase'):
@@ -257,6 +261,10 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
                 tp[0]=np.array([0])
                 tp[1]=np.array([0])
             else:
+                if (np.shape(tp[1])[1]!=spectrum_width):
+                    spectrum_width=np.shape(tp[1])[1]
+                    spectrum_flagmask=numpy.ones([spectrum_width])
+                    spectrum_flagstr=''
                 tp[1]=np.angle(np.dot(np.array(tp[1]),spectrum_flagmask))
     if (dtype=='pow'):
         tp[1]=10.0*log10(tp[1]);
@@ -272,7 +280,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
 
 
 def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_channel=0, stop_channel=spectrum_width,colours=None):
-    global f1,f1a,f1b
+    global f1,f1a,f1b,spectrum_width
     global time_absminx,time_absmaxx,time_minx,time_maxx
     if products is None: products = self.default_products
     if (dtype=='phase' and time_channelphase!=''):
@@ -351,7 +359,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
     else: f1a.set_ylabel("Magitude [arbitrary units]")
 
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
-    global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg
+    global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg,spectrum_width
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""],numpy.zeros(97,dtype='int')
 
@@ -372,7 +380,7 @@ def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, s
     return [sx,s,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])],flagarray
 
 def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channel=spectrum_width, colours=None):
-    global f2,f2a,f2b
+    global f2,f2a,f2b,spectrum_width
     global spectrum_abstimeinst,spectrum_timeavg
 
     if products is None: products = self.default_products
@@ -500,7 +508,7 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
         print "No stored data available..."
 
 def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
-    global spectrum_abstimeinst,spectrum_timeavg
+    global spectrum_abstimeinst,spectrum_timeavg,spectrum_flagstr,spectrum_width,spectrum_flagmask
     average=1;
     if (spectrum_timeavg!=''):
         average=int(spectrum_timeavg);
@@ -523,20 +531,32 @@ def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
             for a0 in antindices:
                 product=antennamap(a0,a0,pol[ip0]+pol[ip1])
                 magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
+                if (np.shape(magdata)[0]!=spectrum_width):
+                    spectrum_width=np.shape(magdata)[0]
+                    spectrum_flagmask=numpy.ones([spectrum_width])
+                    spectrum_flagstr=''
                 im[a0*2+ip0][a0*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
                 for a1 in range(a0+1,7):
                     if (a1 in antindices):
                         product=antennamap(a0,a1,pol[ip0]+pol[ip1])
                         magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
                         phasedata=self.select_data(product=product, dtype="phase", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
+                        if (np.shape(magdata)[0]!=spectrum_width):
+                            spectrum_width=np.shape(magdata)[0]
+                            spectrum_flagmask=numpy.ones([spectrum_width])
+                            spectrum_flagstr=''
                         im[a0*2+ip0][a1*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
+                        if (np.shape(phasedata)[0]!=spectrum_width):
+                            spectrum_width=np.shape(phasedata)[0]
+                            spectrum_flagmask=numpy.ones([spectrum_width])
+                            spectrum_flagstr=''
                         im[a1*2+ip0][a0*2+ip1]=dot(phasedata,spectrum_flagmask)
     return im
 
 def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     """Plot a matrix showing auto correlation power on the diagonal and cross correlation
     phase and power in the upper and lower segments."""
-    global f4,f4a
+    global f4,f4a,spectrum_width,spectrum_flagmask
     if self.storage is not None:
         im = get_baseline_matrix(self,start_channel=0, stop_channel=spectrum_width)
         title="Baseline matrix, summed "+str(numpy.sum(spectrum_flagmask,dtype='int'))+" channels";
@@ -611,198 +631,210 @@ def setloadpage(cc,newcontent):
     return cc;
 
 def timeseries_draw():
-    global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx
-    global f1,f1a,f1b
-    ts_start = time.time()
-    f1a.clear()
-    if (f1b):
-        f1b.clear()
-        f1.delaxes(f1b)
-        f1b=0;
-    products=[]
-    colours=[]
-    ts_loop = time.time()
-    for c in range(len(time_antbase0)):
-        RGB=[(colourlist_R[time_antbase0[c]]+colourlist_R[time_antbase1[c]])/(255.0+255.0),(colourlist_G[time_antbase0[c]]+colourlist_G[time_antbase1[c]])/(255.0+255.0),(colourlist_B[time_antbase0[c]]+colourlist_B[time_antbase1[c]])/(255.0+255.0) ]
-        if (time_corrHH=='true'):
-            products.append(antennamap(time_antbase0[c],time_antbase1[c],'HH'))
-            colours.append(RGB)
-        if (time_corrVV=='true'):
-            products.append(antennamap(time_antbase0[c],time_antbase1[c],'VV'))
-            colours.append(RGB)
-        if (time_corrHV=='true'):
-            products.append(antennamap(time_antbase0[c],time_antbase1[c],'HV'))
-            colours.append(RGB)
-        if (time_corrVH=='true'):
-            products.append(antennamap(time_antbase0[c],time_antbase1[c],'VH'))
-            colours.append(RGB)
-    ts_plot = time.time()
-    if (len(products)):
-        plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, colours=colours, end_time=-3600)
-    ts_range = time.time()
-    if (time_absminx<=0 and time_minx!=''):
-        f1a.set_xlim(xmin=double(time_minx))
-    elif (time_absminx>0):
-        f1a.set_xlim(xmin=double(time_absminx-time_now))
-    if (time_absmaxx<=0 and time_maxx!=''):
-        f1a.set_xlim(xmax=double(time_maxx))
-    elif (time_absmaxx>0):
-        f1a.set_xlim(xmax=double(time_absmaxx-time_now))
-    if (f1a.xaxis_inverted()):
-        xlim=f1a.get_xlim();
-        f1a.set_xlim(xlim[::-1])
-    if (time_minF!=''):
-        f1a.set_ylim(ymin=double(time_minF))
-    if (time_maxF!=''):
-        f1a.set_ylim(ymax=double(time_maxF))
-    if (f1a.yaxis_inverted()):
-        ylim=f1a.get_ylim();
-        f1a.set_ylim(ylim[::-1])
-    ts_draw = time.time()
-    f1.canvas.draw()
-    ts_end = time.time()
-    logger.warning("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
+    try:
+        global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx
+        global f1,f1a,f1b,spectrum_width
+        ts_start = time.time()
+        f1a.clear()
+        if (f1b):
+            f1b.clear()
+            f1.delaxes(f1b)
+            f1b=0;
+        products=[]
+        colours=[]
+        ts_loop = time.time()
+        for c in range(len(time_antbase0)):
+            RGB=[(colourlist_R[time_antbase0[c]]+colourlist_R[time_antbase1[c]])/(255.0+255.0),(colourlist_G[time_antbase0[c]]+colourlist_G[time_antbase1[c]])/(255.0+255.0),(colourlist_B[time_antbase0[c]]+colourlist_B[time_antbase1[c]])/(255.0+255.0) ]
+            if (time_corrHH=='true'):
+                products.append(antennamap(time_antbase0[c],time_antbase1[c],'HH'))
+                colours.append(RGB)
+            if (time_corrVV=='true'):
+                products.append(antennamap(time_antbase0[c],time_antbase1[c],'VV'))
+                colours.append(RGB)
+            if (time_corrHV=='true'):
+                products.append(antennamap(time_antbase0[c],time_antbase1[c],'HV'))
+                colours.append(RGB)
+            if (time_corrVH=='true'):
+                products.append(antennamap(time_antbase0[c],time_antbase1[c],'VH'))
+                colours.append(RGB)
+        ts_plot = time.time()
+        if (len(products)):
+            plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, colours=colours, end_time=-3600)
+        ts_range = time.time()
+        if (time_absminx<=0 and time_minx!=''):
+            f1a.set_xlim(xmin=double(time_minx))
+        elif (time_absminx>0):
+            f1a.set_xlim(xmin=double(time_absminx-time_now))
+        if (time_absmaxx<=0 and time_maxx!=''):
+            f1a.set_xlim(xmax=double(time_maxx))
+        elif (time_absmaxx>0):
+            f1a.set_xlim(xmax=double(time_absmaxx-time_now))
+        if (f1a.xaxis_inverted()):
+            xlim=f1a.get_xlim();
+            f1a.set_xlim(xlim[::-1])
+        if (time_minF!=''):
+            f1a.set_ylim(ymin=double(time_minF))
+        if (time_maxF!=''):
+            f1a.set_ylim(ymax=double(time_maxF))
+        if (f1a.yaxis_inverted()):
+            ylim=f1a.get_ylim();
+            f1a.set_ylim(ylim[::-1])
+        ts_draw = time.time()
+        f1.canvas.draw()
+        ts_end = time.time()
+        logger.warning("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
+    except Exception,e:
+        print 'Exception in timeseries_draw',e
 
 def spectrum_draw():
-    global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx
-    global f2,f2a,f2b
-    f2a.clear()
-    if (f2b):
-        f2b.clear()
-        f2.delaxes(f2b)
-        f2b=0;
-    products=[]
-    colours=[]
-    minx=0
-    maxx=spectrum_width-1
-    for c in range(len(spectrum_antbase0)):
-        RGB=[(colourlist_R[spectrum_antbase0[c]]+colourlist_R[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_G[spectrum_antbase0[c]]+colourlist_G[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_B[spectrum_antbase0[c]]+colourlist_B[spectrum_antbase1[c]])/(255.0+255.0) ]
-        if (spectrum_corrHH=='true'):
-            products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HH'))
-            colours.append(RGB)
-        if (spectrum_corrVV=='true'):
-            products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VV'))
-            colours.append(RGB)
-        if (spectrum_corrHV=='true'):
-            products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HV'))
-            colours.append(RGB)
-        if (spectrum_corrVH=='true'):
-            products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VH'))
-            colours.append(RGB)
-    if (len(products)):
-        onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, colours=colours,start_channel=1,stop_channel=spectrum_width)
-    else:
-        onlineflags=[]
+    try:
+        global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx
+        global f2,f2a,f2b,spectrum_width
+        f2a.clear()
+        if (f2b):
+            f2b.clear()
+            f2.delaxes(f2b)
+            f2b=0;
+        products=[]
+        colours=[]
+        minx=0
+        maxx=spectrum_width-1
+        for c in range(len(spectrum_antbase0)):
+            RGB=[(colourlist_R[spectrum_antbase0[c]]+colourlist_R[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_G[spectrum_antbase0[c]]+colourlist_G[spectrum_antbase1[c]])/(255.0+255.0),(colourlist_B[spectrum_antbase0[c]]+colourlist_B[spectrum_antbase1[c]])/(255.0+255.0) ]
+            if (spectrum_corrHH=='true'):
+                products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HH'))
+                colours.append(RGB)
+            if (spectrum_corrVV=='true'):
+                products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VV'))
+                colours.append(RGB)
+            if (spectrum_corrHV=='true'):
+                products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'HV'))
+                colours.append(RGB)
+            if (spectrum_corrVH=='true'):
+                products.append(antennamap(spectrum_antbase0[c],spectrum_antbase1[c],'VH'))
+                colours.append(RGB)
+        if (len(products)):
+            onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, colours=colours,start_channel=1,stop_channel=spectrum_width)
+        else:
+            onlineflags=[]
 
-    if (spectrum_seltypemenux=='channel' or datasd.receiver.center_freqs_mhz==[]):
-        if (time_channelphase!=''):
-            f2a.axvspan(int(time_channelphase)-0.5,int(time_channelphase)-0.5,0,1,color='g',alpha=0.5)
-        for c in range(len(spectrum_flag0)):
-            f2a.axvspan(spectrum_flag0[c]-0.5,spectrum_flag1[c]-0.5,0,1,color='r',alpha=0.5)
-        for pair in onlineflags:
-            f2a.axvspan(pair[0]-0.5,pair[1]-0.5,0,1,color='y',alpha=0.5)
-            
-    elif (spectrum_seltypemenux=='mhz'):
-        halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/2.0
-        minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]
-        maxx=datasd.receiver.center_freqs_mhz[0]
-        if (time_channelphase!=''):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,0,1,color='g',alpha=0.5)
-        for c in range(len(spectrum_flag0)):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]-halfchanwidth,0,1,color='r',alpha=0.5)
-        for pair in onlineflags:
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]-halfchanwidth,0,1,color='y',alpha=0.5)
-    else:
-        halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/1000.0/2.0
-        minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
-        maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
-        if (time_channelphase!=''):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,0,1,color='g',alpha=0.5)
-        for c in range(len(spectrum_flag0)):
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]/1000.0-halfchanwidth,0,1,color='r',alpha=0.5)
-        for pair in onlineflags:
-            f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]/1000.0-halfchanwidth,0,1,color='y',alpha=0.5)
-    #gdb python; set args ./time_plot.py; run; bt;
-#    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
-#    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
+        if (spectrum_seltypemenux=='channel' or datasd.receiver.center_freqs_mhz==[]):
+            if (time_channelphase!=''):
+                f2a.axvspan(int(time_channelphase)-0.5,int(time_channelphase)-0.5,0,1,color='g',alpha=0.5)
+            for c in range(len(spectrum_flag0)):
+                f2a.axvspan(spectrum_flag0[c]-0.5,spectrum_flag1[c]-0.5,0,1,color='r',alpha=0.5)
+            for pair in onlineflags:
+                f2a.axvspan(pair[0]-0.5,pair[1]-0.5,0,1,color='y',alpha=0.5)
 
-    if (spectrum_minx!=''):
-        f2a.set_xlim(xmin=double(spectrum_minx))
-    else:
-        f2a.set_xlim(xmin=minx)
-    if (spectrum_maxx!=''):
-        f2a.set_xlim(xmax=double(spectrum_maxx))
-    else:
-        f2a.set_xlim(xmax=maxx)
-    if (f2a.xaxis_inverted()):
-        xlim=f2a.get_xlim();
-        f2a.set_xlim(xlim[::-1])
-    if (spectrum_minF!=''):
-        f2a.set_ylim(ymin=double(spectrum_minF))
-    if (spectrum_maxF!=''):
-        f2a.set_ylim(ymax=double(spectrum_maxF))
-    if (f2a.yaxis_inverted()):
-        ylim=f2a.get_ylim();
-        f2a.set_ylim(ylim[::-1])
-    f2.canvas.draw()
+        elif (spectrum_seltypemenux=='mhz'):
+            halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/2.0
+            minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]
+            maxx=datasd.receiver.center_freqs_mhz[0]
+            if (time_channelphase!=''):
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth,0,1,color='g',alpha=0.5)
+            for c in range(len(spectrum_flag0)):
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]-halfchanwidth,0,1,color='r',alpha=0.5)
+            for pair in onlineflags:
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]-halfchanwidth,0,1,color='y',alpha=0.5)
+        else:
+            halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/1000.0/2.0
+            minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
+            maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
+            if (time_channelphase!=''):
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth,0,1,color='g',alpha=0.5)
+            for c in range(len(spectrum_flag0)):
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[spectrum_flag0[c]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[spectrum_flag1[c]]/1000.0-halfchanwidth,0,1,color='r',alpha=0.5)
+            for pair in onlineflags:
+                f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]/1000.0-halfchanwidth,0,1,color='y',alpha=0.5)
+        #gdb python; set args ./time_plot.py; run; bt;
+    #    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
+    #    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
+
+        if (spectrum_minx!=''):
+            f2a.set_xlim(xmin=double(spectrum_minx))
+        else:
+            f2a.set_xlim(xmin=minx)
+        if (spectrum_maxx!=''):
+            f2a.set_xlim(xmax=double(spectrum_maxx))
+        else:
+            f2a.set_xlim(xmax=maxx)
+        if (f2a.xaxis_inverted()):
+            xlim=f2a.get_xlim();
+            f2a.set_xlim(xlim[::-1])
+        if (spectrum_minF!=''):
+            f2a.set_ylim(ymin=double(spectrum_minF))
+        if (spectrum_maxF!=''):
+            f2a.set_ylim(ymax=double(spectrum_maxF))
+        if (f2a.yaxis_inverted()):
+            ylim=f2a.get_ylim();
+            f2a.set_ylim(ylim[::-1])
+        f2.canvas.draw()
+    except Exception,e:
+        print 'Exception in spectrum_draw',e
 
 def waterfall_draw():
-    global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    global f3,f3a
-    f3.clf()
-    f3a=f3.add_subplot(111)
-    products=[]
-    for c in range(len(waterfall_antbase0)):
-        if (waterfall_corrHH=='true'):
-            products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'HH'))
-        if (waterfall_corrVV=='true'):
-            products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'VV'))
-        if (waterfall_corrHV=='true'):
-            products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'HV'))
-        if (waterfall_corrVH=='true'):
-            products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'VH'))
-    if (len(products)):
-        plot_waterfall(self=datasd,dtype=waterfall_seltypemenu,product=products[0],start_channel=1,stop_channel=spectrum_width)
-    if (waterfall_minF!='' or waterfall_maxF!=''):
-        minF=None;
-        maxF=None;
-        if (waterfall_minF!=''):
-            minF=double(waterfall_minF);
-        if (waterfall_maxF!=''):
-            maxF=double(waterfall_maxF);
-        for im in f3a.get_images():
-            im.set_clim(minF,maxF)
-    if (waterfall_minx!=''):
-        f3a.set_xlim(xmin=double(waterfall_minx))
-    if (waterfall_maxx!=''):
-        f3a.set_xlim(xmax=double(waterfall_maxx))
-    if (f3a.xaxis_inverted()):
-        xlim=f3a.get_xlim();
-        f3a.set_xlim(xlim[::-1])
-    if (waterfall_miny!=''):
-        f3a.set_ylim(ymin=double(waterfall_miny))
-    if (waterfall_maxy!=''):
-        f3a.set_ylim(ymax=double(waterfall_maxy))
-    if (f3a.yaxis_inverted()):
-        ylim=f3a.get_ylim();
-        f3a.set_ylim(ylim[::-1])
-    f3.canvas.draw()
+    try:
+        global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
+        global f3,f3a,spectrum_width
+        f3.clf()
+        f3a=f3.add_subplot(111)
+        products=[]
+        for c in range(len(waterfall_antbase0)):
+            if (waterfall_corrHH=='true'):
+                products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'HH'))
+            if (waterfall_corrVV=='true'):
+                products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'VV'))
+            if (waterfall_corrHV=='true'):
+                products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'HV'))
+            if (waterfall_corrVH=='true'):
+                products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'VH'))
+        if (len(products)):
+            plot_waterfall(self=datasd,dtype=waterfall_seltypemenu,product=products[0],start_channel=1,stop_channel=spectrum_width)
+        if (waterfall_minF!='' or waterfall_maxF!=''):
+            minF=None;
+            maxF=None;
+            if (waterfall_minF!=''):
+                minF=double(waterfall_minF);
+            if (waterfall_maxF!=''):
+                maxF=double(waterfall_maxF);
+            for im in f3a.get_images():
+                im.set_clim(minF,maxF)
+        if (waterfall_minx!=''):
+            f3a.set_xlim(xmin=double(waterfall_minx))
+        if (waterfall_maxx!=''):
+            f3a.set_xlim(xmax=double(waterfall_maxx))
+        if (f3a.xaxis_inverted()):
+            xlim=f3a.get_xlim();
+            f3a.set_xlim(xlim[::-1])
+        if (waterfall_miny!=''):
+            f3a.set_ylim(ymin=double(waterfall_miny))
+        if (waterfall_maxy!=''):
+            f3a.set_ylim(ymax=double(waterfall_maxy))
+        if (f3a.yaxis_inverted()):
+            ylim=f3a.get_ylim();
+            f3a.set_ylim(ylim[::-1])
+        f3.canvas.draw()
+    except Exception,e:
+        print 'Exception in waterfall_draw',e
 
 def matrix_draw():
-    global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    global f4,f4a
-    f4.clf()
-    ts_init = time.time()
-    f4a=f4.add_subplot(111)
-    ts_start = time.time()
-    plot_baseline_matrix(self=datasd, start_channel=1, stop_channel=spectrum_width)
-    ts_plot = time.time()
-    f4.canvas.draw()
-    ts_end = time.time()
-#    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
-
+    try:
+        global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
+        global f4,f4a,spectrum_width
+        f4.clf()
+        ts_init = time.time()
+        f4a=f4.add_subplot(111)
+        ts_start = time.time()
+        plot_baseline_matrix(self=datasd, start_channel=1, stop_channel=spectrum_width)
+        ts_plot = time.time()
+        f4.canvas.draw()
+        ts_end = time.time()
+    #    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
+    except Exception,e:
+        print 'Exception in matrix_draw',e
+    
 def timeseries_event(figno,*args):
-    global dh,datasd,rows,startrow
+    global dh,datasd,rows,startrow,spectrum_width
     global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -1013,7 +1045,7 @@ def converthmstof(hms):
     return val;
     
 def spectrum_event(figno,*args):
-    global dh,datasd,rows,startrow
+    global dh,datasd,rows,startrow,spectrum_width
     global spectrum_abstimeinst,time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend,spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -1040,9 +1072,9 @@ def spectrum_event(figno,*args):
         if (spectrum_seltypemenux=='channel' or datasd.receiver.center_freqs_mhz==[]):
             chan=chan
         elif (spectrum_seltypemenux=='mhz'):#work out channel number from freq
-            chan=(chan-datasd.receiver.center_freqs_mhz[0])/(datasd.receiver.center_freqs_mhz[spectrum_width-1]-datasd.receiver.center_freqs_mhz[0])*spectrum_width;
+            chan=(chan-datasd.receiver.center_freqs_mhz[0])/(datasd.receiver.center_freqs_mhz[-1]-datasd.receiver.center_freqs_mhz[0])*spectrum_width;
         else:
-            chan=(chan*1000.0-datasd.receiver.center_freqs_mhz[0])/(datasd.receiver.center_freqs_mhz[spectrum_width-1]-datasd.receiver.center_freqs_mhz[0])*spectrum_width;
+            chan=(chan*1000.0-datasd.receiver.center_freqs_mhz[0])/(datasd.receiver.center_freqs_mhz[-1]-datasd.receiver.center_freqs_mhz[0])*spectrum_width;
         if (chan<0):
             chan=0
         elif(chan>=spectrum_width):
@@ -1200,7 +1232,7 @@ def spectrum_event(figno,*args):
     f2.canvas.send_cmd(newcontent2)
 
 def waterfall_event(figno,*args):
-    global dh,datasd,rows,startrow
+    global dh,datasd,rows,startrow,spectrum_width
     global time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
@@ -1275,7 +1307,7 @@ def waterfall_event(figno,*args):
     f3.canvas.send_cmd(newcontent3)
 
 def matrix_event(figno,*args):
-    global dh,datasd,rows,startrow
+    global dh,datasd,rows,startrow,spectrum_width
     print(args)
     if (len(args) and rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
         try:
@@ -1322,6 +1354,7 @@ else:
 if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
     spectrum_flagmask=numpy.ones([spectrum_width])
+    spectrum_flagstr=''
 
 # show a plot
 f1=figure(1)
@@ -1381,9 +1414,13 @@ else:
     while True:
         #if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
         if (datasd.storage.frame_count > 0):
-            if (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
+            if (datasd.receiver.channels==0):
+                #fall through
+                a=1
+            elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
                 spectrum_width=datasd.receiver.channels
                 spectrum_flagmask=numpy.ones([spectrum_width])
+                spectrum_flagstr=''
             else:
                 ts_start = time.time()
                 timeseries_draw()
