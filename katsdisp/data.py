@@ -1765,7 +1765,8 @@ class DataHandler(object):
         if include_flags:
             frames = [frames, np.zeros(np.shape(frames))]
         if include_ts:
-            frames = [np.array([t / 1000.0 for t in ts]),frames]
+            ts_ms = np.array([t / 1000.0 for t in ts])
+            frames = [ts_ms,frames[0],frames[1]] if include_flags else [ts_ms,frames]
         return frames
 
     def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
@@ -1825,7 +1826,7 @@ class DataHandler(object):
             frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
             if reverse_order: frames[0] = frames[0][::-1]
         if include_flags:
-            frames = [frames, flags]
+            frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
         return frames
 
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
