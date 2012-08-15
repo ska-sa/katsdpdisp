@@ -468,17 +468,22 @@ def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
     if (dtype=="pow"):
-        tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False)
+        tp,flags = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+#        tp=[tp,np.squeeze(flags[0])]#workaround for current bug in katsdisp for files
+#        flags=np.squeeze(flags[1])#workaround for current bug in katsdisp for files
         tp[1]=10.0*log10(tp[1]);
     else:
-        tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False)
+        tp,flags = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+#        tp=[tp,np.squeeze(flags[0])]#workaround for current bug in katsdisp for files
+#        flags=np.squeeze(flags[1])#workaround for current bug in katsdisp for files
+#    print 'after ', np.shape(tp[0]),np.shape(tp[1]),np.shape(flags)
     ts = tp[0]-tp[0][-1]
     time_now=tp[0][-1]
     tp[1]=numpy.array(tp[1])
     if len(tp[1].shape) == 1:
         logger.warning("Insufficient data to plot waterfall")
-        return [[]]
-    return [ts,tp[1],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+        return [[],[],""]
+    return [ts,tp[1],flags,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
 
 def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global f3,f3a
@@ -486,7 +491,7 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
     if self.storage is not None:
         tp = get_waterfall(self,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
         if (tp[0]==[]):return 0
-        f3a.set_title("Spectrogram (" + str(dtype) + ") for " + tp[2])
+        f3a.set_title("Spectrogram (" + str(dtype) + ") for " + tp[3])
         f3a.set_ylabel("Time in seconds before now") # since " + time.ctime(sk[-frames:][0]))
         extent=[start_channel,stop_channel, tp[0][-1],tp[0][0]];
         if (waterfall_seltypemenux=='channel' or self.receiver.center_freqs_mhz==[]):
@@ -497,6 +502,9 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
         else:
             f3a.set_xlabel("Frequency [GHz]")
             extent=[self.receiver.center_freqs_mhz[start_channel]/1000.0,self.receiver.center_freqs_mhz[stop_channel-1]/1000.0,tp[0][-1],tp[0][0]]
+        shp=np.shape(tp[1])
+        tp[1].reshape(-1)[find(tp[2])]=np.nan;
+        tp[1].reshape(shp)
         cax = f3a.imshow(tp[1], aspect='auto', interpolation='bicubic', animated=True,extent=extent)
         cbar = f3.colorbar(cax)
         f3a.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
