@@ -31,6 +31,8 @@
 # k7w.req.k7w_add_sdisp_ip("192.168.9.124")
 # k7w.req.k7w_set_center_freq(1822000000)
 # k7w.req.k7w_sd_metadata_issue()
+#configure()
+#kat.dbe7.print_sensors('chan')
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
 ##or if crashed then just type debug
@@ -848,7 +850,7 @@ def timeseries_event(figno,*args):
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask,spectrum_abstimeinst
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(time.asctime()+' '+args)
+    print(time.asctime()+' '+str(args))
     if (args[0]=="settextchannelphase"):
         time_channelphase=args[1]
         if (datafile!='stream'):
@@ -1059,7 +1061,7 @@ def spectrum_event(figno,*args):
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend,spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(time.asctime()+' '+args)
+    print(time.asctime()+' '+str(args))
     if (args[0]=="settexttimeinst"):
         spectrum_timeinst=args[1]
         spectrum_abstimeinst=-1;
@@ -1245,7 +1247,7 @@ def waterfall_event(figno,*args):
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH, waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(time.asctime()+' '+args)
+    print(time.asctime()+' '+str(args))
     if (args[0]=="applytoall"):
         time_antbase0=waterfall_antbase0[:]
         time_antbase1=waterfall_antbase1[:]
@@ -1316,7 +1318,7 @@ def waterfall_event(figno,*args):
 
 def matrix_event(figno,*args):
     global dh,datasd,rows,startrow,spectrum_width
-    print(time.asctime()+' '+args)
+    print(time.asctime()+' '+str(args))
     if (len(args) and rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
         try:
             if (startrow==None):
@@ -1415,18 +1417,25 @@ f5.canvas._custom_content = cc
 time_last=time_now
 ifailedframe=0
 loop_time=0
+reissuenotice=0
 if (datafile!='stream'):
     show(layout='figure1',open_plot=opts.open_plot)
 else:
     show(layout='figure1',block=False,open_plot=opts.open_plot)
     while True:
         #if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
-        if (datasd.storage.frame_count > 0):
+        if (datasd.storage.frame_count==0):
+            if (reissuenotice==0):
+                print 'Please resume capture, and then re-issue metadata'
+            else:
+                reissuenotice=1;
+        else:
+            reissuenotice=0
             if (datasd.receiver.channels==0):
                 #fall through
                 a=1
             elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
-                print time.asctime()+'nchannels change from %d to %d'%(spectrum_width,datasd.receiver.channels)
+                print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
                 spectrum_width=datasd.receiver.channels
                 spectrum_flagmask=numpy.ones([spectrum_width])
                 spectrum_flagstr=''
@@ -1458,4 +1467,5 @@ else:
                 ts_end2 = time.time()
                 logger.warning("Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start))
                 loop_time = time.time() - ts_start
+                
         time.sleep((1 - loop_time) if loop_time <= 1 else 0)
