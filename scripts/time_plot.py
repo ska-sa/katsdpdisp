@@ -513,7 +513,7 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
         if (waterfall_seltypemenux!='channel'):
             f3a.set_xlim(f3a.get_xlim()[::-1])
     else:
-        print "No stored data available..."
+        print time.asctime()+" No stored data available..."
 
 def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     global spectrum_abstimeinst,spectrum_timeavg,spectrum_flagstr,spectrum_width,spectrum_flagmask
@@ -582,7 +582,7 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
         f4a.set_xticklabels([str(int(x/2)+1) + (x % 2 == 0 and 'H' or 'V') for x in range(14)])
         f4a.set_ylim((13.5,-0.5))
     else:
-        print "No stored data available..."
+        print time.asctime()+" No stored data available..."
 
 def makenewcontent(_flagstr,_antennamappingmode,_antbase0,_antbase1,_corrHH,_corrVV,_corrHV,_corrVH,_legend,_seltypemenu,_minF,_maxF,_seltypemenux,_minx,_maxx,_seltypemenuy,_miny,_maxy,_timeinst,_timeavg,_channelphase):
     if (len(_antbase0)):
@@ -692,7 +692,7 @@ def timeseries_draw():
         ts_end = time.time()
         logger.warning("Timeseries| Init: %.3fs, Loop: %.3fs, Plot: %.3fs, Limits: %.3fs, Draw: %.3fs" % (ts_loop - ts_start, ts_plot - ts_loop, ts_range - ts_plot, ts_draw - ts_range, ts_end-ts_draw))
     except Exception,e:
-        print 'Exception in timeseries_draw',e
+        print time.asctime()+' Exception in timeseries_draw (%s)'%e
 
 def spectrum_draw():
     try:
@@ -778,7 +778,7 @@ def spectrum_draw():
             f2a.set_ylim(ylim[::-1])
         f2.canvas.draw()
     except Exception,e:
-        print 'Exception in spectrum_draw',e
+        print time.asctime()+' Exception in spectrum_draw (%s)'%e
 
 def waterfall_draw():
     try:
@@ -823,7 +823,7 @@ def waterfall_draw():
             f3a.set_ylim(ylim[::-1])
         f3.canvas.draw()
     except Exception,e:
-        print 'Exception in waterfall_draw',e
+        print time.asctime()+' Exception in waterfall_draw (%s)'%e
 
 def matrix_draw():
     try:
@@ -839,7 +839,7 @@ def matrix_draw():
         ts_end = time.time()
     #    print "Matrix timing| Init: %.3fs, Plot: %.3fs, Draw: %.3fs\n" % (ts_start - ts_init, ts_plot - ts_start, ts_end - ts_plot)
     except Exception,e:
-        print 'Exception in matrix_draw',e
+        print time.asctime()+' Exception in matrix_draw (%s)'%e
     
 def timeseries_event(figno,*args):
     global dh,datasd,rows,startrow,spectrum_width
@@ -848,7 +848,7 @@ def timeseries_event(figno,*args):
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask,spectrum_abstimeinst
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(args)
+    print(time.asctime()+' '+args)
     if (args[0]=="settextchannelphase"):
         time_channelphase=args[1]
         if (datafile!='stream'):
@@ -971,7 +971,7 @@ def timeseries_event(figno,*args):
             dh.load_k7_data(datafile,rows=rows,startrow=startrow)
             datasd=dh.sd_hist
         except Exception,e:
-            print "Failed to load file using k7 loader (%s)" % e
+            print time.asctime()+" Failed to load file using k7 loader (%s)" % e
     else:
         time_corrHH=args[0]
         time_corrVV=args[1]
@@ -1059,7 +1059,7 @@ def spectrum_event(figno,*args):
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend,spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(args)
+    print(time.asctime()+' '+args)
     if (args[0]=="settexttimeinst"):
         spectrum_timeinst=args[1]
         spectrum_abstimeinst=-1;
@@ -1200,7 +1200,7 @@ def spectrum_event(figno,*args):
             dh.load_k7_data(datafile,rows=rows,startrow=startrow)
             datasd=dh.sd_hist
         except Exception,e:
-            print "Failed to load file using k7 loader (%s)" % e
+            print time.asctime()+"Failed to load file using k7 loader (%s)" % e
     else:
         spectrum_corrHH=args[0]
         spectrum_corrVV=args[1]
@@ -1245,7 +1245,7 @@ def waterfall_event(figno,*args):
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH, waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(args)
+    print(time.asctime()+' '+args)
     if (args[0]=="applytoall"):
         time_antbase0=waterfall_antbase0[:]
         time_antbase1=waterfall_antbase1[:]
@@ -1286,7 +1286,7 @@ def waterfall_event(figno,*args):
             dh.load_k7_data(datafile,rows=rows,startrow=startrow)
             datasd=dh.sd_hist
         except Exception,e:
-            print "Failed to load file using k7 loader (%s)" % e
+            print time.asctime()+" Failed to load file using k7 loader (%s)" % e
     else:
         waterfall_corrHH=args[0]
         waterfall_corrVV=args[1]
@@ -1316,7 +1316,7 @@ def waterfall_event(figno,*args):
 
 def matrix_event(figno,*args):
     global dh,datasd,rows,startrow,spectrum_width
-    print(args)
+    print(time.asctime()+' '+args)
     if (len(args) and rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
         try:
             if (startrow==None):
@@ -1328,7 +1328,7 @@ def matrix_event(figno,*args):
             dh.load_k7_data(datafile,rows=rows,startrow=startrow)
             datasd=dh.sd_hist
         except Exception,e:
-            print "Failed to load file using k7 loader (%s)" % e
+            print time.asctime()+" Failed to load file using k7 loader (%s)" % e
     if (datafile!='stream'):
         matrix_draw()
     f4.canvas.send_cmd("")
@@ -1355,7 +1355,7 @@ else:
     try:
         dh.load_k7_data(datafile,rows=rows,startrow=startrow)
     except Exception,e:
-        print "Failed to load file using k7 loader (%s)" % e
+        print time.asctime()+" Failed to load file using k7 loader (%s)" % e
         dh.load_ff_data(datafile)
     datasd=dh.sd_hist
 
@@ -1426,6 +1426,7 @@ else:
                 #fall through
                 a=1
             elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
+                print time.asctime()+'nchannels change from %d to %d'%(spectrum_width,datasd.receiver.channels)
                 spectrum_width=datasd.receiver.channels
                 spectrum_flagmask=numpy.ones([spectrum_width])
                 spectrum_flagstr=''
