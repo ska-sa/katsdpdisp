@@ -375,7 +375,6 @@ class SignalDisplayStore2(object):
         self._last_ts = 0
         self.first_pass = True
 
-
     """Add some data to the store.
     In general this a fragment of a signal display frame and hence
     the data must be inserted in the correct location within an existing frame.
@@ -749,11 +748,9 @@ class SpeadSDReceiver(threading.Thread):
                         if self.ig['n_chans'] != self.channels:
                             print "Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'])
                             self.update_center_freqs()
-                            self.cpref.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self._direct_meta['bls_ordering']]
-                            self.cpref.precompute()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                     if self.ig['center_freq'] is not None:
                         if self.ig['center_freq'] != self.center_freq:
                             self.update_center_freqs()

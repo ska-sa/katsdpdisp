@@ -1466,5 +1466,4 @@ else:
                 ts_end2 = time.time()
                 logger.warning("Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start))
                 loop_time = time.time() - ts_start
-                
         time.sleep((1 - loop_time) if loop_time <= 1 else 0)
