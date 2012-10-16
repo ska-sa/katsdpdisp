@@ -745,6 +745,15 @@ class SpeadSDReceiver(threading.Thread):
                 self.ig.update(heap)
                 self.heap_count += 1
                 try:
+                    if self.ig['n_chans'] is not None:
+                        if self.ig['n_chans'] != self.channels:
+                            print "Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'])
+                            self.update_center_freqs()
+                            self.cpref.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self._direct_meta['bls_ordering']]
+                            self.cpref.precompute()
+                            if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
+                            else:
+                                self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
                     if self.ig['center_freq'] is not None:
                         if self.ig['center_freq'] != self.center_freq:
                             self.update_center_freqs()

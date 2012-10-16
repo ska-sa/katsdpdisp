@@ -1427,7 +1427,6 @@ else:
         if (datasd.storage.frame_count==0):
             if (reissuenotice==0):
                 print 'Please resume capture, and then re-issue metadata'
-            else:
                 reissuenotice=1;
         else:
             reissuenotice=0
