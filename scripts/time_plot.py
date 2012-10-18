@@ -52,6 +52,8 @@ from pkg_resources import resource_filename
 import sys
 import types
 
+numpy.seterr(divide='ignore')
+
 def get_refcounts():
     d = {}
     sys.modules
@@ -97,7 +99,7 @@ logger = logging.getLogger()
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.CRITICAL)
 #    logger.setLevel(logging.WARNING)
 
 #datafile can be 'stream' or 'k7simulator' or a file like '1269960310.h5'
@@ -470,22 +472,18 @@ def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
     if (dtype=="pow"):
-        tp,flags = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
-#        tp=[tp,np.squeeze(flags[0])]#workaround for current bug in katsdisp for files
-#        flags=np.squeeze(flags[1])#workaround for current bug in katsdisp for files
-        tp[1]=10.0*log10(tp[1]);
+        rv=self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+        tp0,tp1,flags = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+        tp1=10.0*log10(tp1);
     else:
-        tp,flags = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
-#        tp=[tp,np.squeeze(flags[0])]#workaround for current bug in katsdisp for files
-#        flags=np.squeeze(flags[1])#workaround for current bug in katsdisp for files
-#    print 'after ', np.shape(tp[0]),np.shape(tp[1]),np.shape(flags)
-    ts = tp[0]-tp[0][-1]
-    time_now=tp[0][-1]
-    tp[1]=numpy.array(tp[1])
-    if len(tp[1].shape) == 1:
+        tp0,tp1,flags = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+    ts = tp0-tp0[-1]
+    time_now=tp0[-1]
+    tp1=numpy.array(tp1)
+    if len(tp1.shape) == 1:
         logger.warning("Insufficient data to plot waterfall")
         return [[],[],""]
-    return [ts,tp[1],flags,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+    return [ts,tp1,flags,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
 
 def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global f3,f3a
