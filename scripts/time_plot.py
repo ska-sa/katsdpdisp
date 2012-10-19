@@ -31,8 +31,21 @@
 # k7w.req.k7w_add_sdisp_ip("192.168.9.124")
 # k7w.req.k7w_set_center_freq(1822000000)
 # k7w.req.k7w_sd_metadata_issue()
+#import socket
+#localIPaddress=socket.gethostbyname(socket.gethostname())
+#if not going through proxy
+#import katuilib
+#k7w = katuilib.build_client('k7w','192.168.193.5',2040,controlled=True)
+#k7w.req.add_sdisp_ip(localIPaddress)
+#k7w.req.set_center_freq(1822000000)
+#k7w.req.sd_metadata_issue()
 #configure()
 #kat.dbe7.print_sensors('chan')
+######################
+#note may need to reaugment file:
+#on kat-dc1.karoo do ps aux | grep aug
+#see something like /usr/bin/python /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -v -b -d /var/kat/data/staging --dbe=dbe7
+#must then run /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -o -f filename.h5 to augment in place
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
 ##or if crashed then just type debug
