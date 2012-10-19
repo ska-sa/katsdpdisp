@@ -42,10 +42,12 @@
 #configure()
 #kat.dbe7.print_sensors('chan')
 ######################
-#note may need to reaugment file:
-#on kat-dc1.karoo do ps aux | grep aug
+#file will be in kat@kat-dc1:/var/kat/data/
+#and synced to eg kat@kat-archive:/var/kat/archive/data/comm/2012/10
+#note may need to reaugment file if sensor data missing:
+#on kat-dc1.karoo execute ps aux | grep aug
 #see something like /usr/bin/python /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -v -b -d /var/kat/data/staging --dbe=dbe7
-#must then run /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -o -f filename.h5 to augment in place
+#must then run /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -o -f filename.h5 to augment file in place
 #####################################################################################
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
 ##or if crashed then just type debug
