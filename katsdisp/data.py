@@ -2693,7 +2693,7 @@ class KATData(object):
         if dtype == 'quanti': rettype = 'quant'
         if self.dbe is not None:
             try:
-                raw = unpack('>8192b',self.dbe.req.snap_shot(rettype,input,tuple=True)[0][2][1])
+                raw = unpack('>8192b',self.dbe.req.snap_shot(rettype,input).messages[0].arguments[1])
             except AttributeError:
                 logger.error("Current dbe device does not support snap-shot command.")
             except IndexError:
