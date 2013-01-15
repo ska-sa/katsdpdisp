@@ -57,7 +57,7 @@ import matplotlib
 import optparse
 matplotlib.use('module://mplh5canvas.backend_h5canvas')
 import katsdisp
-import numpy
+import numpy as np
 from pylab import *
 import time
 import logging
@@ -67,7 +67,7 @@ from pkg_resources import resource_filename
 import sys
 import types
 
-numpy.seterr(divide='ignore')
+np.seterr(divide='ignore')
 
 def get_refcounts():
     d = {}
@@ -249,7 +249,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
     if product is None: product = self.default_product
 #    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
-        return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""]
+        return [nan*np.zeros(97,dtype='float64'),nan*np.zeros(97,dtype='float32'),""]
     if (dtype=='pow' or dtype=='mag'):
         tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
         #tp[1]=sum(tp[1],1)
@@ -259,7 +259,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
         else:
             if (np.shape(tp[1])[1]!=spectrum_width):
                 spectrum_width=np.shape(tp[1])[1]
-                spectrum_flagmask=numpy.ones([spectrum_width])
+                spectrum_flagmask=np.ones([spectrum_width])
                 spectrum_flagstr=''
             tp[1]=dot(tp[1],spectrum_flagmask)
             #tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
@@ -282,7 +282,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
             else:
                 if (np.shape(tp[1])[1]!=spectrum_width):
                     spectrum_width=np.shape(tp[1])[1]
-                    spectrum_flagmask=numpy.ones([spectrum_width])
+                    spectrum_flagmask=np.ones([spectrum_width])
                     spectrum_flagstr=''
                 tp[1]=np.angle(np.dot(np.array(tp[1]),spectrum_flagmask))
     if (dtype=='pow'):
@@ -292,7 +292,7 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
     if (time_timeavg!=''):
         reduction=int(time_timeavg);
 #        reduction=int(double(time_timeavg)/(tp[0][1]-tp[0][0]));
-        tp[1]=numpy.diff(numpy.cumsum(tp[1])[0::reduction])/double(reduction);
+        tp[1]=np.diff(np.cumsum(tp[1])[0::reduction])/double(reduction);
         ts=ts[0::reduction][0:len(tp[1])];
 #    print tp[0][0],time.ctime(tp[0][0])
     return [ts,tp[1],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]#self.cpref.id_to_real_str(product, short=True)
@@ -306,9 +306,9 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         title='Phase for channel '+time_channelphase
     else:
         if (dtype=='powphase' and time_channelphase!=''):
-            title="Phase for channel "+time_channelphase+" and summed power for "+str(numpy.sum(spectrum_flagmask,dtype='int'))+" channels";
+            title="Phase for channel "+time_channelphase+" and summed power for "+str(np.sum(spectrum_flagmask,dtype='int'))+" channels";
         else:
-            title="Summed " + str(dtype) + " for "+str(numpy.sum(spectrum_flagmask,dtype='int'))+" channels";
+            title="Summed " + str(dtype) + " for "+str(np.sum(spectrum_flagmask,dtype='int'))+" channels";
         if (len(spectrum_flagstr)):
             if (len(spectrum_flagstr)>50):
                 title+=", excluding\n("+spectrum_flagstr[:50]+"...)";
@@ -380,7 +380,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_seltypemenux,spectrum_abstimeinst,spectrum_timeinst,spectrum_timeavg,spectrum_width
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
-        return [nan*numpy.zeros(97,dtype='float64'),nan*numpy.zeros(97,dtype='float32'),""],numpy.zeros(97,dtype='int')
+        return [nan*np.zeros(97,dtype='float64'),nan*np.zeros(97,dtype='float32'),""],np.zeros(97,dtype='int')
 
     if (dtype=='pow'):
         s,flagarray = self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts,include_flags=True)
@@ -389,7 +389,7 @@ def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, s
         s,flagarray = self.select_data(product=product, dtype=dtype, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=reverse_order, avg_axis=avg_axis, sum_axis=sum_axis, include_ts=include_ts,include_flags=True)
             
     if (s.shape==()):
-        sx=numpy.nan
+        sx=np.nan
     elif (spectrum_seltypemenux=='channel' or self.receiver.center_freqs_mhz==[]):
         sx=[f for f in range(0,s.shape[0])]
     elif (spectrum_seltypemenux=='mhz'):
@@ -494,7 +494,7 @@ def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120
         tp0,tp1,flags = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
     ts = tp0-tp0[-1]
     time_now=tp0[-1]
-    tp1=numpy.array(tp1)
+    tp1=np.array(tp1)
     if len(tp1.shape) == 1:
         logger.warning("Insufficient data to plot waterfall")
         return [[],[],""]
@@ -556,7 +556,7 @@ def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
                 magdata=self.select_data(product=product, dtype="mag", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
                 if (np.shape(magdata)[0]!=spectrum_width):
                     spectrum_width=np.shape(magdata)[0]
-                    spectrum_flagmask=numpy.ones([spectrum_width])
+                    spectrum_flagmask=np.ones([spectrum_width])
                     spectrum_flagstr=''
                 im[a0*2+ip0][a0*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
                 for a1 in range(a0+1,7):
@@ -566,12 +566,12 @@ def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
                         phasedata=self.select_data(product=product, dtype="phase", start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel, reverse_order=False, avg_axis=0, sum_axis=None, include_ts=False,include_flags=False)
                         if (np.shape(magdata)[0]!=spectrum_width):
                             spectrum_width=np.shape(magdata)[0]
-                            spectrum_flagmask=numpy.ones([spectrum_width])
+                            spectrum_flagmask=np.ones([spectrum_width])
                             spectrum_flagstr=''
                         im[a0*2+ip0][a1*2+ip1]=20.0*np.log10(dot(magdata,spectrum_flagmask))
                         if (np.shape(phasedata)[0]!=spectrum_width):
                             spectrum_width=np.shape(phasedata)[0]
-                            spectrum_flagmask=numpy.ones([spectrum_width])
+                            spectrum_flagmask=np.ones([spectrum_width])
                             spectrum_flagstr=''
                         im[a1*2+ip0][a0*2+ip1]=dot(phasedata,spectrum_flagmask)
     return im
@@ -582,7 +582,7 @@ def plot_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     global f4,f4a,spectrum_width,spectrum_flagmask
     if self.storage is not None:
         im = get_baseline_matrix(self,start_channel=0, stop_channel=spectrum_width)
-        title="Baseline matrix, summed "+str(numpy.sum(spectrum_flagmask,dtype='int'))+" channels";
+        title="Baseline matrix, summed "+str(np.sum(spectrum_flagmask,dtype='int'))+" channels";
         f4a.set_title(title)
         if (len(spectrum_flagstr)):
             if (len(spectrum_flagstr)>50):
@@ -770,7 +770,7 @@ def spectrum_draw():
             for pair in onlineflags:
                 f2a.axvspan(datasd.receiver.center_freqs_mhz[pair[0]]/1000.0-halfchanwidth,datasd.receiver.center_freqs_mhz[pair[1]]/1000.0-halfchanwidth,0,1,color='y',alpha=0.5)
         #gdb python; set args ./time_plot.py; run; bt;
-    #    matplotlib.pylab.plot(numpy.array(range(10)),sin(numpy.array(range(10)))+2)
+    #    matplotlib.pylab.plot(np.array(range(10)),sin(np.array(range(10)))+2)
     #    matplotlib.pylab.axvline(10,0,1,color='b',alpha=0.5)
 
         if (spectrum_minx!=''):
@@ -881,7 +881,7 @@ def timeseries_event(figno,*args):
         spectrum_flagstr=''
         spectrum_flag0=[]
         spectrum_flag1=[]
-        spectrum_flagmask=numpy.ones([spectrum_width])
+        spectrum_flagmask=np.ones([spectrum_width])
         for c in range(1,len(args)):
             spectrum_flagstr+=args[c]
             if (c<len(args)-1):
@@ -1112,7 +1112,7 @@ def spectrum_event(figno,*args):
         spectrum_flagstr=''
         spectrum_flag0=[]
         spectrum_flag1=[]
-        spectrum_flagmask=numpy.ones([spectrum_width])
+        spectrum_flagmask=np.ones([spectrum_width])
         for c in range(1,len(args)):
             spectrum_flagstr+=args[c]
             if (c<len(args)-1):
@@ -1376,7 +1376,7 @@ else:
 
 if (datasd.storage.frame_count > 0):
     spectrum_width=datasd.receiver.channels;
-    spectrum_flagmask=numpy.ones([spectrum_width])
+    spectrum_flagmask=np.ones([spectrum_width])
     spectrum_flagstr=''
 
 # show a plot
@@ -1449,7 +1449,7 @@ else:
             elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
                 print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
                 spectrum_width=datasd.receiver.channels
-                spectrum_flagmask=numpy.ones([spectrum_width])
+                spectrum_flagmask=np.ones([spectrum_width])
                 spectrum_flagstr=''
             else:
                 ts_start = time.time()
