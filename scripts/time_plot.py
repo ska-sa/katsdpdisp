@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #####################################################################################
 ##Author: Mattieu de Villiers
 ##Email: mattieu@ska.ac.za
