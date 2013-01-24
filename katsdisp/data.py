@@ -1085,6 +1085,7 @@ class AnimatablePlot(object):
                         ymax = max(ymax,max(new_data[1]))
                         self.ax.lines[slot].set_xdata(new_data[0] - offset)
                         self.ax.lines[slot].set_ydata(new_data[1])
+                        #print new_data[1][0:10]
                         if slot == max(self.update_functions.keys()):
                             if not self.fixed_x: self.ax.set_xlim(xmin,xmax)
                             if self._yautoscale:
@@ -2096,7 +2097,7 @@ class DataHandler(object):
 
     def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=-1):
         if product is None: product = self.default_product
-        tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
+        tp = self.select_data(dtype=dtype, avg_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
         xlabel = tp[0][0]
         ts = tp[0] - tp[0][0]
         return [ts,tp[1],xlabel]
@@ -2458,8 +2459,8 @@ class DataHandler(object):
                 ap = AnimatablePlot(f, self.select_data, product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0)
             else:
                 ap.add_update_function(self.select_data, product=product, dtype=type, start_channel=start_channel, stop_channel=stop_channel, end_time=-average, avg_axis=0)
-        if type == 'phase': pl.title("Phase Spectrum at " + time.ctime(s[0][0]*1000) + avg)
-        else: pl.title("Power Spectrum at " + time.ctime(s[0][0]*1000) + avg)
+        if type == 'phase': pl.title("Phase Spectrum at " + time.ctime(s[0][0]) + avg)
+        else: pl.title("Power Spectrum at " + time.ctime(s[0][0]) + avg)
         pl.legend(loc=0)
         f.show()
         pl.draw()
