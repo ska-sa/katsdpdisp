@@ -1,0 +1,1888 @@
+<html>
+<head>
+<title>KAT7 signals</title> 
+</head>
+<body onload='myloadpage()' bgcolor="#FFFFFF">
+	<script>
+			var log10=Math.log(10);
+			var tickfontHeight=15;
+			var tickfont2Height=tickfontHeight*0.7;
+			var tickfont2Heightspace=tickfont2Height/5
+			var titlefontHeight=20;
+			var titlefontHeightspace=titlefontHeight/5
+			var labelfontHeight=18;
+			var tickfontHeightspace=tickfontHeight/5
+			var majorticklength=tickfontHeight/3; //4 for 12 pt font
+			var minorticklength=tickfontHeight/6; //2 for 12 pt font
+		    var corrlinewidth=[2,1,4,3]//HH,VV,HV,VH
+		    var corrlinealpha=[1,1,0.3,0.5]//HH,VV,HV,VH
+			var rubberbandDiv;
+			var rubberbandmousedown = {}
+			var rubberbandRectangle = {}
+			var rubberbanddragging = false;
+
+			function rubberbandStart(x, y) {
+			   rubberbandmousedown.x = x;
+			   rubberbandmousedown.y = y;
+			   rubberbandRectangle.left = rubberbandmousedown.x;
+			   rubberbandRectangle.top = rubberbandmousedown.y;
+			   moveRubberbandDiv();
+			   showRubberbandDiv();
+			   rubberbanddragging = true;
+			}
+
+			function rubberbandStretch(x, y) {
+			   rubberbandRectangle.left = x < rubberbandmousedown.x ? x : rubberbandmousedown.x;
+			   rubberbandRectangle.top  = y < rubberbandmousedown.y ? y : rubberbandmousedown.y;
+			   rubberbandRectangle.width  = Math.abs(x - rubberbandmousedown.x),
+			   rubberbandRectangle.height = Math.abs(y - rubberbandmousedown.y);
+			   moveRubberbandDiv();
+			   resizeRubberbandDiv();
+			}
+
+			function rubberbandEnd() {
+				rubberbandDiv = document.getElementById('rubberbandDiv')
+			   resetRubberbandRectangle();
+			   rubberbandDiv.style.width = 0;
+			   rubberbandDiv.style.height = 0;
+			   hideRubberbandDiv();
+			   rubberbanddragging = false;
+			}
+
+			function moveRubberbandDiv() {
+				rubberbandDiv = document.getElementById('rubberbandDiv')
+			   rubberbandDiv.style.top  = rubberbandRectangle.top  + 'px';
+			   rubberbandDiv.style.left = rubberbandRectangle.left + 'px';
+			}
+
+			function resizeRubberbandDiv() {
+				rubberbandDiv = document.getElementById('rubberbandDiv')
+			   rubberbandDiv.style.width  = rubberbandRectangle.width  + 'px';
+			   rubberbandDiv.style.height = rubberbandRectangle.height + 'px';
+			}
+
+			function showRubberbandDiv() {
+				rubberbandDiv = document.getElementById('rubberbandDiv')
+			   rubberbandDiv.style.display = 'inline';
+			}
+
+			function hideRubberbandDiv() {
+				rubberbandDiv = document.getElementById('rubberbandDiv')
+			   rubberbandDiv.style.display = 'none';
+			}
+
+			function resetRubberbandRectangle() {
+			   rubberbandRectangle = { top: 0, left: 0, width: 0, height: 0 };
+			}
+
+			function unitPrefixFromIndex(iprefix,units)
+			{
+			 	var g_metricPREFIX="kMGTPEZY"; 
+			 	var g_metricprefix="mμnpfazy";
+
+				if (iprefix>0)
+				{
+					if (iprefix<8)	return g_metricPREFIX[(iprefix-1)]+units;
+					else			return "10e"+(iprefix*3)+units;
+				}else if (iprefix<0)
+				{
+					if (-iprefix<8)	return g_metricprefix[(-iprefix-1)]+units;
+					else			return "10e"+(iprefix*3)+units;
+				}
+			 return units;
+			}
+
+			function calcLinearTicksFrom(biggestValue, scale)
+			{
+			 var textwidth=20;
+			 if (biggestValue)
+			 {
+				var charwidth=tickfontHeight*0.73*scale;//width of a significant digit in physical space
+				var ndecimal=(Math.log(biggestValue/charwidth)/log10);//highest decimal space
+				textwidth=tickfontHeight*(3.33+0.73*ndecimal);
+			 }
+			 var dtext=scale*textwidth;//approx
+			 var d0text=Math.pow(10.0,Math.round(Math.log(dtext)/log10));
+			 var d1text=0.5*d0text;
+			 var d2text=2.0*d0text;
+
+			 var tot=Math.abs(d0text/scale-textwidth);
+			 var m_nTicksMajor=2;
+			 var m_TickMinor=d0text/m_nTicksMajor;
+
+			 if (tot>Math.abs(d1text/scale-textwidth))
+			 {tot=Math.abs(d1text/scale-textwidth);m_nTicksMajor=5;m_TickMinor=d1text/m_nTicksMajor;}
+			 if (tot>Math.abs(d2text/scale-textwidth))
+			 {m_nTicksMajor=2;m_TickMinor=d2text/m_nTicksMajor;}
+			 return [m_nTicksMajor,m_TickMinor]
+			}
+
+			function roundprecision(val,numsigfig){
+				if (val==0) return '0'
+				if (val<0){
+					sgn=1
+					aval=-val
+				}else{
+					sgn=0
+					aval=val
+				}
+				expn=(Math.floor(Math.log(aval)/log10))-numsigfig+1
+				valstr=''+Math.round(aval*Math.pow(10.0,(-expn)))
+
+				while (expn<0 && valstr.slice(-1)=='0'){
+					valstr=valstr.slice(0,-1)
+					expn+=1
+				}
+				while (expn>0){
+					valstr=valstr+'0'
+					expn-=1
+				}
+				if (expn<0){
+					fp=valstr.length+expn
+					while (fp<0)
+					{
+						valstr='0'+valstr
+						fp+=1
+					}
+					if (fp>0) valstr=valstr.slice(0,fp)+'.'+valstr.slice(fp)
+					else valstr='0.'+valstr
+					}
+				if (sgn)
+					valstr='-'+valstr+' '
+				return valstr
+			}
+
+			function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, units, label, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix, extratimelabels)
+			{
+			 var physicalspan=viewmax-viewmin;
+			 var scale=physicalspan/pixspan;
+			 var maxval=Math.max(Math.abs(viewmax),Math.abs(viewmin));
+			 if (doprefix)
+			 	var iprefix=Math.floor(Math.floor(Math.log(maxval)/log10)/3);
+			else 
+		 		var iprefix=0	   
+			 var multiplier= Math.pow(10,3*iprefix);
+			 var unitwithprefix=unitPrefixFromIndex(iprefix,units);
+			 var numberrightmax;
+			 var timenow=0
+
+			if (extratimelabels)
+			{
+				nowtimehh=parseInt(label.slice(-13,-11))
+				nowtimemm=parseInt(label.slice(-10,-8))
+				nowtimess=parseInt(label.slice(-7,-5))
+				timenow=nowtimess+nowtimemm*60+nowtimehh*60*60;
+			}
+
+			 context.font=""+labelfontHeight+"px sans-serif";
+			 sz=context.measureText(label)
+			if (labelpos)	context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy-((numberpos)?tickfontHeight:0)-(extratimelabels?tickfont2Height:0)-tickfontHeightspace*2-((dotickpos)?majorticklength:0))
+			else
+	context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((numberpos==0)?tickfontHeight:0)+(extratimelabels?tickfont2Height:0)+tickfontHeightspace+((dotickneg)?majorticklength:0))
+
+			 context.font=""+tickfontHeight+"px sans-serif";
+			 ticks=calcLinearTicksFrom(maxval,scale);
+			 m_nTicksMajor=ticks[0]
+			 m_TickMinor=ticks[1]
+
+			 unitsz = context.measureText(unitwithprefix)
+			context.fillText(unitwithprefix,pixx+pixspan-unitsz.width,pixy+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight))
+			 numberrightmax=unitsz.width;
+
+			 var sofar=(-viewmin/(m_TickMinor*m_nTicksMajor));
+			 sofar=-(Math.ceil(sofar)-sofar)*m_TickMinor*m_nTicksMajor;
+
+			context.beginPath();
+			 for (i=0;sofar<0;sofar+=m_TickMinor)i++;//pass over the hidden ticks
+
+			 for(;sofar<physicalspan;sofar+=m_TickMinor,i++)
+			 {
+			  var x,y;
+			  if (roundScreen)
+			  {
+				x=Math.floor(pixx+sofar/scale)+0.5;
+				y=Math.floor(pixy);
+			  }else
+			  {
+				x=pixx+sofar/scale+0.5;
+				y=pixy;
+			  }
+			  if (i%m_nTicksMajor==0)
+			  {
+			     if (dotickmajor)
+				 {
+					if ((dovertical)==0)
+					{
+						context.moveTo(x, y-((dotickpos)?majorticklength-roundScreen:0));
+						context.lineTo(x, y+((dotickneg)?majorticklength:roundScreen));
+					}else
+					{
+						context.moveTo(x, y-((dotickpos)?majorticklength-roundScreen:0));
+						context.lineTo(x, y+((dotickneg)?majorticklength:0));
+					}
+				 }
+				 var val=(sofar+viewmin)/multiplier;
+				 var absval=Math.abs(val)
+				 if (absval>1e-5)
+				{
+					valstr=roundprecision(val,8)
+				}else valstr='0'
+
+				 sz=context.measureText(valstr)
+
+				 if (x-sz.width/2.0>pixx-7 && x+sz.width/2.0<pixx+pixspan-numberrightmax)
+				 {
+					context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight)) 
+					if (extratimelabels)
+					{					
+						val+=timenow
+						if (val<0)val+=24*60*60
+						hh=Math.floor(val/60/60)
+						mm=Math.floor((val-hh*60*60)/60)
+						ss=Math.floor(val-hh*60*60-mm*60)
+						valstr=''+((hh<10)?'0':'')+hh+':'+((mm<10)?'0':'')+mm+':'+((ss<10)?'0':'')+ss;					
+					 	context.font=""+tickfont2Height+"px sans-serif";				
+					 	sz=context.measureText(valstr)
+		context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace-tickfont2Heightspace-tickfontHeight:majorticklength*dotickneg+tickfontHeight+tickfont2Height+tickfont2Heightspace))
+		 				context.font=""+tickfontHeight+"px sans-serif";
+
+					}
+				 }
+
+			  }else
+			  {
+			     if (dotickminor)
+				 {
+					if ((dovertical)==0)
+					{
+						context.moveTo(x, y-((dotickpos)?minorticklength-roundScreen:0));
+						context.lineTo(x, y+((dotickneg)?minorticklength:roundScreen));
+					}else
+					{
+						context.moveTo(x, y-((dotickpos)?minorticklength-roundScreen:0));
+						context.lineTo(x, y+((dotickneg)?minorticklength:0));
+					}
+				 }
+			  }
+			 }
+			 context.stroke();	
+			 context.closePath();
+
+			}
+						
+			function getminmax(datalist){
+				mn=datalist[0][0]
+				mx=mn
+				for (iline=0;iline<datalist.length;iline++)
+				{
+					thismin=Math.min.apply(Math, datalist[iline])
+					thismax=Math.max.apply(Math, datalist[iline])
+					mn=Math.min(thismin,mn)
+					mx=Math.max(thismax,mx)
+				}
+				if (!isFinite(mn) || !isFinite(mx))
+				{
+					mn=NaN
+					mx=NaN
+					for (iline=0;iline<datalist.length;iline++)
+					{
+						theline=datalist[iline]
+						for (iel=0;iel<theline.length;iel++)
+						{
+							if (isFinite(theline[iel]))
+							{
+								if (mn==NaN)
+								{
+									mn=theline[iel];
+									mx=theline[iel];
+								}else if (mn>theline[iel])
+								{
+									mn=theline[iel];
+								}else if (mx<theline[iel])
+								{
+									mx=theline[iel];
+								}
+							}
+						}						
+					}					
+				}
+				return [mn,mx]
+			}
+
+			var linesdrawn=0
+			var linesnotdrawn=0;
+			var figureupdated=1;
+
+			var displaxisx={viewmin:-0.5,viewmax:0.5,pixspan:100};
+			var displaxisy={viewmin:-0.5,viewmax:0.5,pixspan:100};
+			
+			var timedrawstart=0;
+			
+			function redrawfigure()
+			{		
+				timedrawstart=(new Date()).getTime();			drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,RG_fig.xmin,RG_fig.xmax,RG_fig.ymin,RG_fig.ymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
+				timedraw=(new Date()).getTime();
+				document.getElementById("linesnotdrawn").innerHTML='lines '+linesdrawn+' not drawn '+(linesnotdrawn);			
+				document.getElementById("timeclientdraw").innerHTML='time client draw '+(timedraw-timedrawstart);
+				setTimeout(completefigure,1)
+			}
+			function completefigure()
+			{
+				timedrawcomplete=(new Date()).getTime();
+				document.getElementById("timeclientdraw").innerHTML+=' render '+(timedrawcomplete-timedrawstart);				
+			}
+			
+			
+			function drawFigure(datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist){
+				if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined")
+				{
+					figureupdated=1
+					return;
+				}
+				vviewmin=[]
+				vviewmax=[]
+				lenx=datax.length
+				lend=(dataylist[0][0]).length
+				if (datax.length==2 && (dataylist[0][0]).length>2)
+				{
+					localdatax=new Array((dataylist[0][0]).length)
+					for (i=0;i<localdatax.length;i++)
+						localdatax[i]=datax[0]+(datax[1]-datax[0])*i/(localdatax.length-1)
+					datax=localdatax;
+				}
+				hviewmin=Math.min(datax[0],datax[datax.length-1])
+				hviewmax=Math.max(datax[0],datax[datax.length-1])				
+				if (!isNaN(xmin)) hviewmin=xmin
+				if (!isNaN(xmax)) hviewmax=xmax
+				if (hviewmax==hviewmin)
+				{
+					hviewmax+=0.5;
+					hviewmin-=0.5;
+				}
+			  var axiscanvas = document.getElementById('myaxiscanvas');
+			  var figcanvas = document.getElementById('myfigurecanvas');
+			  axisposx=axiscanvas.offsetLeft
+			  axisposy=axiscanvas.offsetTop
+			  var figcontext = figcanvas.getContext('2d');
+			  if (figcontext){
+			  			figcontext.fillStyle = "#FFFFFF";
+			  			figcontext.fillRect(0, 0, axisposx, figcanvas.height);
+			  			figcontext.fillRect(axisposx+axiscanvas.width, 0, figcanvas.width-(axisposx+axiscanvas.width), figcanvas.height);
+			  			figcontext.fillRect(0, 0, figcanvas.width, axisposy);
+			  			figcontext.fillRect(0, axisposy+axiscanvas.height, figcanvas.width, figcanvas.height-(axisposy+axiscanvas.height));
+			  			figcontext.fillStyle = "#000000";
+			  }
+			   var context = axiscanvas.getContext('2d');
+			   linesdrawn=0
+			   linesnotdrawn=0
+				if (context){
+					oldlinewidth=context.lineWidth
+		  			context.fillStyle = "#FFFFFF";
+		  			context.fillRect(0, 0, axiscanvas.width, axiscanvas.height);
+					context.fillStyle = "#000000";
+					xscale=axiscanvas.width/(hviewmax-hviewmin)
+					xoff=-hviewmin*xscale;
+					for (itwin=0;itwin<dataylist.length;itwin++)
+					{
+						vviewmin[itwin]=-60
+						vviewmax[itwin]=20
+						minmax=getminmax(dataylist[itwin])
+						span=minmax[1]-minmax[0]
+						if (!isNaN(ymin)) vviewmin[itwin]=ymin
+						else vviewmin[itwin]=minmax[0]-span*0.05
+						if (!isNaN(ymax)) vviewmax[itwin]=ymax
+						else vviewmax[itwin]=minmax[1]+span*0.05
+						if (vviewmax[itwin]==vviewmin[itwin])
+						{
+							vviewmax[itwin]+=0.5;
+							vviewmin[itwin]-=0.5;
+						}
+					yscale=axiscanvas.height/(vviewmax[itwin]-vviewmin[itwin])
+					yoff=axiscanvas.height+vviewmin[itwin]*yscale
+					for (iline=0;iline<dataylist[itwin].length;iline++)
+					{
+						try{
+					    context.beginPath();
+						context.lineWidth=corrlinewidth[clrlist[iline][3]]
+						// if (clrlist[iline][3]==0)
+						// 	context.setLineDash([3,3])
+						// else if (clrlist[iline][3]==1)
+						// 	context.setLineDash([6,3])
+						// else if (clrlist[iline][3]==2)
+						// 	context.setLineDash([9,3])
+						// else context.setLineDash([0])
+						// context.setLineDash([0])
+						// context.strokeStyle = "rgb("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+")";
+						context.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
+				    	context.moveTo(xoff+xscale*datax[0],yoff-yscale*dataylist[itwin][iline][0]);
+						for (x=1;x<dataylist[0][iline].length;x++)
+						{
+					   		context.lineTo(xoff+xscale*datax[x],yoff-yscale*dataylist[itwin][iline][x]);
+						}
+					    context.stroke();
+						context.closePath();
+						linesdrawn++;
+					    }catch(err)
+						{//may have not yet received this line through network link ... then dont plot it
+							linesnotdrawn++;
+						}
+					}
+					}
+					context.lineWidth=oldlinewidth;
+					for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
+					{						
+						context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
+						for (ispan=0;ispan<spanlist[ispancolor].length;ispan++)	context.fillRect(xoff+xscale*spanlist[ispancolor][ispan][0],0,xscale*(spanlist[ispancolor][ispan][1]-spanlist[ispancolor][ispan][0]),axiscanvas.height)						
+					}
+				}
+				if (figcontext){
+					figcontext.font=""+titlefontHeight+"px sans-serif";
+					figcontext.strokeStyle = "#000000";
+				 	sz=figcontext.measureText(title)
+				//fillText by default draws at this height ___ and starts at start of string
+					figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
+
+					units=xunit
+					dovertical=0
+					numberpos=0
+					labelpos=0
+					roundScreen=0
+					dotickmajor=1
+					dotickminor=1
+					dotickpos=0
+					dotickneg=1
+					doprefix=0
+					extratimelabels=(units=='s')?1:0
+				  	displaxisx={viewmin:hviewmin,viewmax:hviewmax,pixspan:axiscanvas.width};
+					
+					drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
+
+					figcontext.save();
+				 	figcontext.rotate(-Math.PI/2);
+
+					units=yunit[0]
+					dovertical=1
+					numberpos=1
+					labelpos=1
+					dotickpos=1
+					dotickneg=0
+					doprefix=1
+					extratimelabels=0
+					displaxisy={viewmin:vviewmin[0],viewmax:vviewmax[0],pixspan:axiscanvas.height};
+				  					
+					drawMetricLinearAtPt(figcontext, vviewmin[0], vviewmax[0], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel[0], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
+
+					if (ylabel.length>1)//twin axis
+					{
+						units=yunit[1]
+						dovertical=1
+						numberpos=0
+						labelpos=0
+						dotickpos=0
+						dotickneg=1
+						doprefix=1
+						extratimelabels=0
+						drawMetricLinearAtPt(figcontext, vviewmin[1], vviewmax[1], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx+axiscanvas.width, units, ylabel[1], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
+					}
+					figcontext.restore();
+
+					if (legend.length)
+					{
+						figcontext.font=""+labelfontHeight+"px sans-serif";
+						x=axisposx+axiscanvas.width+labelfontHeight+((ylabel.length>1)?(dotickneg*majorticklength)+((numberpos==0)*tickfontHeight)+(labelpos==0)*labelfontHeight:0)+labelfontHeight/5
+						for (iline=0,y=axisposy+labelfontHeight;iline<legend.length && y<axisposy+axiscanvas.height-labelfontHeight/5;iline++,y+=labelfontHeight)
+						{						
+							    figcontext.beginPath();
+								figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
+								figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
+						    	figcontext.moveTo(x,y-labelfontHeight/2.0+labelfontHeight/5.0);
+							   	figcontext.lineTo(x+labelfontHeight*1.5,y-labelfontHeight/2.0+labelfontHeight/5.0);
+							    figcontext.stroke();
+								figcontext.closePath();
+							figcontext.lineWidth=1;
+							figcontext.strokeStyle = "#000000";
+							figcontext.fillText(legend[iline],x+labelfontHeight*2,y)
+						}
+
+					}
+
+					figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
+			}
+			figureupdated=1
+			lastupdate=(new Date()).getTime();
+			}
+
+			
+		var timereceivemsg=0
+		var timedraw=0
+		var timelastreceive=0
+
+	    var datasocket = 0;
+		
+	    // var time_receive_user_cmd=0
+	    // var data_length_user_cmd=0
+	    // var data_length_user_cmd_acc=0
+		var time_receive_data_user_cmd=0
+		
+	    function exec_data_user_cmd(cmd_str) {
+	     var ret_str = "";
+	     try {
+			time_receive_data_user_cmd=(new Date()).getTime();
+	      	ret_str=eval(cmd_str);
+	     } catch(err) { ret_str = "user command failed: " + err;}
+	    }
+	
+		//performs assignment of data to global variable
+		function unpack_binarydata_msg(arraybuffer)
+		{
+			varname='RG_'
+			offset=0;
+			data = new Uint8Array(arraybuffer)			
+			while(data[offset]){varname+=String.fromCharCode(data[offset++]);}
+			offset++;
+			dtype=String.fromCharCode(data[offset++]);
+			ndims=data[offset++]
+			dims=new Uint16Array(arraybuffer.slice(offset,offset+ndims*2))
+			offset+=ndims*2
+			for (idim=0,totdata=1;idim<ndims;idim++)totdata*=dims[idim];
+			if (dtype=='s')//assumed one dimensional in this case
+			{
+				val=new Array(totdata)
+				for (idata=0;idata<totdata;idata++)
+				{
+					val[idata]=''
+					while(data[offset]){val[idata]+=String.fromCharCode(data[offset++]);}
+					offset++;
+				}
+			}else if (dtype=='b' || dtype=='B')
+			{
+				val=new Uint8Array(arraybuffer.slice(offset,offset+totdata*1))
+				offset+=totdata*1
+			}else if (dtype=='h' || dtype=='H')
+			{
+				val=new Uint16Array(arraybuffer.slice(offset,offset+totdata*2))
+				offset+=totdata*2
+			}else if (dtype=='i')
+			{
+				val=new Uint32Array(arraybuffer.slice(offset,offset+totdata*4))
+				offset+=totdata*4
+			}else if (dtype=='f')
+			{
+				val=new Float32Array(arraybuffer.slice(offset,offset+totdata*4))
+				offset+=totdata*4
+			}else if (dtype=='d')
+			{
+				val=new Float64Array(arraybuffer.slice(offset,offset+totdata*8))
+				offset+=totdata*8
+			}
+			//seperate decode			
+			if (dtype=='B'||dtype=='H')
+			{
+				val=new Float32Array(val)
+				convertminmax=new Float32Array(arraybuffer.slice(offset,offset+2*4))
+				offset+=2*4
+				if (dtype=='B') scale=(convertminmax[1]-convertminmax[0])/(256.0-4.0)
+				else scale=(convertminmax[1]-convertminmax[0])/(65536.0-4.0)
+				for (idata=0;idata<totdata;idata++)
+				{
+					if (val[idata]==0) val[idata]=-Infinity
+					else if (val[idata]==1) val[idata]=Infinity
+					else if (val[idata]==2) val[idata]=NaN
+					else val[idata]=convertminmax[0]+(val[idata]-3)*scale
+				}				
+			}
+			if (ndims==0)
+			{
+				val=val[0]
+			}else if (ndims>1 && dtype!='s')//perform reshape
+			{
+			entry=[]
+			stateindex=[]
+			varoffset=0
+			for (ilev=0;ilev<ndims;ilev++){entry=[entry];stateindex[ilev]=0;}
+			while(varoffset<totdata)
+			{
+				for (thisentry=entry[0],ilev=0;ilev<ndims-2;ilev++)//ensure array elements exist
+				{
+					if (typeof(thisentry[stateindex[ilev]])=="undefined") thisentry[stateindex[ilev]]=[];
+					thisentry=thisentry[stateindex[ilev]];
+				}
+				thisentry[stateindex[ilev]]=val.subarray(varoffset,varoffset+dims[ndims-1]);//assign data
+				varoffset+=dims[ndims-1];
+				stateindex[ilev]++;//increment state index
+				for (ilev=ndims-2;ilev>=0;ilev--)// and perform carry overs
+					if (stateindex[ilev]>=dims[ilev])
+					{
+						stateindex[ilev]=0;
+					 	if (ilev>0)stateindex[ilev-1]++;
+					}
+			}
+			val=entry[0];
+			}
+
+			assignvariable(varname,val)
+		}
+		
+		//typical calls would be...
+		// figure[ifigure].title='hello'
+		// figure[ifigure].legend=['er','re','e']
+		// figure[ifigure].ydata[itwin][iline]=linedata
+		function assignvariable(varname,val){
+			sublist=[]
+			thisname=''
+			for (ic=0;ic<varname.length;ic++)
+			{
+				if (varname[ic]=='.' || varname[ic]==']' || varname[ic]=='[')
+				{
+					if (thisname.length>0)
+					{						
+						if (varname[ic]==']') sublist[sublist.length]=parseInt(thisname);
+						else sublist[sublist.length]=thisname;
+						thisname='';
+					}
+				}else
+				{
+					thisname+=varname[ic];
+				}
+			}
+			if (thisname.length)sublist[sublist.length]=thisname;
+			theobj=window;
+			for (ilev=0;ilev<sublist.length-1;ilev++)
+			{
+				if (typeof(theobj[sublist[ilev]])=="undefined") theobj[sublist[ilev]]=[];
+				theobj=theobj[sublist[ilev]];
+			}
+			theobj[sublist[ilev]]=val
+		}
+		
+	    function start_data() {
+	      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
+		  var supports_binary = (datasocket.binaryType != undefined);
+//see  matplotlib/lib/matplotlib/backends/webagg/..../mpl.js
+ 	    datasocket.binaryType = 'arraybuffer';
+		datasocket.onerror = function(e) {
+			var thisiserror=1;
+		}
+	      datasocket.onmessage = function(e) {
+		   if (e.data instanceof ArrayBuffer){
+	        data_length_user_cmd=e.data.byteLength
+	        data_length_user_cmd_acc+=data_length_user_cmd
+			unpack_binarydata_msg(e.data)
+		  }else if (e.data.indexOf("/*exec_user_cmd*/") == 0) {
+			document.getElementById("timeclientusereventroundtrip").innerHTML+=' rec'
+	        time_receive_user_cmd=(new Date()).getTime();
+	        data_length_user_cmd=e.data.length
+	        data_length_user_cmd_acc+=data_length_user_cmd
+	        exec_data_user_cmd(e.data);
+			document.getElementById("timeclientusereventroundtrip").innerHTML+=' ex'
+	       }
+	      } // end of function(e)
+	    }
+	    function stop_data() {
+	      datasocket.onmessage = function(e) {};
+	       // reset the handler so that the buffer behind this socket does not polute new plots
+	      datasocket.close();
+		  datasocket=0;
+	    }
+	    function handle_data_user_event(arg_string) {
+	      try {
+	       datasocket.send("<data_user_event_spectrum args='" + arg_string + "'>");
+	      } catch (err) {}
+	     } 
+	    
+	
+	
+		var lastupdate=0
+		function updateFigure(){
+			time0=(new Date()).getTime();
+			if ((time_receive_data_user_cmd>0) &&(time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
+			{
+				document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
+			}
+			if (figureupdated==1 || lastupdate==0)//|| (time0-lastupdate>30000))//30 second timeout
+			{
+				figureupdated=0;
+//				handle_user_event("sendfigure",0);
+				handle_data_user_event("sendfigure")
+			}
+			time1=(new Date()).getTime();
+//			document.getElementById("timeclientusereventroundtrip").innerHTML='usereventroundtrip '+(time1-time0);
+		}
+				
+		timerid=setInterval(updateFigure,1000)
+		
+		
+
+
+		function servermsgdraw(){
+			document.getElementById("timeclientusereventroundtrip").innerHTML+='drawing';
+			setTimeout(redrawfigure,1)
+			
+			timelastreceive=timereceivemsg
+			timereceivemsg=(new Date()).getTime();
+			document.getElementById("timeinterval").innerHTML='time interval '+(timereceivemsg-timelastreceive);
+			document.getElementById("mb_received").innerHTML='MB received '+(data_length_user_cmd_acc/1E6);
+			document.getElementById("timeclientinit").innerHTML='time client init '+(timereceivemsg-time_receive_user_cmd);
+
+			data_length_user_cmd_acc=0
+		}
+		function serverperf(servertotal,serverinit,serverselectdata,serverflaglogavg,serverprepmsg,serversend){
+			document.getElementById("timeservertotal").innerHTML='time server total '+(servertotal);
+			document.getElementById("timeserverinit").innerHTML='time server init '+(serverinit);
+			document.getElementById("timeserverselectdata").innerHTML='time server selectdata '+(serverselectdata);
+			document.getElementById("timeserverflaglogavg").innerHTML='time server flag log avg '+(serverflaglogavg);
+			document.getElementById("timeserverprepmsg").innerHTML='time server prep msg '+(serverprepmsg);
+			document.getElementById("timeserversend").innerHTML='time server send msg '+(serversend);
+		}
+
+	function setflags(){
+		var textflag= document.getElementById("textflag");
+	 	var plot_str="setflags"+","+textflag.value;
+	 	handle_user_event(plot_str,0);
+		redrawCanvas()
+		return;		
+	}
+	function settexttimeinst(){
+		var texttimeinst= document.getElementById("texttimeinst");
+	 	var plot_str="settexttimeinst"+","+texttimeinst.value;
+	 	handle_user_event(plot_str,0);
+		redrawCanvas()
+		return;		
+	}
+	function plot(){
+	 var seltypemenu = document.getElementById("typemenu");
+	 var textminF	= document.getElementById("textminF");
+	 var textmaxF	= document.getElementById("textmaxF");
+	 var selcheckHH = document.getElementById("optionHH");
+	 var selcheckVV = document.getElementById("optionVV");
+	 var selcheckHV = document.getElementById("optionHV");
+	 var selcheckVH = document.getElementById("optionVH");
+	 var selchecklegend = document.getElementById("optionlegend");
+	 var textminx	= document.getElementById("textminx");
+	 var textmaxx	= document.getElementById("textmaxx");
+	 var seltypemenux= document.getElementById("typemenux");
+	 var texttimeinst= document.getElementById("texttimeinst");
+	 var texttimeavg= document.getElementById("texttimeavg");
+	 var plot_str="";
+	 plot_str+=selcheckHH.checked+","
+	 plot_str+=selcheckVV.checked+","
+	 plot_str+=selcheckHV.checked+","
+	 plot_str+=selcheckVH.checked+","
+	 plot_str+=selchecklegend.checked+","
+	 plot_str+=seltypemenu.options[seltypemenu.selectedIndex].value+","
+	 plot_str+=textminF.value+","
+	 plot_str+=textmaxF.value+","
+	 plot_str+=seltypemenux.options[seltypemenux.selectedIndex].value+","
+	 plot_str+=textminx.value+","
+	 plot_str+=textmaxx.value+","
+	 plot_str+=""+","
+	 plot_str+=""+","
+	 plot_str+=""+","
+	 plot_str+=texttimeinst.value+","
+	 plot_str+=texttimeavg.value+","
+	 handle_user_event(plot_str,0);
+	}
+			var datafile='<!--datafile-->'
+			var antbase0=[];
+			var antbase1=[];
+			var antennamappingmode=<!--antennamappingmode-->
+			var antposx=<!--antposx-list-->
+			var antposy=<!--antposy-list-->
+			var antdisp=<!--antdisp-list-->
+			var antposminx=1e30;
+			var antposminy=1e30;
+			var antposmaxx=-1e30;
+			var antposmaxy=-1e30;
+			var nvalidant=0
+			for (i=0;i<antposx.length;i++)
+			{
+				if (!antdisp[i])continue;
+				if (antposx[i]<antposminx)antposminx=antposx[i];
+				if (antposx[i]>antposmaxx)antposmaxx=antposx[i];
+				if (antposy[i]<antposminy)antposminy=antposy[i];
+				if (antposy[i]>antposmaxy)antposmaxy=antposy[i];
+				nvalidant++
+			}
+			if (nvalidant>1)
+			for (i=0;i<antposx.length;i++)
+			{
+				antposx[i]=(antposx[i]-antposminx)/(antposmaxx-antposminx)*100+6+5;
+				antposy[i]=(1-(antposy[i]-antposminy)/(antposmaxy-antposminy))*100+6;
+			}else
+			for(i=0;i<antposx.length;i++)
+			{
+				antposx[i]=50;
+				antposy[i]=50;
+			}
+			var antdown=-1;
+			var antup=-1;
+			
+			function myloadpage(){
+				connect_manager();
+				start_data();
+				redrawlineCanvas()
+				document.getElementById("healthtext").innerHTML=datafile;
+				if (datafile!='stream')
+				{
+					document.getElementById("nextchunkid").style.display='inline';
+					document.getElementById("prevchunkid").style.display='inline';
+				}else
+				{
+					document.getElementById("nextchunkid").style.display='none';
+					document.getElementById("prevchunkid").style.display='none';
+				}
+				if (antennamappingmode==0)
+				{
+				 document.getElementById("HHtext").innerHTML="XX";
+				 document.getElementById("VVtext").innerHTML="YY";
+				 document.getElementById("HVtext").innerHTML="XY";
+				 document.getElementById("VHtext").innerHTML="YX";					
+				}
+			//beginloadpage
+			//endloadpage
+			}
+			
+			function redrawlineCanvas(){
+				var drawingCanvas = document.getElementById('canvasThick');
+				if(drawingCanvas.getContext) {
+				var context = drawingCanvas.getContext('2d');
+				context.fillStyle = "#FFFFFF";
+				context.fillRect(0, 0, 24, 10);
+				context.fillStyle = "#000000";
+				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[0]+")";
+				context.lineWidth   = corrlinewidth[0]
+				context.moveTo(2,5);
+				context.lineTo(22,5);
+				context.stroke()
+				}
+				drawingCanvas = document.getElementById('canvasThin');
+				if(drawingCanvas.getContext) {
+				var context = drawingCanvas.getContext('2d');
+				context.fillStyle = "#FFFFFF";
+				context.fillRect(0, 0, 24, 10);
+				context.fillStyle = "#000000";
+				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[1]+")";
+				context.lineWidth   = corrlinewidth[1]
+				context.moveTo(2,5.5);
+				context.lineTo(22,5.5);
+				context.stroke()
+				}
+				drawingCanvas = document.getElementById('canvasDash');
+				if(drawingCanvas.getContext) {
+				var context = drawingCanvas.getContext('2d');
+				context.fillStyle = "#FFFFFF";
+				context.fillRect(0, 0, 24, 10);
+				context.fillStyle = "#000000";
+				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[2]+")";
+				context.lineWidth   = corrlinewidth[2]
+				context.moveTo(2,5);
+				context.lineTo(22,5);
+				context.stroke()
+				}
+				drawingCanvas = document.getElementById('canvasDot');
+				if(drawingCanvas.getContext) {
+				var context = drawingCanvas.getContext('2d');
+				context.fillStyle = "#FFFFFF";
+				context.fillRect(0, 0, 24, 10);
+				context.fillStyle = "#000000";
+				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[3]+")";
+				context.lineWidth   = corrlinewidth[3]
+				context.moveTo(2,5.5);
+				context.lineTo(22,5.5);
+				context.stroke()
+				}
+				return
+			}
+			function redrawCanvas(){
+			var colourlistR=<!--colour-list-R>
+			var colourlistG=<!--colour-list-G>
+			var colourlistB=<!--colour-list-B>
+			var drawingCanvas = document.getElementById('antennaCanvas');
+			if(drawingCanvas.getContext) {
+			var context = drawingCanvas.getContext('2d');
+			context.fillStyle = "#FFFFFF";
+			context.fillRect(0, 0, 150, 150);
+			context.font="12px sans-serif";
+			context.strokeStyle = "#000000";
+			context.fillStyle = "#000000";
+			for (i=0;i<antposx.length;i++)
+			{
+				if (!antdisp[i])continue;
+				context.beginPath();
+				context.arc(antposx[i],antposy[i],5,0,Math.PI*2,true);
+				context.closePath();
+				context.stroke();
+			}
+			for (i=0;i<antbase0.length;i++)
+			{
+				RR=Math.floor((colourlistR[antbase0[i]]+colourlistR[antbase1[i]])/2)
+				GG=Math.floor((colourlistG[antbase0[i]]+colourlistG[antbase1[i]])/2)
+				BB=Math.floor((colourlistB[antbase0[i]]+colourlistB[antbase1[i]])/2)
+				usecolour="rgba("+RR+","+GG+","+BB+", 1)"
+				context.strokeStyle = usecolour;
+				context.beginPath();
+				if (antbase0[i]==antbase1[i])
+				{
+					context.lineWidth   = 1
+					context.fillStyle=usecolour;
+					context.arc(antposx[antbase0[i]],antposy[antbase1[i]],5,0,Math.PI*2,true);
+				}else
+				{
+					context.lineWidth   = 2
+					context.moveTo(antposx[antbase0[i]],antposy[antbase0[i]]);
+					context.lineTo(antposx[antbase1[i]],antposy[antbase1[i]]);
+				}
+				context.closePath();
+				context.stroke();
+				context.fill();
+			}
+			context.lineWidth   = 1
+			context.fillStyle="#000000"
+			for (i=0;i<antposx.length;i++)
+			{
+				if (!antdisp[i])continue;
+				context.fillText(i+antennamappingmode,antposx[i]-3,antposy[i]+15);
+			}
+			}
+			}
+			function onMouseDown(event){
+				antup=-1;
+				for (i=0;i<antposx.length;i++)
+				{
+					if (!antdisp[i])continue;
+					if ((antposx[i]-event.offsetX)*(antposx[i]-event.offsetX)+(antposy[i]-event.offsetY)*(antposy[i]-event.offsetY)<5*5)
+					{
+						antdown=i;
+						return;
+					}
+				}
+				antdown=-1;
+				return;
+			}
+			function toggleBaseline(ant0,ant1){
+				if (ant1<ant0)
+				{
+					var ant=ant1;
+					ant1=ant0;
+					ant0=ant;
+				}
+				var removed=false;
+				for(i=0;i<antbase0.length;i++)
+				{
+					if ((ant0==antbase0[i]&&ant1==antbase1[i]) || (ant1==antbase0[i]&&ant0==antbase1[i]))
+					{
+						antbase0.splice(i,1);
+						antbase1.splice(i,1);
+						removed=true;
+						break;
+					}
+				}
+				if (!removed)
+				{
+				   antbase0[antbase0.length]=ant0;
+				   antbase1[antbase1.length]=ant1;
+			    }
+			 	var plot_str="setbaseline"+",";
+				for (j=0;j<antbase0.length;j++)
+				{
+					plot_str+=antbase0[j]+","
+					plot_str+=antbase1[j]+","
+				}
+			 	handle_user_event(plot_str,0);
+				redrawCanvas()
+				return;
+			}
+			function addBaseline(ant0,ant1,doaddbaseline){
+				if (ant1<ant0)
+				{
+					var ant=ant1;
+					ant1=ant0;
+					ant0=ant;
+				}
+				if (doaddbaseline)
+				{
+				for(ii=0;ii<antbase0.length;ii++)
+				{
+					if ((ant0==antbase0[ii]&&ant1==antbase1[ii]) || (ant1==antbase0[ii]&&ant0==antbase1[ii]))
+					{
+						return;//already in list
+					}
+				}
+				if (ii==antbase0.length)
+				{
+				   antbase0[antbase0.length]=ant0;
+				   antbase1[antbase1.length]=ant1;
+			    }
+				}else
+				{
+					for(ii=0;ii<antbase0.length;ii++)
+					{
+						if ((ant0==antbase0[ii]&&ant1==antbase1[ii]) || (ant1==antbase0[ii]&&ant0==antbase1[ii]))
+						{
+							antbase0.splice(ii,1);
+							antbase1.splice(ii,1);
+							return;//already in list
+						}
+					}
+				}
+				return;
+			}
+			function safeAddBaseline(ant0,ant1,doaddbaseline){
+				rv=[]
+				if (ant0<0||ant0>=antdisp.length||!antdisp[ant0]) rv[rv.length]=ant0;
+				if (ant1<0||ant1>=antdisp.length||!antdisp[ant1]) rv[rv.length]=ant1;
+				if (rv.length) return rv;
+				addBaseline(ant0,ant1,doaddbaseline)
+				return rv;
+			}
+			function selectClear(){
+				antbase0=[];
+				antbase1=[];
+			 	var plot_str="setbaseline"+",";
+			 	handle_user_event(plot_str,0);
+				redrawCanvas()
+			}
+			function selectBaseline(){
+				var textbaseline= document.getElementById("textselectbaseline");
+				//first convert , to ; if inside brackets and convert - to items separated by ; also remove brackets also remove spaces
+				var txt=textbaseline.value;
+				var newtxt=''
+				var inbrack=0;
+				
+				for (i=0;i<txt.length;i++)
+				{
+					if (txt[i]==' ')continue;
+					if (txt[i]=='(')
+					{
+						if (inbrack)
+						{
+							alert('Nested brackets not allowed')
+							return;
+						}
+						inbrack=1;
+					}else
+					if (txt[i]==')')
+					{
+						if (inbrack)
+						{
+							inbrack=0;
+						}else
+						{
+							alert('Unexpected )')
+							return;
+						}
+					}else
+					if (inbrack)
+					{
+						if (txt[i]==',')
+						{
+							newtxt+=';'
+						}else if (txt[i]=='.'&&(i+1)<txt.length&&txt[i+1]=='.')//..
+						{
+							//try determine range values
+							valt0=''
+							for (j=i-1;j>0;j--)
+							{
+								if (txt[j].split(/\d/).length!=2) break
+								valt0=''+txt[j]+valt0;
+							}
+							if (valt0=='') val0=0
+							else val0=valt0.valueOf()-antennamappingmode;
+							valt1=''
+							i++;
+							for (j=i+1;j<txt.length;j++)
+							{
+								if (txt[j].split(/\d/).length!=2) break
+								valt1+=txt[j];
+							}
+							if (valt1=='') val1=antposx.length-1;
+							else val1=valt1.valueOf()-antennamappingmode;
+							if (valt0=='')
+								newtxt+=(val0+antennamappingmode);
+							for (j=val0+1;j<val1;j++)
+								newtxt+=';'+(j+antennamappingmode);
+							if (valt1=='')
+								newtxt+=';'+(val1+antennamappingmode);
+							else newtxt+=';';
+						}else newtxt+=txt[i]
+					}else if (txt[i]==';')
+					{
+						newtxt+=',';
+					}else newtxt+=txt[i];
+				}
+				var baselines=newtxt.split(',');
+				var val,val0,val1;
+				if (baselines=='')	return
+				
+				//eg 3,4,5,8..11,3x5,4x, !3,!3..5,!3x
+				//autocorrelations 3,4,5,8..11
+				//specific cross correlations 3x5
+				//cross correlations to all other antennas 4x
+				for (i=0;i<baselines.length;i++)
+				{
+					var doaddbaseline=0;
+					var termremainder=baselines[i].split('!');
+					if (termremainder.length!=2){
+						doaddbaseline=1
+						termremainder=baselines[i];
+					}else{
+						if (termremainder[0]=='')
+							termremainder=termremainder[1]
+						else termremainder=termremainder[0]
+					}
+					var term=termremainder.split('..');
+					if (term.length==1)//not range
+					{
+						var xterm=termremainder.split('x');
+						if (xterm.length==1)//eg 3
+						{
+							scterm=termremainder.split(';')
+							for (sc=0;sc<scterm.length;sc++)
+							{
+								val=scterm[sc].valueOf()-antennamappingmode;
+								if (val>=0&&val<antposx.length)
+								{
+									safeAddBaseline(val,val,doaddbaseline);
+								}else alert(''+(val+antennamappingmode)+' is not a valid antenna number')
+							}
+						}else if(xterm.length==2)
+						{
+							if (xterm[1]=='')
+							{//then all cross correlations of xterm[0]
+								if (xterm[0]=='')
+								{//then all cross correlations
+									for (k=0;k<antposx.length;k++)
+									{
+										for (j=0;j<k;j++)
+										{
+											safeAddBaseline(k,j,doaddbaseline);
+										}
+									}
+								}else //then eg 3x or 3;4;5x
+								{
+									scterm=xterm[0].split(';')
+									for (sc=0;sc<scterm.length;sc++)
+									{
+									val=scterm[sc].valueOf()-antennamappingmode;
+									if (val>=0&&val<antposx.length)
+									{
+										for (j=0;j<val;j++)
+										{
+											safeAddBaseline(val,j,doaddbaseline);
+										}
+										for (j=val+1;j<antposx.length;j++)
+										{
+											safeAddBaseline(val,j,doaddbaseline);
+										}
+									}else alert(''+(val+antennamappingmode)+' is not a valid antenna number')
+									}
+								}
+							}else//only specific crosscorrelation
+							{
+								if (xterm[0]=='')// eg x4 or x4;6;7
+								{
+									scterm=xterm[1].split(';')
+									for (sc=0;sc<scterm.length;sc++)
+									{
+									val=scterm[sc].valueOf()-antennamappingmode;
+									if (val>=0&&val<antposx.length)
+									{
+										for (j=0;j<val;j++)
+										{
+											safeAddBaseline(val,j,doaddbaseline);
+										}
+										for (j=val+1;j<antposx.length;j++)
+										{
+											safeAddBaseline(val,j,doaddbaseline);
+										}
+									}else alert(''+(val+antennamappingmode)+' is not a valid antenna number')
+									}
+								}else
+								{
+									scterm0=xterm[0].split(';')
+									scterm1=xterm[1].split(';')
+									for (sc0=0;sc0<scterm0.length;sc0++)
+									{
+									val0=scterm0[sc0].valueOf()-antennamappingmode;
+									if (val0>=0&&val0<antposx.length)
+									for (sc1=0;sc1<scterm1.length;sc1++)
+									{
+										val1=scterm1[sc1].valueOf()-antennamappingmode;
+										if (val1>=0&&val1<antposx.length)
+										{
+											safeAddBaseline(val0,val1,doaddbaseline);
+										}else alert(''+(val1+antennamappingmode)+' is not a valid antenna number')
+									}else alert(''+(val0+antennamappingmode)+' is not a valid antenna number')
+								  	}
+								}
+							}
+						}else alert('Error in expression: '+baselines[i])
+					}else//is eg 9..11
+					{
+						if (term[0]=='')
+						{
+							if (term[1]=='')
+							{//all auto corrs
+								for (j=0;j<antposx.length;j++)
+								{
+									safeAddBaseline(j,j,doaddbaseline);
+								}
+							}else
+							{
+								val1=term[1].valueOf()-antennamappingmode;
+								for (j=0;j<=val1;j++)
+								{
+									safeAddBaseline(j,j,doaddbaseline);
+								}
+							}						
+						}else if (term[1]=='')
+						{
+							val0=term[0].valueOf()-antennamappingmode;
+							for (j=val0;j<antposx.length;j++)
+							{
+								safeAddBaseline(j,j,doaddbaseline);
+							}
+						}else
+						{
+							val0=term[0].valueOf()-antennamappingmode;
+							val1=term[1].valueOf()-antennamappingmode;
+							if (val0>=0&&val0<antposx.length&&val1>=0&&val1<antposx.length)
+							{
+								for (j=val0;j<=val1;j++)
+									safeAddBaseline(j,j,doaddbaseline);
+							}else alert(''+(val0+antennamappingmode)+' or '+(val1+antennamappingmode)+' is not a valid antenna number')
+						}
+					}	
+				}
+			 	var plot_str="setbaseline"+",";
+				for (j=0;j<antbase0.length;j++)
+				{
+					plot_str+=antbase0[j]+","
+					plot_str+=antbase1[j]+","
+				}
+			 	handle_user_event(plot_str,0);
+				redrawCanvas()
+				return;
+			}
+			function selectAllX(){
+				var nantbase0=[]
+				var nantbase1=[]
+				var alreadyhascross=false;
+				for(i=0;i<antbase0.length;i++)
+				{
+					if (antbase0[i]==antbase1[i])
+					{
+						nantbase0[nantbase0.length]=antbase0[i];
+						nantbase1[nantbase1.length]=antbase1[i];
+					}else
+					{
+						alreadyhascross=true;
+					}
+				}
+				if (alreadyhascross==false)
+				{
+					for(i=0;i<antposx.length;i++)
+					{
+						if (!antdisp[i])continue;
+						for(j=0;j<i;j++)
+						{
+							if (!antdisp[j])continue;
+							nantbase0[nantbase0.length]=j;
+							nantbase1[nantbase1.length]=i;
+						}
+					}
+				}//else remove cross instead
+				antbase0=nantbase0;
+				antbase1=nantbase1;
+			 	var plot_str="setbaseline"+",";
+				for (j=0;j<antbase0.length;j++)
+				{
+					plot_str+=antbase0[j]+","
+					plot_str+=antbase1[j]+","
+				}
+			 	handle_user_event(plot_str,0);
+				redrawCanvas()
+			}
+			function selectAllA(){
+				var nantbase0=[]
+				var nantbase1=[]
+				var alreadyhasauto=false;
+				for(i=0;i<antbase0.length;i++)
+				{
+					if (antbase0[i]!=antbase1[i])
+					{
+						nantbase0[nantbase0.length]=antbase0[i];
+						nantbase1[nantbase1.length]=antbase1[i];
+					}else
+					{
+						alreadyhasauto=true;
+					}
+				}
+				if (alreadyhasauto==false)
+				{
+				 	for(i=0;i<antposx.length;i++)
+					{
+						if (!antdisp[i])continue;
+						nantbase0[nantbase0.length]=i;
+						nantbase1[nantbase1.length]=i;
+					}
+		  	    }//otherwise remove auto instead
+				antbase0=nantbase0;
+				antbase1=nantbase1;
+			 	var plot_str="setbaseline"+",";
+				for (j=0;j<antbase0.length;j++)
+				{
+					plot_str+=antbase0[j]+","
+					plot_str+=antbase1[j]+","
+				}
+			 	handle_user_event(plot_str,0);
+				redrawCanvas()
+			}
+			function applyToAll(){
+			 	handle_user_event("applytoall",0);
+			}
+						function onMouseUp(event){
+							for (i=0;i<antposx.length;i++)
+							{
+								if (!antdisp[i])continue;
+								if ((antposx[i]-event.offsetX)*(antposx[i]-event.offsetX)+(antposy[i]-event.offsetY)*(antposy[i]-event.offsetY)<5*5)
+								{
+									if (antdown>=0)
+									{
+										antup=i;
+										toggleBaseline(antdown,antup);
+										return;
+									}
+								}
+								for (j=0;j<i;j++)
+								{
+			//						for(ii=0;ii<antbase0.length;ii++)
+									{
+			//							if ((i==antbase0[ii]&&j==antbase1[ii]) || (j==antbase0[ii]&&i==antbase1[ii]))
+										{
+											if (!antdisp[j])continue;
+											dx=antposx[j]-antposx[i];
+											dy=antposy[j]-antposy[i];
+											d=(((event.offsetX-antposx[i])*dy-(event.offsetY-antposy[i])*dx)/Math.sqrt((dx*dx)+(dy*dy)));
+											t=(((event.offsetX-antposx[i])*dx+(event.offsetY-antposy[i])*dy)/((dx*dx)+(dy*dy)));
+											if (t>0 && t<1 && d<2 && d>-2)
+											{
+												antup=i;
+												antdown=j;
+												toggleBaseline(antdown,antup);
+												return;
+											}
+										}
+									}
+								}
+							}
+							return;
+						}
+						function onMouseMove(event){
+							for (i=0;i<antposx.length;i++)
+							{
+								if (!antdisp[i])continue;
+								if ((antposx[i]-event.offsetX)*(antposx[i]-event.offsetX)+(antposy[i]-event.offsetY)*(antposy[i]-event.offsetY)<5*5)
+								{
+									document.body.style.cursor = 'pointer';
+									return;
+								}
+								for (j=0;j<i;j++)
+								{
+			//						for(ii=0;ii<antbase0.length;ii++)
+									{
+			//							if ((i==antbase0[ii]&&j==antbase1[ii]) || (j==antbase0[ii]&&i==antbase1[ii]))
+										{
+											if (!antdisp[j])continue;
+											dx=antposx[j]-antposx[i];
+											dy=antposy[j]-antposy[i];
+											d=(((event.offsetX-antposx[i])*dy-(event.offsetY-antposy[i])*dx)/Math.sqrt((dx*dx)+(dy*dy)));
+											t=(((event.offsetX-antposx[i])*dx+(event.offsetY-antposy[i])*dy)/((dx*dx)+(dy*dy)));
+											if (t>0 && t<1 && d<2 && d>-2)
+											{
+												document.body.style.cursor = 'pointer';
+												return;
+											}
+										}
+									}
+								}
+							}
+							document.body.style.cursor = 'default';
+							return;
+						}
+			function onMouseOut(event){
+				document.body.style.cursor = 'default';
+				return;
+			}
+			function nextchunk(){
+				handle_user_event("nextchunk",0);
+			}
+			function prevchunk(){
+				handle_user_event("prevchunk",0);
+			}
+			function showhideControls(){
+				controls=document.getElementById('controls');
+				if (controls.style.display=='none')
+					controls.style.display='block';
+				else
+					controls.style.display='none';
+				controls=document.getElementById('myfigurediv');
+				if (controls.style.display=='none')
+					controls.style.display='block';
+				else
+					controls.style.display='none';
+			}
+			function showhideDebug(){
+				controls=document.getElementById('timingsignalsdiv');
+				if (controls.style.display=='none')
+					controls.style.display='block';
+				else
+					controls.style.display='none';
+			}			
+			function showcsv(){
+				document.getElementById('textflagdiv').style.display='none';
+				document.getElementById('inputcsvdiv').style.display='block';
+				document.getElementById('showcsvlegend').innerHTML="Flag <small>(<A HREF='#' onClick='hidecsv();'>cancel</A>)</small>:";
+			}
+			function hidecsv(){
+				document.getElementById('textflagdiv').style.display='block';
+				document.getElementById('inputcsvdiv').style.display='none';
+				document.getElementById('showcsvlegend').innerHTML="Flag <small>(<A HREF='#' onClick='showcsv();'>from file</A>)</small>:";
+			}
+			 function handleinputcsv(files) {
+			  var file = files[0];
+			  var reader = new FileReader();
+			  reader.onload = function(evt) { document.getElementById("textflag").value=evt.target.result;setflags(); }
+			  reader.readAsText(file);
+			  document.getElementById('inputcsv').value="";
+			  hidecsv()
+			 }
+			function onMouseCanvasDown(event){
+				if (event.altKey && (event.srcElement.id=="limit_div_0_0" || event.srcElement.id=="limit_div_1_0")){
+					var posx=event.layerX/event.srcElement.style.width.substring(0,event.srcElement.style.width.length-2)
+				 	handle_user_event("setchannelphase"+","+posx+",",0);
+				}
+			}
+			
+			var figdragmode=0
+			var figdragstart=[0,0]
+			var figdragstartevent=0
+			var figdragsizestart=[0,0]
+			var mouseclick=0
+			
+			function onFigureMouseDown(event){
+				var figurediv = document.getElementById("myfigurediv");
+				var canvas = document.getElementById("myfigurecanvas");
+				var axiscanvas = document.getElementById("myaxiscanvas");
+				if ((Math.abs(event.offsetX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.offsetY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
+				{
+					figdragmode=1;
+					figdragstart=[event.clientX+document.body.scrollLeft,event.clientY+document.body.scrollTop]
+					figdragstartevent=event
+					figdragsizestart=[canvas.width,canvas.height]
+	                if (window.addEventListener) {  // all browsers except IE before version 9
+	                    window.addEventListener ("mousemove", onFigureMouseMove, true);
+	                    window.addEventListener ("mouseup", onFigureMouseUp, true);
+	                }
+	                else {
+	                    if (figurediv.setCapture) {    // IE before version 9
+	                        figurediv.setCapture ();
+	                    }
+	                }					
+				}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+				{					
+					if (mouseclick!=0 && mouseclick[0]==event.offsetX-axiscanvas.offsetLeft && mouseclick[1]==event.offsetY-axiscanvas.offsetTop)
+					{
+						onFigureDblclick(event);
+					}else
+					{
+					figdragmode=2;
+					figdragstart=[event.clientX,event.clientY]
+					figdragstartevent=event
+					figdragsizestart=[canvas.width,canvas.height]
+	                if (window.addEventListener) {  // all browsers except IE before version 9
+	                    window.addEventListener ("mousemove", onFigureMouseMove, true);
+	                    window.addEventListener ("mouseup", onFigureMouseUp, true);
+	                }
+	                else {
+	                    if (figurediv.setCapture) {    // IE before version 9
+	                        figurediv.setCapture ();
+	                    }
+	                }
+					var x = event.clientX+document.body.scrollLeft;
+					var y = event.clientY+document.body.scrollTop;
+
+					//	   event.preventDefault();
+					rubberbandStart(x, y);
+					}
+	
+				}
+			}
+			function onFigureLoseCapture(event){
+				
+			}
+
+			function onFigureMouseUp(event){
+				var figurediv = document.getElementById("myfigurediv");
+				var canvas = document.getElementById("myfigurecanvas");
+				var axiscanvas = document.getElementById("myaxiscanvas");
+				if (figdragmode==1)//resize figure
+				{
+					newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
+					newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
+					// newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
+					// newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
+					if (newsizex<300)newsizex=300;
+					if (newsizey<300)newsizey=300;
+			        figurediv.style.width = newsizex + 'px';
+			        figurediv.style.height = newsizey + 'px';
+					figurediv.offsetWidth=newsizex
+					figurediv.offsetHeight=newsizey
+			        canvas.style.width = newsizex + 'px';
+			        canvas.style.height = newsizey + 'px';
+					canvas.width=newsizex;
+					canvas.height=newsizey;
+			        axiscanvas.style.width = newsizex-200 + 'px';
+			        axiscanvas.style.height = newsizey-150 + 'px';				
+					axiscanvas.width=newsizex -200;
+					axiscanvas.height=newsizey -150;
+					document.body.style.cursor = 'default';
+					redrawfigure()
+					figdragmode=0;
+	               if (window.removeEventListener) {   // all browsers except IE before version 9
+	                    window.removeEventListener ("mousemove", onFigureMouseMove, true);
+	                    window.removeEventListener ("mouseup", onFigureMouseUp, true);
+	                }
+	                else {
+	                    if (figurediv.releaseCapture) {    // IE before version 9
+	                        figurediv.releaseCapture ();
+	                    }
+	                }
+				}else if (figdragmode==2)//zoom figure
+				{	
+					pixx0=event.clientX+document.body.scrollLeft-axiscanvas.offsetLeft-myfigurediv.offsetLeft
+					pixy0=displaxisy.pixspan-(event.clientY+document.body.scrollTop-axiscanvas.offsetTop-myfigurediv.offsetTop)
+					pixx1=figdragstartevent.offsetX-axiscanvas.offsetLeft
+					pixy1=displaxisy.pixspan-(figdragstartevent.offsetY-axiscanvas.offsetTop)
+				
+				figx0=(pixx0)/displaxisx.pixspan*(displaxisx.viewmax-displaxisx.viewmin)+displaxisx.viewmin;
+				figy0=(pixy0)/displaxisy.pixspan*(displaxisy.viewmax-displaxisy.viewmin)+displaxisy.viewmin;
+				figx1=(pixx1)/displaxisx.pixspan*(displaxisx.viewmax-displaxisx.viewmin)+displaxisx.viewmin;
+				figy1=(pixy1)/displaxisy.pixspan*(displaxisy.viewmax-displaxisy.viewmin)+displaxisy.viewmin;
+
+					if (Math.abs(figx0-figx1)>0 && Math.abs(figy0-figy1)>0)
+					{
+					var textctlminx	= document.getElementById('textminx');
+					var textctlmaxx	= document.getElementById('textmaxx');
+					var textctlminy	= document.getElementById('textminF');
+					var textctlmaxy	= document.getElementById('textmaxF');
+					textctlminx.value=Math.min(figx0,figx1)
+					textctlmaxx.value=Math.max(figx0,figx1)
+					textctlminy.value=Math.min(figy0,figy1)
+					textctlmaxy.value=Math.max(figy0,figy1)
+					plot()		
+						mouseclick=0;
+					}else
+					{
+						mouseclick=[pixx0,displaxisy.pixspan-pixy0];
+					}
+					
+					figdragmode=0;
+	               if (window.removeEventListener) {   // all browsers except IE before version 9
+	                    window.removeEventListener ("mousemove", onFigureMouseMove, true);
+	                    window.removeEventListener ("mouseup", onFigureMouseUp, true);
+	                }
+	                else {
+	                    if (figurediv.releaseCapture) {    // IE before version 9
+	                        figurediv.releaseCapture ();
+	                    }
+	                }
+
+					//				event.preventDefault();
+								   rubberbandEnd();
+				}
+			}
+			
+			function onFigureDblclick(event){
+				var axiscanvas = document.getElementById("myaxiscanvas");
+				if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+				{//double click in central plot area - unzoom all	
+					var textctlminx	= document.getElementById('textminx');
+					var textctlmaxx	= document.getElementById('textmaxx');
+					var textctlminy	= document.getElementById('textminF');
+					var textctlmaxy	= document.getElementById('textmaxF');
+					textctlminx.value=''
+					textctlmaxx.value=''
+					textctlminy.value=''
+					textctlmaxy.value=''
+					plot()		
+				}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop+axiscanvas.height && event.offsetY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight)
+				{
+					var textctlminx	= document.getElementById('textminx');
+					var textctlmaxx	= document.getElementById('textmaxx');
+					textctlminx.value=''
+					textctlmaxx.value=''
+					plot()		
+				}	else if (event.offsetX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.offsetX<axiscanvas.offsetLeft && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+					{
+						var textctlminy	= document.getElementById('textminF');
+						var textctlmaxy	= document.getElementById('textmaxF');
+						textctlminy.value=''
+						textctlmaxy.value=''
+						plot()		
+					}
+			}
+			function onFigureMouseMove(event){
+				var figurediv = document.getElementById("myfigurediv");
+				var canvas = document.getElementById("myfigurecanvas");
+				var axiscanvas = document.getElementById("myaxiscanvas");
+				mouseclick=0;
+				if (figdragmode==2)
+				{
+					var x = event.clientX+document.body.scrollLeft;
+					var y = event.clientY+document.body.scrollTop;
+				//				event.preventDefault();
+					if (rubberbanddragging) {
+					     rubberbandStretch(x, y);
+					}
+					document.body.style.cursor = 'crosshair';
+				}else
+				if (figdragmode==1)
+				{
+					if (1){						
+						newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
+						newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
+					// newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
+					// newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
+					if (newsizex<300)newsizex=300;
+					if (newsizey<300)newsizey=300;
+			        figurediv.style.width = newsizex + 'px';
+			        figurediv.style.height = newsizey + 'px';
+					figurediv.offsetWidth=newsizex
+					figurediv.offsetHeight=newsizey
+			        canvas.style.width = newsizex + 'px';
+			        canvas.style.height = newsizey + 'px';
+					canvas.width=newsizex;
+					canvas.height=newsizey;
+			        axiscanvas.style.width = newsizex-200 + 'px';
+			        axiscanvas.style.height = newsizey-150 + 'px';				
+					axiscanvas.width=newsizex -200;
+					axiscanvas.height=newsizey -150;
+					redrawfigure()
+			    	}
+					document.body.style.cursor = 'se-resize';
+				}else if ((Math.abs(event.offsetX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.offsetY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
+				{
+					document.body.style.cursor = 'se-resize';
+				}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+				{ document.body.style.cursor = 'crosshair';
+				}else{
+					document.body.style.cursor = 'default';
+				}
+			}
+			function onFigureMouseOut(event){
+				document.body.style.cursor = 'default';
+				return;
+			}
+			
+			function saveFigure(){
+				var canvas = document.getElementById("myfigurecanvas");
+				var axiscanvas = document.getElementById("myaxiscanvas");
+				var context = canvas.getContext("2d");
+				context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
+				context.strokeStyle = "#000000";
+				context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
+				var img     = canvas.toDataURL("image/png");
+				context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
+
+				//var heading=document.getElementById("saveid")
+				//saveid.firstChild.nodeValue="hello"
+				//	document.write('<img src="'+img+'"/>');
+			//				self.location=img;
+				window.open(img);
+			}
+			function onChangeTypemenu(txtid1,txtid2){
+				var txt1=document.getElementById(txtid1);
+				var txt2=document.getElementById(txtid2);
+				txt1.value=''
+				txt2.value=''
+				plot()
+			}
+			function onChangeMinMax(textid,othertextid,min0max1){
+				var textctl	= document.getElementById(textid);
+				var othertextctl= document.getElementById(othertextid);
+				txt=textctl.value;
+				othertxt=othertextctl.value;
+				var rng=txt.split('..');
+				if (rng.length==1)
+				{
+					if (isNaN(rng))
+					{
+						alert ("Error in expression: "+rng)
+						return
+					}
+					if (min0max1==0)
+						rng=[txt,othertxt];
+					else
+						rng=[othertxt,txt];
+					if (rng[0]=='' || rng[1]=='' || parseFloat(rng[0])<parseFloat(rng[1]))
+					{
+						textctl.value=rng[min0max1]
+						othertextctl.value=rng[1-min0max1]
+					}else
+					{
+						textctl.value=rng[1-min0max1]
+						othertextctl.value=rng[min0max1]
+					}
+				}else if (rng.length==2)
+				{
+					if (isNaN(rng[0]) || isNaN(rng[1]))
+					{
+						alert ("Error in expression: "+rng)
+						return
+					}
+					if (rng[0]=='' || rng[1]=='' || parseFloat(rng[0])<parseFloat(rng[1]))
+					{
+						textctl.value=rng[min0max1]
+						othertextctl.value=rng[1-min0max1]
+					}else
+					{
+						textctl.value=rng[1-min0max1]
+						othertextctl.value=rng[min0max1]
+					}
+				}else 
+				{
+					alert ("Error in expression: "+rng)
+					return;
+				}
+				plot()
+			}	
+			</script>
+	<div align="left" style="position: relative; left:5px; top:0px"> 
+	<small>
+	<A HREF="figure1">Time series</A> <b>Spectrum</b> <A HREF="figure3">Waterfall</A> <A HREF="figure4">Baseline matrix</A> <element id="healthtext"> </element>
+	</small>
+	</div>
+	<div align="right" style="position: absolute; right:5px; top:6px"> 
+	<small>
+		<A id="prevchunkid" HREF="#" onClick="prevchunk();" style="display:none">prev</A> <A id="nextchunkid" HREF="#" onClick="nextchunk();" style="display:none">next</A> <A id="saveid" HREF="#" onClick="saveFigure();">png</A> <A HREF="#" onClick="showhideControls();">Controls</A> <A HREF="#" onClick="showhideDebug();">Debug</A> <A HREF="figure5">Help</A>
+	</small>
+	</div>
+	<div id="controls" align="left" style="position: relative;">
+		<small>
+		<table>
+		<tr>
+		<td>
+		<small>
+		<fieldset style="width:285px;height:140px;">
+		<legend>Select baselines:</legend>		
+		<table>
+		    <td>
+				<div align="center">
+					<ELEMENT onmousedown = "onMouseDown(event);" onmouseup = "onMouseUp(event);" onmousemove = "onMouseMove(event);" onmouseout = "onMouseOut(event);">
+					<canvas style="border: 1px solid #d0d0d0;" id="antennaCanvas" width="122" height="122">
+					<p>Your browser doesn't support canvas.</p>
+					</canvas>
+				</div>
+			</td>
+		    <td><small>
+
+
+				<input type="text" id="textselectbaseline" placeholder="eg: 1x2,4..6,3x,!3x2,!3" value="" size=25 onChange="selectBaseline()"><br>
+				<input type="button" id="buttonAllA" value="Auto"  onClick="selectAllA()">
+				<input type="button" id="buttonAllX" value="Cross"  onClick="selectAllX()">
+				<input type="button" id="buttonClear" value="Clear" onClick="selectClear()"><br>
+				<div style="height:6px"></div>
+				&nbsp;<input type="checkbox" id="optionHH" value="HH" onChange="plot()"><element id="HHtext">HH</element><canvas id="canvasThick" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
+				<input type="checkbox" id="optionHV" value="HV" onChange="plot()"><element id="HVtext">HV</element><canvas id="canvasDash" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br>
+				<div style="height:1px"></div>
+				&nbsp;<input type="checkbox" id="optionVV" value="VV" onChange="plot()"><element id="VVtext">VV</element><canvas id="canvasThin" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
+				<input type="checkbox" id="optionVH" value="VH" onChange="plot()"><element id="VHtext">VH</element><canvas id="canvasDot" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br><br>
+				<center><input type="button" id="buttonApplyToAll" value="Apply to all" checked onClick="applyToAll()"></center>
+				</small>
+			</td>
+		</table>
+		</fieldset>
+		</small>
+		</td>
+		<td>
+		<small>
+		<fieldset style="width:260px;height:90px;">
+		<legend>Display:</legend>
+		<table>
+			<td>
+				<select id="typemenu" name="typemenu" onChange="onChangeTypemenu('textminF','textmaxF')">
+				<option selected value="pow">Power</option>
+				<option value="mag">Amplitude</option>
+				<option value="phase">Phase</option>
+				<option value="powphase">P & Ph</option>
+			</select>
+			</td>
+			<td align='right'><small>
+				<input type="text" id="textminF" placeholder="min" value=""  size=10 onChange="onChangeMinMax('textminF','textmaxF',0)">
+			</small></td>
+			<td align='right'><small>
+				<input type="text" id="textmaxF" placeholder="max" value="" size=10 onChange="onChangeMinMax('textmaxF','textminF',1)">
+			</small></td>
+		<tr>
+			<td>
+				<select id="typemenux" name="typemenux" onChange="onChangeTypemenu('textminx','textmaxx')">
+					<option selected value="channel">Channel</option>
+					<option value="mhz">MHz</option>
+					<option value="ghz">GHz</option>
+				</select> 
+		    </td>
+			<td align='right'><small>
+				<input type="text" id="textminx" placeholder="min" value=""  size=10 onChange="onChangeMinMax('textminx','textmaxx',0)">
+			</small></td>
+			<td align='right'><small>
+				<input type="text" id="textmaxx" placeholder="max" value="" size=10 onChange="onChangeMinMax('textmaxx','textminx',1)">
+			</small></td>
+			<tr>
+				<td><small>
+					<input type="checkbox" id="optionlegend" value="legend" onChange="plot()"> legend
+				</small></td>
+				<td align='right'><small>
+					<input type="text" id="texttimeinst" placeholder="time inst" value=""  size=10 onChange="settexttimeinst()">
+				</small></td>
+				<td align='right'><small>
+					<input type="text" id="texttimeavg" placeholder="dump avg" value="" size=10 onChange="plot()">
+				</small></td>
+		</table>
+		</fieldset>
+		<fieldset style="width:260px;height:34px;">
+			<legend id="showcsvlegend">Flag <small>(<A HREF="#" onClick="showcsv();">from file</A>)</small>:</legend>
+				<div id="textflagdiv"><input type="text" placeholder="channels, eg: ..100,120,130..150,-100.." id="textflag" value="" size=46 onChange="setflags()"></div>
+				<div id=inputcsvdiv style="display:none"><input type="file" name="csv" id="inputcsv" placeholder="csv" onchange="handleinputcsv(this.files)"></div>
+		</fieldset>
+		</small>
+		</td>
+	</table>
+	</small>
+	</div>
+</div>
+<div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>
+<ELEMENT style="position: relative;z-index: 0; width: 0; height: 0" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event)">
+<div id="myfigurediv" style="z-index: 2; position: relative ; width: 1100; height: 550;">
+<canvas id="myfigurecanvas"  width="1100"  height="550" style="z-index: 2; position: absolute; left:0; top:0"></canvas>
+<canvas id="myaxiscanvas"  width="900"  height="400" style="z-index: 1; position: absolute; left:50; top:75"></canvas>
+</div>
+<div id="timingsignalsdiv" style="display:none">
+<element id="timeserveroverview"> </element><br>
+<element id="timeserverreqinterval"> </element><br>
+<element id="timeinterval"> </element><br>
+<element id="linesnotdrawn"> </element><br>
+<element id="mb_received"> </element><br>
+<element id="timeservertotal"> </element><br>
+<element id="timeserverinit"> </element><br>
+<element id="timeserverselectdata"> </element><br>
+<element id="timeserverflaglogavg"> </element><br>
+<element id="timeserverprepmsg"> </element><br>
+<element id="timeserversend"> </element><br>
+<element id="timeclientinit"> </element><br>
+<element id="timeclientdraw"> </element><br>
+<element id="timeclientusereventroundtrip"> </element><br>
+
+</div>
+	<div style="position: relative; display:none"><ELEMENT onmousedown = "onMouseCanvasDown(event);"><!--figure--></div>
+	
