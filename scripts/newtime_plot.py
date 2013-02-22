@@ -352,7 +352,7 @@ def get_time_series(self, dtype='mag', product=None, timestamps=None, start_chan
                     ntp[ti,:]=tp[tsi,:]
                 elif (ti>0):
                     ntp[ti,:]=ntp[ti-1,:]
-                elif (tp.shape(tp)[0]):
+                elif (np.shape(tp)[0]):
                     ntp[ti,:]=tp[0,:]
                 else:
                     ntp[ti,:]=np.zeros(spectrum_width)
@@ -928,18 +928,19 @@ def timeseries_draw():
         debugline+='b'
         for c in range(len(time_antbase0)):
             _rgb=[(colourlist_R[efftime_antbase0[c]]+colourlist_R[efftime_antbase1[c]])/2,(colourlist_G[efftime_antbase0[c]]+colourlist_G[efftime_antbase1[c]])/2,(colourlist_B[efftime_antbase0[c]]+colourlist_B[efftime_antbase1[c]])/2 ]
+            crossstyle = 0 if (efftime_antbase0[c]==efftime_antbase1[c]) else 4
             if (time_corrHH=='true'):
                 products.append(antennamap(efftime_antbase0[c],efftime_antbase1[c],'HH'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],0])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],0+crossstyle])
             if (time_corrVV=='true'):
                 products.append(antennamap(efftime_antbase0[c],efftime_antbase1[c],'VV'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],1])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],1+crossstyle])
             if (time_corrHV=='true'):
                 products.append(antennamap(efftime_antbase0[c],efftime_antbase1[c],'HV'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],2])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],2+crossstyle])
             if (time_corrVH=='true'):
                 products.append(antennamap(efftime_antbase0[c],efftime_antbase1[c],'VH'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],3])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],3+crossstyle])
         debugline+='c'
         if (len(products)):
             new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend'],new_fig['timestamp']=plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, end_time=-3600)
@@ -1028,18 +1029,19 @@ def spectrum_draw():
         
         for c in range(len(effspectrum_antbase0)):
             _rgb=[(colourlist_R[effspectrum_antbase0[c]]+colourlist_R[effspectrum_antbase1[c]])/2,(colourlist_G[effspectrum_antbase0[c]]+colourlist_G[effspectrum_antbase1[c]])/2,(colourlist_B[effspectrum_antbase0[c]]+colourlist_B[effspectrum_antbase1[c]])/2 ]
+            crossstyle = 0 if (effspectrum_antbase0[c]==effspectrum_antbase1[c]) else 4
             if (spectrum_corrHH=='true'):
                 products.append(antennamap(effspectrum_antbase0[c],effspectrum_antbase1[c],'HH'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],0])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],0+crossstyle])
             if (spectrum_corrVV=='true'):
                 products.append(antennamap(effspectrum_antbase0[c],effspectrum_antbase1[c],'VV'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],1])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],1+crossstyle])
             if (spectrum_corrHV=='true'):
                 products.append(antennamap(effspectrum_antbase0[c],effspectrum_antbase1[c],'HV'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],2])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],2+crossstyle])
             if (spectrum_corrVH=='true'):
                 products.append(antennamap(effspectrum_antbase0[c],effspectrum_antbase1[c],'VH'))
-                styles.append([_rgb[0],_rgb[1],_rgb[2],3])
+                styles.append([_rgb[0],_rgb[1],_rgb[2],3+crossstyle])
         if (len(products)):
             new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend'],new_fig['timestamp'],onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, start_channel=1,stop_channel=spectrum_width)
         else:

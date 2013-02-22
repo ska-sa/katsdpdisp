@@ -14,8 +14,13 @@
 		var tickfontHeightspace=tickfontHeight/5
 		var majorticklength=tickfontHeight/3; //4 for 12 pt font
 		var minorticklength=tickfontHeight/6; //2 for 12 pt font
-	    var corrlinewidth=[2,1,4,3]//HH,VV,HV,VH
-	    var corrlinealpha=[1,1,0.3,0.5]//HH,VV,HV,VH
+		//original
+	    // var corrlinewidth=[2,1,4,3,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
+	    // var corrlinealpha=[1,1,0.3,0.5,1,1,0.3,0.5]//HH,VV,HV,VH,crossHH,VV,HV,VH
+	    // var corrlinedash=[[0],[0],[0],[0],[0],[0],[0],[0]]//HH,VV,HV,VH,crossHH,VV,HV,VH
+	    var corrlinewidth=[2,2,1,1,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
+	    var corrlinealpha=[1,1,1,1,1,0.75,0.5,0.25]//HH,VV,HV,VH,crossHH,VV,HV,VH
+	    var corrlinedash=[[0],[3,3],[0],[3,3],[0],[0],[0],[0]]//HH,VV,HV,VH,crossHH,VV,HV,VH
 		var rubberbandDiv;
 		var rubberbandmousedown = {}
 		var rubberbandRectangle = {}
@@ -584,15 +589,17 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					{						
 						    figcontext.beginPath();
 							figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
+							figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
 							figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
 					    	figcontext.moveTo(x,y-labelfontHeight/2.0+labelfontHeight/5.0);
 						   	figcontext.lineTo(x+labelfontHeight*1.5,y-labelfontHeight/2.0+labelfontHeight/5.0);
 						    figcontext.stroke();
 							figcontext.closePath();
-						figcontext.lineWidth=1;
 						figcontext.strokeStyle = "#000000";
 						figcontext.fillText(legend[iline],x+labelfontHeight*2,y)
 					}
+					figcontext.lineWidth=1;
+					figcontext.setLineDash([0])
 
 				}
 
@@ -774,24 +781,26 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			for (ilev=lastnamedobjlev+1;ilev<sublist.length-1;ilev++)
 				subobj=subobj[sublist[ilev]]
 			subobj[sublist[ilev]]=1
-			if (getmin(lastnamedobj.completed)>0)//trigger redraw
+			if (getmin(lastnamedobj.completed,lastnamedobj)>0)//trigger redraw
 			{//should ensure shape is correct
 				servermsgdraw()
 			}
 		}
 	}
 	
-	function getmin(obj)
+	function getmin(obj,clipthisobj)
 	{
 		mn=Infinity;
 		if (typeof(obj.length)!="undefined")
 		{
+			if (typeof(clipthisobj)!="undefined" && obj.length<clipthisobj.length)
+				clipthisobj.splice(obj.length,clipthisobj.length-obj.length)					
 			if (obj.length>0 && (typeof(obj[0].length)=="undefined"))
 				for (iel=0;iel<obj.length;iel++)
 					mn=Math.min(obj[iel],mn)
 			else 
 				for (iel=0;iel<obj.length;iel++)
-					mn=Math.min(getmin(obj[iel]),mn)
+					mn=Math.min(getmin(obj[iel],clipthisobj[iel]),mn)
 			return mn
 		}
 		return obj;
@@ -986,6 +995,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				context.fillRect(0, 0, 24, 10);
 				context.fillStyle = "#000000";
 				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[0]+")";
+				context.setLineDash(corrlinedash[0])
 				context.lineWidth   = corrlinewidth[0]
 				context.moveTo(2,5);
 				context.lineTo(22,5);
@@ -998,6 +1008,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				context.fillRect(0, 0, 24, 10);
 				context.fillStyle = "#000000";
 				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[1]+")";
+				context.setLineDash(corrlinedash[1])
 				context.lineWidth   = corrlinewidth[1]
 				context.moveTo(2,5.5);
 				context.lineTo(22,5.5);
@@ -1010,6 +1021,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				context.fillRect(0, 0, 24, 10);
 				context.fillStyle = "#000000";
 				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[2]+")";
+				context.setLineDash(corrlinedash[2])
 				context.lineWidth   = corrlinewidth[2]
 				context.moveTo(2,5);
 				context.lineTo(22,5);
@@ -1022,6 +1034,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				context.fillRect(0, 0, 24, 10);
 				context.fillStyle = "#000000";
 				context.strokeStyle = "rgba(0,0,0,"+corrlinealpha[3]+")";
+				context.setLineDash(corrlinedash[3])
 				context.lineWidth   = corrlinewidth[3]
 				context.moveTo(2,5.5);
 				context.lineTo(22,5.5);
