@@ -269,31 +269,101 @@ time_serverselectdata=0
 time_serverflaglogavg=0
 spectrum_serverselectdata=0
 spectrum_serverflaglogavg=0
+waterfall_serverselectdata=0
+waterfall_serverflaglogavg=0
 
-def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
+lasttimeproducts=0
+lasttimedtype=0
+lastspectrum_flagmask=0
+lasttime_timeavg=0
+
+subsubdebugline='a'
+
+def wrap_get_time_series(self, dtype='mag', product=None, timestamps=None, start_channel=0, stop_channel=spectrum_width):
+    global timeseries_fig
+    global lasttimeproducts
+    global lasttimedtype
+    global lastspectrum_flagmask
+    global lasttime_timeavg
+    global subsubdebugline
+    subsubdebugline='a'
+    if (lasttimedtype==dtype and np.array_equal(spectrum_flagmask,lastspectrum_flagmask) and time_timeavg==lasttime_timeavg and (product in lasttimeproducts)):
+        subsubdebugline+='b'
+        timestamp=timeseries_fig['timestamp']
+        iprod=lasttimeproducts.index(product)
+        
+        subsubdebugline+='c'
+        if (len(timeseries_fig['ydata'])<1 or len(timeseries_fig['ydata'][0])<=iprod or len(timeseries_fig['ydata'][0][iprod])<2):
+            subsubdebugline+='d'
+            return get_time_series(self, dtype=dtype, product=product, timestamps=timestamps, start_channel=start_channel, stop_channel=stop_channel)
+        elif (timestamp<timestamps[-1]):
+            subsubdebugline+='e'
+            itimestamp=timestamps.index(timestamp)#this should always be in timestamp list
+            [tp,prodstr]=get_time_series(self, dtype=dtype, product=product, timestamps=timestamps[itimestamp:], start_channel=start_channel, stop_channel=stop_channel)
+            subsubdebugline+='f'
+            return [np.concatenate([(timeseries_fig['ydata'][0][iprod])[:-1],tp]),str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+        else:
+            subsubdebugline+='g'
+            return [timeseries_fig['ydata'][0][iprod],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+    else:
+        subsubdebugline+='h'
+        return get_time_series(self, dtype=dtype, product=product, timestamps=timestamps, start_channel=start_channel, stop_channel=stop_channel)
+        
+
+sub3debugline='a'
+def get_time_series(self, dtype='mag', product=None, timestamps=None, start_channel=0, stop_channel=spectrum_width):
     global time_serverselectdata, time_serverflaglogavg
-    global spectrum_flagmask,time_timeavg,time_now,time_nownow,spectrum_flagstr,spectrum_width
+    global spectrum_flagmask,time_timeavg,spectrum_flagstr,spectrum_width
+    global sub3debugline
+    sub3debugline='a'
     t00=time.time()
     if product is None: product = self.default_product
-#    tp = self.select_data(dtype=dtype, sum_axis=1, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
+    sub3debugline+='b'
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
-        return [nan*np.zeros(97,dtype='float64'),nan*np.zeros(97,dtype='float32'),""]
+        return [nan*np.zeros(97,dtype='float32'),""]
+    lentimestamps=len(timestamps)
+    start_time=timestamps[0]
+    end_time=timestamps[-1]
+    sub3debugline+='c'
     if (dtype=='pow' or dtype=='mag'):
         t0=time.time()
-        tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
+        sub3debugline+='d'
+        tp = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=False, start_channel=start_channel, stop_channel=stop_channel)
+        sub3debugline+='e'
         t1=time.time()
         thetime_selectdatatime=t1-t0
-        #tp[1]=sum(tp[1],1)
-        if (tp[1]==[]):
-            tp[0]=np.array([0])
-            tp[1]=np.array([0])
-        else:
-            if (np.shape(tp[1])[1]!=spectrum_width):
-                spectrum_width=np.shape(tp[1])[1]
-                spectrum_flagmask=np.ones([spectrum_width])
-                spectrum_flagstr=''
-            tp[1]=dot(tp[1],spectrum_flagmask)
-            #tp[1] = np.asarray([np.dot(t,spectrum_flagmask) for t in tp[1]])
+        if (np.shape(tp)[0]!=lentimestamps):
+            sub3debugline+='ee'
+            print 'product contains %d less samples than expected... padding'%(lentimestamps-np.shape(tp)[0])
+            ts = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=0, stop_channel=0)
+            ts=ts[0].tolist()
+            if (len(ts)!=np.shape(tp)[0]):
+                print 'some seriously weird inconsistency, tp:',np.shape(tp),', ts: ',np.shape(ts),' timestamps',np.shape(timestamps)
+            print 'timestamps[0] ',timestamps[0],' timestamps[-1] ',timestamps[-1]
+            print 'ts[0] ',ts[0],' ts[-1] ',ts[-1]
+                
+            t1=time.time()
+            thetime_selectdatatime=t1-t0
+            ntp=np.zeros([lentimestamps,np.shape(tp)[1]])
+            sub3debugline+='-ee-'
+            for ti,tim in enumerate(timestamps):
+                if (tim in ts):
+                    tsi=ts.index(tim)
+                    ntp[ti,:]=tp[tsi,:]
+                elif (ti>0):
+                    ntp[ti,:]=ntp[ti-1,:]
+                elif (tp.shape(tp)[0]):
+                    ntp[ti,:]=tp[0,:]
+                else:
+                    ntp[ti,:]=np.zeros(spectrum_width)
+            tp=ntp
+        sub3debugline+='f'
+        if (np.shape(tp)[1]!=spectrum_width):
+            spectrum_width=np.shape(tp)[1]
+            spectrum_flagmask=np.ones([spectrum_width])
+            spectrum_flagstr=''
+        sub3debugline+='g'
+        tp=dot(tp,spectrum_flagmask)
     elif (dtype=='phase'):
         if (time_channelphase!=''):
             ch=int(time_channelphase);
@@ -302,51 +372,85 @@ def get_time_series(self, dtype='mag', product=None, start_time=0, end_time=-120
             elif (ch>=spectrum_width):
                 ch=spectrum_width-1
             t0=time.time()
-            tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=ch, stop_channel=ch+1)
+            tp = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=False, start_channel=ch, stop_channel=ch+1)
             t1=time.time()
             thetime_selectdatatime=t1-t0
-            if (tp[1]==[]):
-                tp[0]=np.array([0])
-                tp[1]=np.array([0])
+            if (np.shape(tp)[0]!=lentimestamps):
+                print 'product contains %d less samples than expected... padding'%(lentimestamps-np.shape(tp)[0])
+                ts = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=0, stop_channel=0)
+                if (len(ts)!=np.shape(tp)[0]):
+                    print 'some seriously weird inconsistency'
+                t1=time.time()
+                thetime_selectdatatime=t1-t0
+                ntp=np.zeros([lentimestamps,1])
+                for ti,tim in enumerate(timestamps):
+                    if (tim in ts):
+                        tsi=ts.index(tim)
+                        ntp[ti,:]=tp[tsi,:]
+                    elif (ti>0):
+                        ntp[ti,:]=ntp[ti-1,:]
+                    elif (tp.shape(tp)[0]):
+                        ntp[ti,:]=tp[0,:]
+                    else:
+                        ntp[ti,:]=np.zeros(1)
+                tp=ntp
         else:
             t0=time.time()
-            tp = self.select_data(dtype='complex', product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel)
+            tp = self.select_data(dtype='complex', product=product, start_time=start_time, end_time=end_time, include_ts=False, start_channel=start_channel, stop_channel=stop_channel)
             t1=time.time()
             thetime_selectdatatime=t1-t0
-            if (tp[1]==[]):
-                tp[0]=np.array([0])
-                tp[1]=np.array([0])
-            else:
-                if (np.shape(tp[1])[1]!=spectrum_width):
-                    spectrum_width=np.shape(tp[1])[1]
-                    spectrum_flagmask=np.ones([spectrum_width])
-                    spectrum_flagstr=''
-                tp[1]=np.angle(np.dot(np.array(tp[1]),spectrum_flagmask))
+            if (np.shape(tp)[0]!=lentimestamps):
+                print 'product contains %d less samples than expected... padding'%(lentimestamps-np.shape(tp)[0])
+                ts = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=0, stop_channel=0)
+                if (len(ts)!=np.shape(tp)[0]):
+                    print 'some seriously weird inconsistency'
+                t1=time.time()
+                thetime_selectdatatime=t1-t0
+                ntp=np.zeros([lentimestamps,np.shape(tp)[1]])
+                for ti,tim in enumerate(timestamps):
+                    if (tim in ts):
+                        tsi=ts.index(tim)
+                        ntp[ti,:]=tp[tsi,:]
+                    elif (ti>0):
+                        ntp[ti,:]=ntp[ti-1,:]
+                    elif (tp.shape(tp)[0]):
+                        ntp[ti,:]=tp[0,:]
+                    else:
+                        ntp[ti,:]=np.zeros(spectrum_width)
+                tp=ntp;
+            if (np.shape(tp)[1]!=spectrum_width):
+                spectrum_width=np.shape(tp)[1]
+                spectrum_flagmask=np.ones([spectrum_width])
+                spectrum_flagstr=''
+            tp=np.angle(dot(tp,spectrum_flagmask))
+
+    sub3debugline+='h'
     if (dtype=='pow'):
-        tp[1]=10.0*log10(tp[1]);
-    ts = tp[0]-tp[0][-1]    #time delay
-    time_now=tp[0][-1]
-    time_nownow=tp[0][-2]
+        tp=10.0*log10(tp);
+    sub3debugline+='i'
     if (time_timeavg!=''):
         reduction=int(time_timeavg);
 #        reduction=int(double(time_timeavg)/(tp[0][1]-tp[0][0]));
-        tp[1]=np.diff(np.cumsum(tp[1])[0::reduction])/double(reduction);
-        ts=ts[0::reduction][0:len(tp[1])];
-#    print tp[0][0],time.ctime(tp[0][0])
+        tp=np.diff(np.cumsum(tp)[0::reduction])/double(reduction);
     t11=time.time()
+    sub3debugline+='j'
     time_serverselectdata+=thetime_selectdatatime
     time_serverflaglogavg+=t11-t00-(thetime_selectdatatime)
-    return [ts,tp[1],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]#self.cpref.id_to_real_str(product, short=True)
+    return [tp,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]#self.cpref.id_to_real_str(product, short=True)
 
+
+subdebugline='a'
 
 def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_channel=0, stop_channel=spectrum_width):
+    global subdebugline
     global time_serverselectdata, time_serverflaglogavg
-    global f1,f1a,f1b,spectrum_width
+    global f1,f1a,f1b,spectrum_width,time_timeavg,time_now,time_nownow
     global time_absminx,time_absmaxx,time_minx,time_maxx
     plotyseries=[]
     plotyseries2=[]
     plotx=[]
     plotlegend=[]
+    subdebugline='a'
     if products is None: products = self.default_products
     if (dtype=='phase' and time_channelphase!=''):
         title='Phase for channel '+time_channelphase
@@ -360,14 +464,17 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
                 title+=", excluding ("+str(spectrum_flagstr[:50])+"...)";
             else:
                 title+=", excluding ("+str(spectrum_flagstr)+")";
+    subdebugline+='b'
     if (self.storage.frame_count==0):
         s=[[0]]
     else:
         t0=time.time()
-        s = self.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
+        s = self.select_data(product=0, start_time=0, end_time=1e100, start_channel=0, stop_channel=0, include_ts=True)#gets all timestamps only
         t1=time.time()
         time_serverselectdata+=t1-t0
-    start_time=0
+    subdebugline+='c'
+    tslist=s[0].tolist()
+    start_time=s[0][0]
     end_time=s[0][-1]
     minf1a=np.inf
     maxf1a=-np.inf
@@ -375,27 +482,39 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         start_time=time_absminx
     if (time_absmaxx>0):
         end_time=time_absmaxx
+    subdebugline+='d'
     if (dtype=='powphase'):
         for i,product in enumerate(products):
-            data = get_time_series(self,dtype='pow',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            plotyseries.append(data[1])
+            data = wrap_get_time_series(self,dtype='pow',product=product, timestamps=tslist, start_channel=start_channel, stop_channel=stop_channel)
+            plotyseries.append(data[0])
             if (time_legend=='true'):
-                plotlegend.append(data[2])
-            data = get_time_series(self,dtype='phase',product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            plotyseries2.append(data[1])
+                plotlegend.append(data[1])
+            data = get_time_series(self,dtype='phase',product=product, timestamps=tslist, start_channel=start_channel, stop_channel=stop_channel)
+            plotyseries2.append(data[0])
     else:
         data_time = 0
         plot_time = 0
         for i,product in enumerate(products):
-            data = get_time_series(self,dtype=dtype,product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-            if data[1].shape == ():
+            data = wrap_get_time_series(self,dtype=dtype,product=product, timestamps=tslist, start_channel=start_channel, stop_channel=stop_channel)
+            if data[0].shape == ():
                 logger.warning("Insufficient data to plot time series")
                 return
-            plotyseries.append(data[1])
+            plotyseries.append(data[0])
             if (time_legend=='true'):
-                plotlegend.append(data[2])
-    plotx=data[0]
+                plotlegend.append(data[1])
+    #
+    subdebugline+='e'
+    ts = s[0]-s[0][-1]    #time delay
+    time_now=s[0][-1]
+    time_nownow=s[0][-2]
+    if (time_timeavg!=''):
+        reduction=int(time_timeavg);
+        ts=(ts[0::reduction])[0:len(plotyseries[0])];
+    
+    plotx=ts
+    subdebugline+='f'
     plotxlabel="Time since " + time.ctime(s[0][-1])
+    plottimestamp=s[0][-1]
     plotxunit='s'
     plotylabel2=""
     plotyunit2=""
@@ -421,7 +540,22 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
         plotyseries=[plotyseries]
         plotylabel=[plotylabel]
         plotyunit=[plotyunit]
-    return plotx,plotyseries,title,plotxlabel,plotylabel,plotxunit,plotyunit,plotlegend
+        
+    subdebugline+='g'
+    global lasttimeproducts
+    global lasttimedtype
+    global lastspectrum_flagmask
+    global lasttime_timeavg
+    lasttimeproducts=products
+    if (dtype=='powphase'):
+        lasttimedtype='pow'
+    else:
+        lasttimedtype=dtype
+    lastspectrum_flagmask=spectrum_flagmask
+    lasttime_timeavg=time_timeavg
+    subdebugline+='h'
+    
+    return plotx,plotyseries,title,plotxlabel,plotylabel,plotxunit,plotyunit,plotlegend,plottimestamp
 
 def get_spectrum(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False):
     global spectrum_serverselectdata,spectrum_serverflaglogavg
@@ -540,6 +674,7 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
     chanwidth=stop_channel-start_channel
     flagstart=0
     flagstop=0
+    plottimestamp=s[0][-1]
     
     while (flagstop<chanwidth):
         flagstart=flagstop
@@ -566,57 +701,76 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
         plotylabel=[plotylabel]
         plotyunit=[plotyunit]
     
-    return plotx,plotyseries,title,plotxlabel,plotylabel,plotxunit,plotyunit,plotlegend,flags
+    return plotx,plotyseries,title,plotxlabel,plotylabel,plotxunit,plotyunit,plotlegend,plottimestamp,flags
 
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
+    global waterfall_serverselectdata,waterfall_serverflaglogavg
     global time_now,time_nownow
     if product is None: product = self.default_product
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
     if (dtype=="pow"):
-        rv=self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+        t0=time.time()
         tp0,tp1,flags = self.select_data(dtype="mag", product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
+        t1=time.time()
         tp1=10.0*log10(tp1);
+        t2=time.time()
     else:
+        t0=time.time()
         tp0,tp1,flags = self.select_data(dtype=dtype, product=product, start_time=start_time, end_time=end_time, include_ts=True, start_channel=start_channel, stop_channel=stop_channel,reverse_order=False,include_flags=True)
-    ts = tp0-tp0[-1]
+        t1=time.time()
+        t2=t1
+    ts = tp0
     time_now=tp0[-1]
     time_nownow=tp0[-2]
     tp1=np.array(tp1)
+    waterfall_serverselectdata+=t1-t0
+    waterfall_serverflaglogavg+=t2-t1
+    
     if len(tp1.shape) == 1:
         logger.warning("Insufficient data to plot waterfall")
         return [[],[],""]
     return [ts,tp1,flags,str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
 
 def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
-    global f3,f3a
-    if product is None: product = self.default_product
-    if self.storage is not None:
-        tp = get_waterfall(self,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
-        if (tp[0]==[]):return 0
-        f3a.set_title("Spectrogram (" + str(dtype) + ") for " + tp[3])
-        f3a.set_ylabel("Time in seconds before now") # since " + time.ctime(sk[-frames:][0]))
-        extent=[start_channel,stop_channel, tp[0][-1],tp[0][0]];
-        if (waterfall_seltypemenux=='channel' or self.receiver.center_freqs_mhz==[]):
-            f3a.set_xlabel("Channel Number")
-        elif (waterfall_seltypemenux=='mhz'):
-            f3a.set_xlabel("Frequency [MHz]")
-            extent=[self.receiver.center_freqs_mhz[start_channel],self.receiver.center_freqs_mhz[stop_channel-1],tp[0][-1],tp[0][0]]
-        else:
-            f3a.set_xlabel("Frequency [GHz]")
-            extent=[self.receiver.center_freqs_mhz[start_channel]/1000.0,self.receiver.center_freqs_mhz[stop_channel-1]/1000.0,tp[0][-1],tp[0][0]]
-        shp=np.shape(tp[1])
-        tp[1].reshape(-1)[find(tp[2])]=np.nan;
-        tp[1].reshape(shp)
-        cax = f3a.imshow(tp[1], aspect='auto', interpolation='bicubic', animated=True,extent=extent)
-        cbar = f3.colorbar(cax)
-        f3a.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(delayformatter))
-        theylim=f3a.get_ylim()
-        f3a.set_ylim((max(theylim),min(theylim)))
-        if (waterfall_seltypemenux!='channel'):
-            f3a.set_xlim(f3a.get_xlim()[::-1])
+    tp = get_waterfall(self,dtype=dtype, product=product, start_time=start_time, end_time=end_time, start_channel=start_channel, stop_channel=stop_channel)
+    if (tp[0]==[]):
+        return [],[],[],'','','','','','','','',0
+    if (dtype=='phase'):
+        title="Spectrogram (Phase) for " + tp[3]
+        plotclabel='Phase'
+        plotcunit='rad'
+    elif (dtype=='pow'):
+        title="Spectrogram (Power) for " + tp[3]
+        plotclabel='Power'
+        plotcunit='dB'
     else:
-        print time.asctime()+" No stored data available..."
+        title="Spectrogram (Magnitude) for " + tp[3]
+        plotclabel='Magnitude'
+        plotcunit='counts'
+    plotylabel="Time since "+time.ctime(tp[0][-1])
+    plotyunit='s'
+    
+    plottimestamp=tp[0][-1]
+    if (waterfall_seltypemenux=='channel' or self.receiver.center_freqs_mhz==[]):
+        plotxlabel="Channel Number"
+        plotxunit=""
+        plotx=[start_channel,stop_channel]
+    elif (waterfall_seltypemenux=='mhz'):
+        plotxlabel="Frequency"
+        plotxunit="MHz"
+        plotx=[self.receiver.center_freqs_mhz[start_channel],self.receiver.center_freqs_mhz[stop_channel-1]]
+    else:
+        plotxlabel="Frequency"
+        plotxunit="GHz"
+        plotx=[self.receiver.center_freqs_mhz[start_channel]/1000.0,self.receiver.center_freqs_mhz[stop_channel-1]/1000.0]
+    shp=np.shape(tp[1])
+    tmp=tp[1].reshape(-1)
+    tmp[np.nonzero(tp[2].reshape(-1))[0]]=np.nan;
+    ploty=tp[0]-tp[0][-1]
+    plotyseries=tmp.reshape(shp)
+    plotlegend=""
+    return plotx,ploty,plotyseries,title,plotxlabel,plotylabel,plotclabel,plotxunit,plotyunit,plotcunit,plotlegend,plottimestamp
 
 def get_baseline_matrix(self, start_channel=0, stop_channel=spectrum_width):
     global spectrum_abstimeinst,spectrum_timeavg,spectrum_flagstr,spectrum_width,spectrum_flagmask
@@ -742,16 +896,22 @@ def setloadpage(cc,newcontent):
     cc=cc[:i0]+str(newcontent)+cc[i1:]
     return cc;
 
-timeseries_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
+timeseries_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
 
 def timeseries_draw():
+    global subdebugline
+    global subsubdebugline
+    global sub3debugline
+    
+    subdebugline='a'
+    debugline='a'
     try:
         global time_serverselectdata, time_serverflaglogavg
         global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx
         global f1,f1a,f1b,spectrum_width
         ts_start = time.time()
         
-        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
+        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
         time_serverselectdata=0
         time_serverflaglogavg=0
         products=[]
@@ -765,6 +925,7 @@ def timeseries_draw():
                 efftime_antbase0.append(time_antbase0[c])
                 efftime_antbase1.append(time_antbase1[c])
 
+        debugline+='b'
         for c in range(len(time_antbase0)):
             _rgb=[(colourlist_R[efftime_antbase0[c]]+colourlist_R[efftime_antbase1[c]])/2,(colourlist_G[efftime_antbase0[c]]+colourlist_G[efftime_antbase1[c]])/2,(colourlist_B[efftime_antbase0[c]]+colourlist_B[efftime_antbase1[c]])/2 ]
             if (time_corrHH=='true'):
@@ -779,8 +940,10 @@ def timeseries_draw():
             if (time_corrVH=='true'):
                 products.append(antennamap(efftime_antbase0[c],efftime_antbase1[c],'VH'))
                 styles.append([_rgb[0],_rgb[1],_rgb[2],3])
+        debugline+='c'
         if (len(products)):
-            new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend']=plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, end_time=-3600)
+            new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend'],new_fig['timestamp']=plot_time_series(self=datasd,dtype=time_seltypemenu, products=products, end_time=-3600)
+        debugline+='d'
         if (time_absminx<=0 and time_minx!=''):
             new_fig['xmin']=double(time_minx)
         elif (time_absminx>0):
@@ -801,12 +964,14 @@ def timeseries_draw():
             new_fig['ymax']=double(time_maxF)
         else:
             new_fig['ymax']=np.nan
+        debugline+='e'
         ts_draw = time.time()
         new_fig['ydata']=np.array(new_fig['ydata'])
         new_fig['span']=[]#this doesnt evaluate to a numpy array generally...
         new_fig['spancolor']=[]
         new_fig['color']=np.array(styles)
 
+        debugline+='f'
         ts_end = time.time()
             
         global timeseries_fig
@@ -819,6 +984,7 @@ def timeseries_draw():
         time_serverinit=time_servertotal-(time_serverselectdata+time_serverflaglogavg+time_serverprepmsg)
         time_serversend=ts_finalend-ts_end;
 
+        debugline+='g'
         f1.canvas.send_cmd("serverperf("+str(np.round(time_servertotal*1000.0))+','+str(np.round(time_serverinit*1000.0))+','+str(np.round(time_serverselectdata*1000.0))+','+str(np.round(time_serverflaglogavg*1000.0))+','+str(np.round(time_serverprepmsg*1000.0))+','+str(np.round(time_serversend*1000.0))+" );")
 
         strng='last server data requests (interval): '
@@ -827,13 +993,14 @@ def timeseries_draw():
             if (_request_type[key]=='data_user_event_timeseries'):
                 strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
 
+        debugline+='h'
         f1.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
     except Exception,e:
-        print time.asctime()+' Exception in timeseries_draw (%s)'%e
+        print time.asctime()+' Exception in timeseries_draw (%s) debugline '%e,debugline,' subdebugline ',subdebugline, ' subsub ',subsubdebugline, ' sub3 ',sub3debugline
 
 
-spectrum_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
+spectrum_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
 
 def spectrum_draw():
     try:
@@ -842,7 +1009,7 @@ def spectrum_draw():
         global f2,f2a,f2b,spectrum_width
         ts_start = time.time()
         
-        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
+        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
         spectrum_serverselectdata=0
         spectrum_serverflaglogavg=0
         products=[]
@@ -874,7 +1041,7 @@ def spectrum_draw():
                 products.append(antennamap(effspectrum_antbase0[c],effspectrum_antbase1[c],'VH'))
                 styles.append([_rgb[0],_rgb[1],_rgb[2],3])
         if (len(products)):
-            new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend'],onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, start_channel=1,stop_channel=spectrum_width)
+            new_fig['xdata'],new_fig['ydata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['xunit'],new_fig['yunit'],new_fig['legend'],new_fig['timestamp'],onlineflags=plot_spectrum(self=datasd,dtype=spectrum_seltypemenu, products=products, start_channel=1,stop_channel=spectrum_width)
         else:
             onlineflags=[]
 
@@ -951,7 +1118,8 @@ def spectrum_draw():
             spancolor.append([200,200,0,128])
             span.append([[plotonlineflagspan0[a],plotonlineflagspan1[a]] for a in range(len(plotonlineflagspan0))])
 
-        new_fig['xdata']=[new_fig['xdata'][0],new_fig['xdata'][-1]]
+        if (len(new_fig['xdata'])):
+            new_fig['xdata']=[new_fig['xdata'][0],new_fig['xdata'][-1]]
         new_fig['ydata']=np.array(new_fig['ydata'])
         new_fig['span']=span#this doesnt evaluate to a numpy array generally...
         new_fig['spancolor']=np.array(spancolor)
@@ -980,12 +1148,20 @@ def spectrum_draw():
     except Exception,e:
         print time.asctime()+' Exception in spectrum_draw (%s)'%e
 
+
+waterfall_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':[]}
+
 def waterfall_draw():
     try:
+        global waterfall_serverselectdata,waterfall_serverflaglogavg
         global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
         global f3,f3a,spectrum_width
-        f3.clf()
-        f3a=f3.add_subplot(111)
+        ts_start = time.time()
+
+        new_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':[]}
+        waterfall_serverselectdata=0
+        waterfall_serverflaglogavg=0
+
         products=[]
         for c in range(len(waterfall_antbase0)):
             if (waterfall_corrHH=='true'):
@@ -997,31 +1173,55 @@ def waterfall_draw():
             if (waterfall_corrVH=='true'):
                 products.append(antennamap(waterfall_antbase0[c],waterfall_antbase1[c],'VH'))
         if (len(products)):
-            plot_waterfall(self=datasd,dtype=waterfall_seltypemenu,product=products[0],start_channel=1,stop_channel=spectrum_width)
-        if (waterfall_minF!='' or waterfall_maxF!=''):
-            minF=None;
-            maxF=None;
-            if (waterfall_minF!=''):
-                minF=double(waterfall_minF);
-            if (waterfall_maxF!=''):
-                maxF=double(waterfall_maxF);
-            for im in f3a.get_images():
-                im.set_clim(minF,maxF)
+            new_fig['xdata'],new_fig['ydata'],new_fig['cdata'],new_fig['title'],new_fig['xlabel'],new_fig['ylabel'],new_fig['clabel'],new_fig['xunit'],new_fig['yunit'],new_fig['cunit'],new_fig['legend'],new_fig['timestamp']=plot_waterfall(self=datasd,dtype=waterfall_seltypemenu,product=products[0],start_channel=1,stop_channel=spectrum_width)
+
+        if (waterfall_minF!=''):
+            new_fig['cmin']=double(waterfall_minF);
+        else:
+            new_fig['cmin']=np.nan
+        if (waterfall_maxF!=''):
+            new_fig['cmax']=double(waterfall_maxF);
+        else:
+            new_fig['cmax']=np.nan
         if (waterfall_minx!=''):
-            f3a.set_xlim(xmin=double(waterfall_minx))
+            new_fig['xmin']=double(waterfall_minx)
+        else:
+            new_fig['xmin']=np.nan
         if (waterfall_maxx!=''):
-            f3a.set_xlim(xmax=double(waterfall_maxx))
-        if (f3a.xaxis_inverted()):
-            xlim=f3a.get_xlim();
-            f3a.set_xlim(xlim[::-1])
+            new_fig['xmax']=double(waterfall_maxx)
+        else:
+            new_fig['xmax']=np.nan
         if (waterfall_miny!=''):
-            f3a.set_ylim(ymin=double(waterfall_miny))
+            new_fig['ymin']=double(waterfall_miny)
+        else:
+            new_fig['ymin']=np.nan
         if (waterfall_maxy!=''):
-            f3a.set_ylim(ymax=double(waterfall_maxy))
-        if (f3a.yaxis_inverted()):
-            ylim=f3a.get_ylim();
-            f3a.set_ylim(ylim[::-1])
-        f3.canvas.draw()
+            new_fig['ymax']=double(waterfall_maxy)
+        else:
+            new_fig['ymax']=np.nan
+
+        ts_draw=time.time()
+        ts_end = time.time()
+        global waterfall_fig
+        waterfall_fig=new_fig
+        ts_finalend = time.time()
+        
+        waterfall_servertotal=ts_finalend-ts_start
+        waterfall_serverprepmsg=ts_end-ts_draw
+        waterfall_serverinit=(ts_draw-ts_start)-(waterfall_serverselectdata+waterfall_serverflaglogavg)
+        waterfall_serversend=ts_finalend-ts_end;
+
+        f3.canvas.send_cmd("serverperf("+str(np.round(waterfall_servertotal*1000.0))+','+str(np.round(waterfall_serverinit*1000.0))+','+str(np.round(waterfall_serverselectdata*1000.0))+','+str(np.round(waterfall_serverflaglogavg*1000.0))+','+str(np.round(waterfall_serverprepmsg*1000.0))+','+str(np.round(waterfall_serversend*1000.0))+" );")
+
+        strng='last server data requests (interval): '
+        sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
+        for key,lastreqtime in sortedbytime:
+            if (_request_type[key]=='data_user_event_spectrum'):
+                strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+
+        f3.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
+        
+
     except Exception,e:
         print time.asctime()+' Exception in waterfall_draw (%s)'%e
 
@@ -1277,6 +1477,7 @@ def handle_data_user_event_timeseries(handlerkey,*args):
         if (args[0]=='sendfigure'):
             send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
             local_yseries=(timeseries_fig['ydata'])[:]
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',timeseries_fig['title'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',timeseries_fig['xlabel'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',timeseries_fig['ylabel'],'s'),handlerkey)
@@ -1294,9 +1495,8 @@ def handle_data_user_event_timeseries(handlerkey,*args):
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',timeseries_fig['spancolor'],'b'),handlerkey)
             for itwin,twinplotyseries in enumerate(local_yseries):
                 for iline,linedata in enumerate(twinplotyseries):
-                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML+=" %d "'%(iline+1),handlerkey)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
-            send_data_cmd_handlerkey("servermsgdraw();",handlerkey);
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1306,8 +1506,8 @@ def handle_data_user_event_spectrum(handlerkey,*args):
         # print(time.asctime()+' DATA '+str(args))
         if (args[0]=='sendfigure'):
             send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
-            
             local_yseries=(spectrum_fig['ydata'])[:]
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',spectrum_fig['title'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',spectrum_fig['xlabel'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',spectrum_fig['ylabel'],'s'),handlerkey)
@@ -1325,10 +1525,42 @@ def handle_data_user_event_spectrum(handlerkey,*args):
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',spectrum_fig['spancolor'],'b'),handlerkey)
             for itwin,twinplotyseries in enumerate(local_yseries):
                 for iline,linedata in enumerate(twinplotyseries):
-                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML+=" %d "'%(iline+1),handlerkey)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
-            
-            send_data_cmd_handlerkey("servermsgdraw();",handlerkey);
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e))
+
+
+def handle_data_user_event_waterfall(handlerkey,*args):
+    try:
+        # print(time.asctime()+' DATA '+str(args))
+        if (args[0]=='sendfigure'):
+            send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+            local_cseries=(waterfall_fig['cdata'])[:]
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',waterfall_fig['xlabel'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',waterfall_fig['ylabel'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.clabel',waterfall_fig['clabel'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',waterfall_fig['xunit'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',waterfall_fig['yunit'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cunit',waterfall_fig['cunit'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',waterfall_fig['legend'],'s'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',waterfall_fig['xdata'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',waterfall_fig['ydata'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',waterfall_fig['color'],'b'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',waterfall_fig['ymin'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',waterfall_fig['ymax'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmin',waterfall_fig['cmin'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
+            for ispan,span in enumerate(waterfall_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(waterfall_fig['span'][ispan]),'H'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',waterfall_fig['spancolor'],'b'),handlerkey)
+            for iline,linedata in enumerate(local_cseries):
+                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(local_cseries)),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata[%d]'%(iline),linedata,'B'),handlerkey)
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1377,14 +1609,14 @@ def pack_binarydata_msg(varname,val,dtype):
             buff+=sval+'\x00';
     elif (dtype=='B' or dtype=='H'):
         val=np.array(val,dtype='float')
-        isfinite=np.isfinite(val);
-        finitevals=val[np.nonzero(isfinite==True)[0]]
+        finiteind=np.nonzero(np.isfinite(val)==True)[0]
+        finitevals=val[finiteind]
         minval=np.min(finitevals)
         maxval=np.max(finitevals)
         if (maxval==minval):
             maxval=minval+1
         maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
-        val=np.array((val-minval)/(maxval-minval)*(maxrange),dtype='int')+3
+        val[finiteind]=np.array((val[finiteind]-minval)/(maxval-minval)*(maxrange),dtype='int')+3
         val[np.nonzero(val==-np.inf)[0]]=0
         val[np.nonzero(val==np.inf)[0]]=1
         val[np.nonzero(np.isnan(val)==True)[0]]=2
@@ -1405,10 +1637,12 @@ def parse_data_web_cmd(s, request):
         else:
             _request_lasttime[request]=time.time()
         _request_time[request]=time.time()
-        if (action=='data_user_event_spectrum'):
-            handle_data_user_event_spectrum(request,*args)
-        elif (action=='data_user_event_timeseries'):
+        if (action=='data_user_event_timeseries'):
             handle_data_user_event_timeseries(request,*args)
+        elif (action=='data_user_event_spectrum'):
+            handle_data_user_event_spectrum(request,*args)
+        elif (action=='data_user_event_waterfall'):
+            handle_data_user_event_waterfall(request,*args)
         
     except AttributeError:
         logger.warning("Cannot find request method handle_data_%s" % action)
@@ -1889,7 +2123,7 @@ f2.canvas._user_event(1,spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spect
 
 f3=figure(3)
 # setup custom events and html wrapper
-html_wrap_file = open(html_directory+"waterfall_plot.html")
+html_wrap_file = open(html_directory+"newwaterfall_plot.html")
 cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[2])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f3.canvas._custom_content = cc
@@ -1975,7 +2209,7 @@ else:
                 ts_ts_end = time.time()
                 spectrum_draw()
                 ts_sp_end = time.time()
-                #waterfall_draw()
+                waterfall_draw()
                 ts_wf_end = time.time()
                 #matrix_draw()
                 ts_end = time.time()
@@ -1989,6 +2223,7 @@ else:
                 strn="Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start)
                 f1.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
                 f2.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                f3.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
                 
                 # strn='document.getElementById("timereceivelist").innerHTML+="'+str(iloop)+': sent at '+time.asctime()+' "+(new Date()).toTimeString().slice(0,8)+"<br>"'
                 # f1.canvas.send_cmd(strn)

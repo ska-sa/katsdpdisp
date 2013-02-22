@@ -315,6 +315,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		
 		var displaxisx={viewmin:-0.5,viewmax:0.5,pixspan:100};
 		var displaxisy={viewmin:-0.5,viewmax:0.5,pixspan:100};
+		var displaxisc={viewmin:-0.5,viewmax:0.5,pixspan:100};
 		
 		var timedrawstart=0;
 
@@ -323,19 +324,23 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		var overrideymin
 		var overrideymax
 		var overridelimit=0;
-		
+
 		function redrawfigure()
-		{
+		{		
 			timedrawstart=(new Date()).getTime();
 			if (overridelimit)
 			{
-				if ((RG_fig.xmin.toFixed(7)==overridexmin.toFixed(7)) && (RG_fig.xmax.toFixed(7)==overridexmax.toFixed(7)) && (RG_fig.ymin.toFixed(7)==overrideymin.toFixed(7)) && (RG_fig.ymax.toFixed(7)==overrideymax.toFixed(7)))
+				normxmin=(overridexmin>0)?Math.pow(10.0,Math.floor(Math.log(overridexmin)/Math.log(10))):1				
+				normymin=(overrideymin>0)?Math.pow(10.0,Math.floor(Math.log(overrideymin)/Math.log(10))):1
+				normxmax=(overridexmax>0)?Math.pow(10.0,Math.floor(Math.log(overridexmax)/Math.log(10))):1
+				normymax=(overrideymax>0)?Math.pow(10.0,Math.floor(Math.log(overrideymax)/Math.log(10))):1
+				if (((RG_fig.xmin/normxmin).toFixed(6)==(overridexmin/normxmin).toFixed(6)) && ((RG_fig.xmax/normxmax).toFixed(6)==(overridexmax/normxmax).toFixed(6)) && ((RG_fig.ymin/normymin).toFixed(6)==(overrideymin/normymin).toFixed(6)) && ((RG_fig.ymax/normymax).toFixed(6)==(overrideymax/normymax).toFixed(6)))
 				{
 					overridelimit=0
 				}
-				drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,overridexmin,overridexmax,overrideymin,overrideymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
+				drawImageFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.cdata,RG_fig.color,overridexmin,overridexmax,overrideymin,overrideymax,RG_fig.cmin,RG_fig.cmax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.clabel,RG_fig.xunit,RG_fig.yunit,RG_fig.cunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
 			}else
-			drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,RG_fig.xmin,RG_fig.xmax,RG_fig.ymin,RG_fig.ymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
+			drawImageFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.cdata,RG_fig.color,RG_fig.xmin,RG_fig.xmax,RG_fig.ymin,RG_fig.ymax,RG_fig.cmin,RG_fig.cmax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.clabel,RG_fig.xunit,RG_fig.yunit,RG_fig.cunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
 		timedraw=(new Date()).getTime();
 		document.getElementById("linesnotdrawn").innerHTML='lines '+linesdrawn+' not drawn '+(linesnotdrawn);			
 		document.getElementById("timeclientdraw").innerHTML='time client draw '+(timedraw-timedrawstart);
@@ -347,8 +352,53 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			document.getElementById("timeclientdraw").innerHTML+=' render '+(timedrawcomplete-timedrawstart);				
 		}
 		
-
-		function drawFigure(datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist){
+		function intensityToJet(inten,min,max)
+		{
+			frac=(inten-min)/(max-min);
+			if (frac<=0.0)
+			{
+				return [0,0,127]
+			}else if (frac<0.125)
+			{
+				return [0,0,Math.floor(255.0*(0.5+frac*4.0))]
+			}else if (frac<0.375)
+			{
+				return [0,Math.floor(255.0*(frac-0.125)*4.0),255];
+			}else if (frac<0.625)
+			{				
+				r=Math.floor(255.0*(frac-0.375)*4.0);
+				return [r,255,255-r]
+			}else if (frac<0.875)
+			{
+				return [255,Math.floor(255.0*(1.0-(frac-0.625)*4.0)),0]
+			}else if (frac<1.0)
+			{
+				return [Math.floor(255.0*(1.0-(frac-0.875)*4.0)),0,0]
+			}else
+			{
+				return [127,0,0]
+			}
+		}
+		
+		var jetR256=[]
+		var jetG256=[]
+		var jetB256=[]
+		
+		function makejet()
+		{
+			for (c=0;c<256;c++)
+			{
+				RGB=intensityToJet(c,0,255)
+				jetR256[c]=RGB[0]
+				jetG256[c]=RGB[1]
+				jetB256[c]=RGB[2]
+			}
+			jetR256[NaN]=255
+			jetG256[NaN]=255
+			jetB256[NaN]=255
+		}
+		
+		function drawImageFigure(datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,cmin,cmax,title,xlabel,ylabel,clabel,xunit,yunit,cunit,legend,spanlist,spancolorlist){
 			if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined")
 			{
 				figureupdated=1
@@ -357,21 +407,34 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			vviewmin=[]
 			vviewmax=[]
 			lenx=datax.length
-			if (datax.length==2 && (dataylist[0][0]).length>2)
+			if (datax.length==2 && (dataylist[0]).length>2)
 			{
-				localdatax=new Array((dataylist[0][0]).length)
+				localdatax=new Array((dataylist[0]).length)
 				for (i=0;i<localdatax.length;i++)
 					localdatax[i]=datax[0]+(datax[1]-datax[0])*i/(localdatax.length-1)
 				datax=localdatax;
 			}
-			hviewmin=Math.min(datax[0],datax[datax.length-1])
-			hviewmax=Math.max(datax[0],datax[datax.length-1])				
+			dataxmin=Math.min(datax[0],datax[datax.length-1])
+			hviewmin=dataxmin
+			dataxmax=Math.max(datax[0],datax[datax.length-1])
+			hviewmax=dataxmax
 			if (!isNaN(xmin)) hviewmin=xmin
 			if (!isNaN(xmax)) hviewmax=xmax
 			if (hviewmax==hviewmin)
 			{
 				hviewmax+=0.5;
 				hviewmin-=0.5;
+			}
+			dataymin=Math.min(datay[0],datay[datay.length-1])
+			vviewmin=dataymin
+			dataymax=Math.max(datay[0],datay[datay.length-1])
+			vviewmax=dataymax
+			if (!isNaN(ymin)) vviewmin=ymin
+			if (!isNaN(ymax)) vviewmax=ymax
+			if (vviewmax==vviewmin)
+			{
+				vviewmax+=0.5;
+				vviewmin-=0.5;
 			}
 		  var axiscanvas = document.getElementById('myaxiscanvas');
 		  var figcanvas = document.getElementById('myfigurecanvas');
@@ -396,58 +459,69 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				context.fillStyle = "#000000";
 				xscale=axiscanvas.width/(hviewmax-hviewmin)
 				xoff=-hviewmin*xscale;
-				for (itwin=0;itwin<dataylist.length;itwin++)
-				{
-					vviewmin[itwin]=-60
-					vviewmax[itwin]=20
-					minmax=getminmax(dataylist[itwin])
+					cviewmin=-60
+					cviewmax=20
+					minmax=getminmax(dataylist)
 					span=minmax[1]-minmax[0]
-					if (!isNaN(ymin)) vviewmin[itwin]=ymin
-					else vviewmin[itwin]=minmax[0]-span*0.05
-					if (!isNaN(ymax)) vviewmax[itwin]=ymax
-					else vviewmax[itwin]=minmax[1]+span*0.05
-					if (vviewmax[itwin]==vviewmin[itwin])
+					if (!isNaN(cmin)) cviewmin=cmin
+					else cviewmin=minmax[0]
+					if (!isNaN(cmax)) cviewmax=cmax
+					else cviewmax=minmax[1]
+					if (cviewmax==cviewmin)
 					{
-						vviewmax[itwin]+=0.5;
-						vviewmin[itwin]-=0.5;
+						cviewmax+=0.5;
+						cviewmin-=0.5;
 					}
-				yscale=axiscanvas.height/(vviewmax[itwin]-vviewmin[itwin])
-				yoff=axiscanvas.height+vviewmin[itwin]*yscale
-				for (iline=0;iline<dataylist[itwin].length;iline++)
-				{
-					try{
-				    context.beginPath();
-					context.lineWidth=corrlinewidth[clrlist[iline][3]]
-					// if (clrlist[iline][3]==0)
-					// 	context.setLineDash([3,3])
-					// else if (clrlist[iline][3]==1)
-					// 	context.setLineDash([6,3])
-					// else if (clrlist[iline][3]==2)
-					// 	context.setLineDash([9,3])
-					// else context.setLineDash([0])
-					// context.setLineDash([0])
-					// context.strokeStyle = "rgb("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+")";
-					context.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
-			    	context.moveTo(xoff+xscale*datax[0],yoff-yscale*dataylist[itwin][iline][0]);
-					for (x=1;x<dataylist[0][iline].length;x++)
-					{
-				   		context.lineTo(xoff+xscale*datax[x],yoff-yscale*dataylist[itwin][iline][x]);
-					}
-				    context.stroke();
-					context.closePath();
-					linesdrawn++;
-				    }catch(err)
-					{//may have not yet received this line through network link ... then dont plot it
-						linesnotdrawn++;
-					}
-				}
-				}
-				context.lineWidth=oldlinewidth;
-				for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
-				{						
-					context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
-					for (ispan=0;ispan<spanlist[ispancolor].length;ispan++)							context.fillRect(xoff+xscale*spanlist[ispancolor][ispan][0],0,xscale*(spanlist[ispancolor][ispan][1]-spanlist[ispancolor][ispan][0]),axiscanvas.height)						
-				}
+					cscale=255.0/(cviewmax-cviewmin)
+					
+					var imgdata = context.getImageData(0,0,axiscanvas.width,axiscanvas.height);
+			        var imgdatalen = imgdata.data.length;
+					rowscale=(dataylist.length)/(dataymax-dataymin)
+					colscale=(dataylist[0].length)/(dataxmax-dataxmin)
+
+					if (xunit=='')
+			        for(var i=0;i<imgdatalen-4;i+=4)
+			        {
+//				        imgdata.data[i+3] = 255;//A			    
+						ih=(i/4)/axiscanvas.width
+						iw=(i/4)%axiscanvas.width
+						irow=Math.floor((((axiscanvas.height-ih-1)/axiscanvas.height)*(vviewmax-vviewmin)+vviewmin-dataymin)*rowscale)
+						if (irow>=0 && irow<dataylist.length)
+						{
+							icol=Math.floor(((iw/axiscanvas.width)*(hviewmax-hviewmin)+hviewmin-dataxmin)*colscale)
+							if (icol>=0 && icol<dataylist[irow].length)
+							{
+								c256=Math.floor((dataylist[irow][icol]-cviewmin)*cscale);
+					   			imgdata.data[i] = jetR256[c256];//R
+					            imgdata.data[i+1] = jetG256[c256];//G
+					            imgdata.data[i+2] = jetB256[c256];//B
+							}
+						}
+			        }//for
+					else
+					for(var i=0;i<imgdatalen-4;i+=4)
+			        {
+//				        imgdata.data[i+3] = 255;//A			    
+						ih=(i/4)/axiscanvas.width
+						iw=(i/4)%axiscanvas.width
+						irow=Math.floor((((axiscanvas.height-ih-1)/axiscanvas.height)*(vviewmax-vviewmin)+vviewmin-dataymin)*rowscale)
+						if (irow>=0 && irow<dataylist.length)
+						{
+							icol=Math.floor(((iw/axiscanvas.width)*(hviewmax-hviewmin)+hviewmin-dataxmin)*colscale)
+							if (icol>=0 && icol<dataylist[irow].length)
+							{
+								icol=dataylist[irow].length-icol-1
+								c256=Math.floor((dataylist[irow][icol]-cviewmin)*cscale);
+					   			imgdata.data[i] = jetR256[c256];//R
+					            imgdata.data[i+1] = jetG256[c256];//G
+					            imgdata.data[i+2] = jetB256[c256];//B
+							}
+						}
+			        }
+			
+//					dataylist[iline][0];
+					context.putImageData(imgdata,0,0);
+				
 			}
 			if (figcontext){
 				figcontext.font=""+titlefontHeight+"px sans-serif";
@@ -466,7 +540,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				dotickpos=0
 				dotickneg=1
 				doprefix=0
-				extratimelabels=(units=='s')?1:0
+				extratimelabels=0
 			  	displaxisx={viewmin:hviewmin,viewmax:hviewmax,pixspan:axiscanvas.width};
 				
 				drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
@@ -474,30 +548,32 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				figcontext.save();
 			 	figcontext.rotate(-Math.PI/2);
 
-				units=yunit[0]
+				units=yunit
 				dovertical=1
 				numberpos=1
 				labelpos=1
 				dotickpos=1
 				dotickneg=0
-				doprefix=1
-				extratimelabels=0
-				displaxisy={viewmin:vviewmin[0],viewmax:vviewmax[0],pixspan:axiscanvas.height};
+				doprefix=0
+				extratimelabels=(units=='s')?1:0
+				displaxisy={viewmin:vviewmin,viewmax:vviewmax,pixspan:axiscanvas.height};
 			  					
-				drawMetricLinearAtPt(figcontext, vviewmin[0], vviewmax[0], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel[0], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
+				drawMetricLinearAtPt(figcontext, vviewmin, vviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
 
-				if (ylabel.length>1)//twin axis
-				{
-					units=yunit[1]
-					dovertical=1
-					numberpos=0
-					labelpos=0
-					dotickpos=0
-					dotickneg=1
-					doprefix=1
-					extratimelabels=0
-					drawMetricLinearAtPt(figcontext, vviewmin[1], vviewmax[1], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx+axiscanvas.width, units, ylabel[1], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
-				}
+				units=cunit
+				dovertical=1
+				numberpos=0
+				labelpos=0
+				dotickpos=0
+				dotickneg=1
+				doprefix=1
+				extratimelabels=(units=='s')?1:0
+				displaxisc={viewmin:cviewmin,viewmax:cviewmax,pixspan:axiscanvas.height};
+				colorbaroff=titlefontHeightspace*2;
+				colorbarwidth=titlefontHeight;
+							  					
+				drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,extratimelabels)
+
 				figcontext.restore();
 
 				if (legend.length)
@@ -521,6 +597,22 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				}
 
 				figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
+				//draw colorbar
+				var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+		        var imgdatalen = imgdata.data.length;
+
+		        for(var i=0;i<imgdatalen-4;i+=4)
+		        {
+					ih=(i/4)/colorbarwidth;//height
+					ic=Math.floor(((axiscanvas.height-ih-1)/axiscanvas.height)*256)
+//			        imgdata.data[i+3] = 255;//A
+					imgdata.data[i]=jetR256[ic];//R
+					imgdata.data[i+1]=jetG256[ic];//G
+					imgdata.data[i+2]=jetB256[ic];//B
+				}
+				figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy);
+				figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+				
 		}
 		figureupdated=1
 		lastupdate=(new Date()).getTime();
@@ -598,9 +690,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			else scale=(convertminmax[1]-convertminmax[0])/(65536.0-4.0)
 			for (idata=0;idata<totdata;idata++)
 			{
-				if (val[idata]==0) val[idata]=-Infinity
-				else if (val[idata]==1) val[idata]=Infinity
-				else if (val[idata]==2) val[idata]=NaN
+				if (val[idata]==0) 
+					val[idata]=-Infinity
+				else if (val[idata]==1) 
+					val[idata]=Infinity
+				else if (val[idata]==2) 
+					val[idata]=NaN
 				else val[idata]=convertminmax[0]+(val[idata]-3)*scale
 			}				
 		}
@@ -685,22 +780,23 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			}
 		}
 	}
-			function getmin(obj)
-			{
-				mn=Infinity;
-				if (typeof(obj.length)!="undefined")
-				{
-					if (obj.length>0 && (typeof(obj[0].length)=="undefined"))
-						for (iel=0;iel<obj.length;iel++)
-							mn=Math.min(obj[iel],mn)
-					else 
-						for (iel=0;iel<obj.length;iel++)
-							mn=Math.min(getmin(obj[iel]),mn)
-					return mn
-				}
-				return obj;
-			}
-			
+	
+	function getmin(obj)
+	{
+		mn=Infinity;
+		if (typeof(obj.length)!="undefined")
+		{
+			if (obj.length>0 && (typeof(obj[0].length)=="undefined"))
+				for (iel=0;iel<obj.length;iel++)
+					mn=Math.min(obj[iel],mn)
+			else 
+				for (iel=0;iel<obj.length;iel++)
+					mn=Math.min(getmin(obj[iel]),mn)
+			return mn
+		}
+		return obj;
+	}
+
 		    function start_data() {
 		      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
 			  var supports_binary = (datasocket.binaryType != undefined);
@@ -730,7 +826,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		    }
 		    function handle_data_user_event(arg_string) {
 		      try {
-		       datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
+		       datasocket.send("<data_user_event_waterfall args='" + arg_string + "'>");
 		      } catch (err) {}
 		     } 
 
@@ -794,43 +890,33 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 	 var selcheckVV = document.getElementById("optionVV");
 	 var selcheckHV = document.getElementById("optionHV");
 	 var selcheckVH = document.getElementById("optionVH");
-	 var selchecklegend = document.getElementById("optionlegend");
 	 var seltypemenu = document.getElementById("typemenu");
 	 var textminF	= document.getElementById("textminF");
 	 var textmaxF	= document.getElementById("textmaxF");
+	 var seltypemenux= document.getElementById("typemenux");
 	 var textminx	= document.getElementById("textminx");
 	 var textmaxx	= document.getElementById("textmaxx");
-	 var texttimeavg= document.getElementById("texttimeavg");
-	 var textchannelphase=document.getElementById("textchannelphase");
+	 var textminy	= document.getElementById("textminy");
+	 var textmaxy	= document.getElementById("textmaxy");
 	 var plot_str="";
 	 plot_str+=selcheckHH.checked+","
 	 plot_str+=selcheckVV.checked+","
 	 plot_str+=selcheckHV.checked+","
 	 plot_str+=selcheckVH.checked+","
-	 plot_str+=selchecklegend.checked+","
+	 plot_str+=""+","
 	 plot_str+=seltypemenu.options[seltypemenu.selectedIndex].value+","
 	 plot_str+=textminF.value+","
 	 plot_str+=textmaxF.value+","
-	 plot_str+=""+","
+	 plot_str+=seltypemenux.options[seltypemenux.selectedIndex].value+","
 	 plot_str+=textminx.value+","
 	 plot_str+=textmaxx.value+","
 	 plot_str+=""+","
+	 plot_str+=textminy.value+","
+	 plot_str+=textmaxy.value
 	 plot_str+=""+","
 	 plot_str+=""+","
-	 plot_str+=""+","
-	 plot_str+=texttimeavg.value+","
-	 plot_str+=textchannelphase.value
+	 plot_str+=""
 	 handle_user_event(plot_str,0);
-	 if (seltypemenu.selectedIndex<2)
-	 {
-		textchannelphase.disabled=true;
-		textchannelphase.style.backgroundColor = "#EEEEEE";
-	 }else 
-	{
-		textchannelphase.disabled=false;
-		textchannelphase.style.backgroundColor = "#FFFFFF";
-	}
-		
 	}
 			var datafile='<!--datafile-->'
 			var antbase0=[];
@@ -870,6 +956,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			function myloadpage(){
 				connect_manager();
 				start_data();
+				makejet();
 				redrawlineCanvas()
 				document.getElementById("healthtext").innerHTML=datafile;
 				if (datafile!='stream')
@@ -890,17 +977,6 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				}
 			//beginloadpage
 			//endloadpage
-		 	var seltypemenu = document.getElementById("typemenu");
-		 	var textchannelphase=document.getElementById("textchannelphase");
-			 if (seltypemenu.selectedIndex<2)
-			 {
-				textchannelphase.disabled=true;
-				textchannelphase.style.backgroundColor = "#EEEEEE";
-			 }else 
-			{
-				textchannelphase.disabled=false;
-				textchannelphase.style.backgroundColor = "#FFFFFF";
-			}
 			}
 			function redrawlineCanvas(){
 				var drawingCanvas = document.getElementById('canvasThick');
@@ -975,16 +1051,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			}
 			for (i=0;i<antbase0.length;i++)
 			{
-				RR=Math.floor((colourlistR[antbase0[i]]+colourlistR[antbase1[i]])/2)
-				GG=Math.floor((colourlistG[antbase0[i]]+colourlistG[antbase1[i]])/2)
-				BB=Math.floor((colourlistB[antbase0[i]]+colourlistB[antbase1[i]])/2)
-				usecolour="rgba("+RR+","+GG+","+BB+", 1)"
-				context.strokeStyle = usecolour;
+				context.strokeStyle = "#0";
 				context.beginPath();
 				if (antbase0[i]==antbase1[i])
 				{
 					context.lineWidth   = 1
-					context.fillStyle=usecolour;
+					context.fillStyle="#0";
 					context.arc(antposx[antbase0[i]],antposy[antbase1[i]],5,0,Math.PI*2,true);
 				}else
 				{
@@ -1113,6 +1185,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				redrawCanvas()
 			}
 			function selectBaseline(){
+				antbase0=[]
+				antbase1=[]
 				var textbaseline= document.getElementById("textselectbaseline");
 				//first convert , to ; if inside brackets and convert - to items separated by ; also remove brackets also remove spaces
 				var txt=textbaseline.value;
@@ -1324,6 +1398,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 						}
 					}	
 				}
+				if (antbase0.length>1)
+				{
+					alert('Only the first of ' + antbase0.length +' baselines will be selected');
+					antbase0=[antbase0[0]];
+					antbase1=[antbase1[0]];
+				}				
 			 	var plot_str="setbaseline"+",";
 				for (j=0;j<antbase0.length;j++)
 				{
@@ -1419,6 +1499,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					{
 						if (antdown>=0)
 						{
+							antbase0=[];
+							antbase1=[];
 							antup=i;
 							toggleBaseline(antdown,antup);
 							return;
@@ -1437,6 +1519,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 								t=(((event.offsetX-antposx[i])*dx+(event.offsetY-antposy[i])*dy)/((dx*dx)+(dy*dy)));
 								if (t>0 && t<1 && d<2 && d>-2)
 								{
+									antbase0=[];
+									antbase1=[];
 									antup=i;
 									antdown=j;
 									toggleBaseline(antdown,antup);
@@ -1638,8 +1722,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					{
 					var textctlminx	= document.getElementById('textminx');
 					var textctlmaxx	= document.getElementById('textmaxx');
-					var textctlminy	= document.getElementById('textminF');
-					var textctlmaxy	= document.getElementById('textmaxF');
+					var textctlminy	= document.getElementById('textminy');//NOTE DIFFERENT
+					var textctlmaxy	= document.getElementById('textmaxy');//NOTE DIFFERENT
 					overridexmin=Math.min(figx0,figx1)
 					overridexmax=Math.max(figx0,figx1)
 					overrideymin=Math.min(figy0,figy1)
@@ -1679,8 +1763,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				{//double click in central plot area - unzoom all	
 					var textctlminx	= document.getElementById('textminx');
 					var textctlmaxx	= document.getElementById('textmaxx');
-					var textctlminy	= document.getElementById('textminF');
-					var textctlmaxy	= document.getElementById('textmaxF');
+					var textctlminy	= document.getElementById('textminy');//NOTE DIFFERENT
+					var textctlmaxy	= document.getElementById('textmaxy');//NOTE DIFFERENT
 					textctlminx.value=''
 					textctlmaxx.value=''
 					textctlminy.value=''
@@ -1707,8 +1791,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					redrawfigure()
 				}	else if (event.offsetX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.offsetX<axiscanvas.offsetLeft && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
 					{
-						var textctlminy	= document.getElementById('textminF');
-						var textctlmaxy	= document.getElementById('textmaxF');
+						var textctlminy	= document.getElementById('textminy');//NOTE DIFFERENT
+						var textctlmaxy	= document.getElementById('textmaxy');//NOTE DIFFERENT
 						textctlminy.value=''
 						textctlmaxy.value=''
 						overridexmin=RG_fig.xmin
@@ -1927,7 +2011,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		</script>
 		<div align="left" style="position: relative; left:5px; top:0px;"> 
 		<small>
-		<b>Time series</b> <A HREF="figure2">Spectrum</A> <A HREF="figure3">Waterfall</A> <A HREF="figure4">Baseline matrix</A> <element id="healthtext"> </element>
+		<A HREF="figure1">Time series</A> <A HREF="figure2">Spectrum</A> <b>Waterfall</b> <A HREF="figure4">Baseline matrix</A> <element id="healthtext"> </element>
 		</small>
 		</div>
 		<div align="right" style="position: absolute; right:5px; top:6px"> 
@@ -1954,16 +2038,15 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			</td>
 		    <td><small>
 
-				<input type="text" id="textselectbaseline" placeholder="eg: 1x2,4..6,3x,!3x2,!3" value="" size=25 onChange="selectBaseline()"><br>
-				<input type="button" id="buttonAllA" value="Auto"  onClick="selectAllA()">
-				<input type="button" id="buttonAllX" value="Cross"  onClick="selectAllX()">
-				<input type="button" id="buttonClear" value="Clear" onClick="selectClear()"><br>
-				<div style="height:6px"></div>
-				&nbsp;<input type="checkbox" id="optionHH" value="HH" onChange="plot()"><element id="HHtext">HH</element><canvas id="canvasThick" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
-				<input type="checkbox" id="optionHV" value="HV" onChange="plot()"><element id="HVtext">HV</element><canvas id="canvasDash" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br>
-				<div style="height:1px"></div>
-				&nbsp;<input type="checkbox" id="optionVV" value="VV" onChange="plot()"><element id="VVtext">VV</element><canvas id="canvasThin" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
-				<input type="checkbox" id="optionVH" value="VH" onChange="plot()"><element id="VHtext">VH</element><canvas id="canvasDot" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br><br>
+				<input type="text" id="textselectbaseline" placeholder="baseline, eg: 1x2" value="" size=25 onChange="selectBaseline()"><br>
+				<input type="button" id="buttonAllA" value="Auto"  disabled="disabled" onClick="selectAllA()">
+				<input type="button" id="buttonAllX" value="Cross" disabled="disabled" onClick="selectAllX()">
+				<input type="button" id="buttonClear" value="Clear" disabled="disabled" onClick="selectClear()"><br>
+				<div style="height:5px"></div>
+				&nbsp;<input type="radio" name='corrtypelist' id="optionHH" value="HH" onChange="plot()"><element id="HHtext">HH</element><canvas id="canvasThick" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
+				<input type="radio" name='corrtypelist' id="optionHV" value="HV" onChange="plot()"><element id="HVtext">HV</element><canvas id="canvasDash" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br>
+				&nbsp;<input type="radio" name='corrtypelist' id="optionVV" value="VV" onChange="plot()"><element id="VVtext">VV</element><canvas id="canvasThin" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas>&nbsp;&nbsp;
+				<input type="radio" name='corrtypelist' id="optionVH" value="VH" onChange="plot()"><element id="VHtext">VH</element><canvas id="canvasDot" width="24" height="10"><p>Your browser doesn't support canvas.</p></canvas><br><br>
 				<center><input type="button" id="buttonApplyToAll" value="Apply to all" checked onClick="applyToAll()"></center>
 				</small>
 			</td>
@@ -1973,7 +2056,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		</td>
 		<td>
 		<small>
-		<fieldset style="width:260px;height:90px;">
+		<fieldset style="width:260px;height:140px;">
 		<legend>Display:</legend>
 		<table>
 			<td>
@@ -1981,7 +2064,6 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				<option selected value="pow">Power</option>
 				<option value="mag">Amplitude</option>
 				<option value="phase">Phase</option>
-				<option value="powphase">P & Ph</option>
 			</select>
 			</td>
 			<td align='right'><small>
@@ -1992,31 +2074,29 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			</small></td>
 		<tr>
 			<td><small>
-				&nbsp;Time or Delay
-		    </small></td>
-			<td align='right'><small>
-				<input type="text" id="textminx" placeholder="min" value=""  size=10 onChange="onChangeMinMaxTime('textminx','textmaxx',0)">
+				&nbsp;Delay
 			</small></td>
 			<td align='right'><small>
-				<input type="text" id="textmaxx" placeholder="max" value="" size=10 onChange="onChangeMinMaxTime('textmaxx','textminx',1)">
+				<input type="text" id="textminy" placeholder="min" value=""  size=10 onChange="onChangeMinMax('textminy','textmaxy',0)">
+			</small></td>
+			<td align='right'><small>
+				<input type="text" id="textmaxy" placeholder="max" value="" size=10 onChange="onChangeMinMax('textmaxy','textminy',1)">
 			</small></td>
 		<tr>
-			<td><small>
-				<input type="checkbox" id="optionlegend" value="legend" onChange="plot()"> legend
+			<td>
+				<select id="typemenux" name="typemenux" onChange="onChangeTypemenu('textminx','textmaxx')">
+					<option selected value="channel">Channel</option>
+					<option value="mhz">MHz</option>
+					<option value="ghz">GHz</option>
+				</select> 
+		    </td>
+			<td align='right'><small>
+				<input type="text" id="textminx" placeholder="min" value=""  size=10 onChange="onChangeMinMax('textminx','textmaxx',0)">
 			</small></td>
 			<td align='right'><small>
-				<input type="text" id="textchannelphase" placeholder="chan phase" value="" size=10 onChange="settextchannelphase()">
-			</small></td>
-			<td align='right'><small>
-				<input type="text" id="texttimeavg" placeholder="dump avg" value="" size=10 onChange="plot()">
+				<input type="text" id="textmaxx" placeholder="max" value="" size=10 onChange="onChangeMinMax('textmaxx','textminx',1)">
 			</small></td>
 		</table>
-		</fieldset>
-		<fieldset style="width:260px;height:34px;">
-		<legend id="showcsvlegend">Flag <small>(<A HREF="#" onClick="showcsv();">from file</A>)</small>:</legend>
-			<div id="textflagdiv"><input type="text" placeholder="channels, eg: ..100,120,130..150,-100.." id="textflag" value="" size=46 onChange="setflags()"></div>
-			<div id=inputcsvdiv style="display:none"><input type="file" name="csv" id="inputcsv" placeholder="csv" onchange="handleinputcsv(this.files)"></div>
-		</fieldset>
 		</small>
 		</td>
 	</table>

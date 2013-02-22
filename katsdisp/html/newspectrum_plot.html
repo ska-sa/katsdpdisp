@@ -243,7 +243,7 @@
 						valstr=''+((hh<10)?'0':'')+hh+':'+((mm<10)?'0':'')+mm+':'+((ss<10)?'0':'')+ss;					
 					 	context.font=""+tickfont2Height+"px sans-serif";				
 					 	sz=context.measureText(valstr)
-		context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace-tickfont2Heightspace-tickfontHeight:majorticklength*dotickneg+tickfontHeight+tickfont2Height+tickfont2Heightspace))
+		context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace-tickfontHeight:majorticklength*dotickneg+tickfontHeight+tickfont2Height+tickfont2Heightspace))
 		 				context.font=""+tickfontHeight+"px sans-serif";
 
 					}
@@ -291,7 +291,7 @@
 						{
 							if (isFinite(theline[iel]))
 							{
-								if (mn==NaN)
+								if (!isFinite(mn))
 								{
 									mn=theline[iel];
 									mx=theline[iel];
@@ -318,9 +318,24 @@
 			
 			var timedrawstart=0;
 			
+			var overridexmin
+			var overridexmax
+			var overrideymin
+			var overrideymax
+			var overridelimit=0;			
+			
 			function redrawfigure()
 			{		
-				timedrawstart=(new Date()).getTime();			drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,RG_fig.xmin,RG_fig.xmax,RG_fig.ymin,RG_fig.ymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
+				timedrawstart=(new Date()).getTime();
+				if (overridelimit)
+				{
+					if ((RG_fig.xmin.toFixed(7)==overridexmin.toFixed(7)) && (RG_fig.xmax.toFixed(7)==overridexmax.toFixed(7)) && (RG_fig.ymin.toFixed(7)==overrideymin.toFixed(7)) && (RG_fig.ymax.toFixed(7)==overrideymax.toFixed(7)))
+					{
+						overridelimit=0
+					}
+					drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,overridexmin,overridexmax,overrideymin,overrideymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
+				}else
+				drawFigure(RG_fig.xdata,RG_fig.ydata,RG_fig.color,RG_fig.xmin,RG_fig.xmax,RG_fig.ymin,RG_fig.ymax,RG_fig.title,RG_fig.xlabel,RG_fig.ylabel,RG_fig.xunit,RG_fig.yunit,RG_fig.legend,RG_fig.span,RG_fig.spancolor);
 				timedraw=(new Date()).getTime();
 				document.getElementById("linesnotdrawn").innerHTML='lines '+linesdrawn+' not drawn '+(linesnotdrawn);			
 				document.getElementById("timeclientdraw").innerHTML='time client draw '+(timedraw-timedrawstart);
@@ -334,7 +349,7 @@
 			
 			
 			function drawFigure(datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist){
-				if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined")
+				if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined")
 				{
 					figureupdated=1
 					return;
@@ -342,7 +357,6 @@
 				vviewmin=[]
 				vviewmax=[]
 				lenx=datax.length
-				lend=(dataylist[0][0]).length
 				if (datax.length==2 && (dataylist[0][0]).length>2)
 				{
 					localdatax=new Array((dataylist[0][0]).length)
@@ -647,14 +661,48 @@
 			}
 			if (thisname.length)sublist[sublist.length]=thisname;
 			theobj=window;
+			lastnamedobj=[]
+			lastnamedobjlev=0
 			for (ilev=0;ilev<sublist.length-1;ilev++)
 			{
 				if (typeof(theobj[sublist[ilev]])=="undefined") theobj[sublist[ilev]]=[];
 				theobj=theobj[sublist[ilev]];
+				if (typeof(sublist[ilev])=="string") 
+				{
+					lastnamedobj=theobj
+					lastnamedobjlev=ilev
+				}
 			}
 			theobj[sublist[ilev]]=val
+			if (typeof(lastnamedobj.completed)!="undefined")//update completed array and test for completion.. to trigger redraw
+			{
+				subobj=lastnamedobj.completed
+				for (ilev=lastnamedobjlev+1;ilev<sublist.length-1;ilev++)
+					subobj=subobj[sublist[ilev]]
+				subobj[sublist[ilev]]=1
+				if (getmin(lastnamedobj.completed)>0)//trigger redraw
+				{//should ensure shape is correct
+					servermsgdraw()
+				}
+			}
 		}
 		
+		function getmin(obj)
+		{
+			mn=Infinity;
+			if (typeof(obj.length)!="undefined")
+			{
+				if (obj.length>0 && (typeof(obj[0].length)=="undefined"))
+					for (iel=0;iel<obj.length;iel++)
+						mn=Math.min(obj[iel],mn)
+				else 
+					for (iel=0;iel<obj.length;iel++)
+						mn=Math.min(getmin(obj[iel]),mn)
+				return mn
+			}
+			return obj;
+		}
+				
 	    function start_data() {
 	      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
 		  var supports_binary = (datasocket.binaryType != undefined);
@@ -669,12 +717,10 @@
 	        data_length_user_cmd_acc+=data_length_user_cmd
 			unpack_binarydata_msg(e.data)
 		  }else if (e.data.indexOf("/*exec_user_cmd*/") == 0) {
-			document.getElementById("timeclientusereventroundtrip").innerHTML+=' rec'
 	        time_receive_user_cmd=(new Date()).getTime();
 	        data_length_user_cmd=e.data.length
 	        data_length_user_cmd_acc+=data_length_user_cmd
 	        exec_data_user_cmd(e.data);
-			document.getElementById("timeclientusereventroundtrip").innerHTML+=' ex'
 	       }
 	      } // end of function(e)
 	    }
@@ -1576,12 +1622,18 @@
 					var textctlmaxx	= document.getElementById('textmaxx');
 					var textctlminy	= document.getElementById('textminF');
 					var textctlmaxy	= document.getElementById('textmaxF');
-					textctlminx.value=Math.min(figx0,figx1)
-					textctlmaxx.value=Math.max(figx0,figx1)
-					textctlminy.value=Math.min(figy0,figy1)
-					textctlmaxy.value=Math.max(figy0,figy1)
-					plot()		
-						mouseclick=0;
+					overridexmin=Math.min(figx0,figx1)
+					overridexmax=Math.max(figx0,figx1)
+					overrideymin=Math.min(figy0,figy1)
+					overrideymax=Math.max(figy0,figy1)
+					textctlminx.value=overridexmin
+					textctlmaxx.value=overridexmax
+					textctlminy.value=overrideymin
+					textctlmaxy.value=overrideymax
+					overridelimit++;
+					plot()
+					redrawfigure()
+					mouseclick=0;
 					}else
 					{
 						mouseclick=[pixx0,displaxisy.pixspan-pixy0];
@@ -1599,7 +1651,7 @@
 	                }
 
 					//				event.preventDefault();
-								   rubberbandEnd();
+					rubberbandEnd();
 				}
 			}
 			
@@ -1615,21 +1667,39 @@
 					textctlmaxx.value=''
 					textctlminy.value=''
 					textctlmaxy.value=''
-					plot()		
+					overridexmin=NaN
+					overridexmax=NaN
+					overrideymin=NaN
+					overrideymax=NaN
+					overridelimit++				
+					plot()
+					redrawfigure()
 				}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop+axiscanvas.height && event.offsetY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight)
 				{
 					var textctlminx	= document.getElementById('textminx');
 					var textctlmaxx	= document.getElementById('textmaxx');
 					textctlminx.value=''
 					textctlmaxx.value=''
-					plot()		
+					overridexmin=NaN
+					overridexmax=NaN
+					overrideymin=RG_fig.ymin
+					overrideymax=RG_fig.ymax
+					overridelimit++
+					plot()
+					redrawfigure()
 				}	else if (event.offsetX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.offsetX<axiscanvas.offsetLeft && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
 					{
 						var textctlminy	= document.getElementById('textminF');
 						var textctlmaxy	= document.getElementById('textmaxF');
 						textctlminy.value=''
 						textctlmaxy.value=''
-						plot()		
+						overridexmin=RG_fig.xmin
+						overridexmax=RG_fig.xmax
+						overrideymin=NaN
+						overrideymax=NaN
+						overridelimit++
+						plot()
+						redrawfigure()
 					}
 			}
 			function onFigureMouseMove(event){
