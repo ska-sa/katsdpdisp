@@ -1254,9 +1254,7 @@ def timeseries_event(figno,*args):
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask,spectrum_abstimeinst
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(time.asctime()+' '+str(args[:-1]))
-    handlerkey=args[-1]
-    args=args[:-1];
+    print(time.asctime()+' '+str(args))
     if (args[0]=='timer'):
         return;
     elif (args[0]=="settextchannelphase"):
@@ -1722,43 +1720,6 @@ def web_data_socket_transfer_data(request):
             logger.error("Caught exception (%s). Removing registered handler" % str(e))
             deregister_request_handler(request)
             return
-
-def _external_ip(preferred_prefixes=('eth', 'en')):
-    """Return the external IPv4 address of this machine.
-
-    Attempts to use netifaces module if available, otherwise
-    falls back to socket.
-
-    Parameters
-    ----------
-    preferred_prefixes : tuple
-        A tuple of string prefixes for network interfaces to match. e.g. ('eth','en') matches ethX and enX
-        with a preference for lowest number first (eth0 over eth3).
-
-    Returns
-    -------
-    ip : str or None
-        IPv4 address string (dotted quad). Returns None if
-        ip address cannot be guessed.
-    """
-    if netifaces is None:
-        ips = [socket.gethostbyname(socket.gethostname())]
-    else:
-        preferred_ips = []
-        other_ips = []
-        for iface in netifaces.interfaces():
-            for addr in netifaces.ifaddresses(iface).get(netifaces.AF_INET, []):
-                if 'addr' in addr:
-                    for prefix in preferred_prefixes:
-                        if iface.startswith(prefix): preferred_ips.append(addr['addr'])
-                    other_ips.append(addr['addr'])
-                     # will duplicate those in preferred_ips but this doesn't matter as we only
-                     # use other_ips if preferred is empty.
-        ips = preferred_ips + other_ips
-    if ips:
-        return ips[0]
-    else:
-        return "127.0.0.1"
         
 def makedataservers():
     global data_server_portbase,data_server_n,data_server_port,data_server,data_thread
@@ -1789,9 +1750,7 @@ def spectrum_event(figno,*args):
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
     if (args[0]!="sendfigure"):
-        print(time.asctime()+' '+str(args[:-1]))
-    handlerkey=args[-1]
-    args=args[:-1];
+        print(time.asctime()+' '+str(args))
     if (args[0]=="settexttimeinst"):
         spectrum_timeinst=args[1]
         spectrum_abstimeinst=-1;
@@ -1994,9 +1953,7 @@ def waterfall_event(figno,*args):
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH, waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
-    print(time.asctime()+' '+str(args[:-1]))
-    handlerkey=args[-1]
-    args=args[:-1];
+    print(time.asctime()+' '+str(args))
     if (args[0]=="applytoall"):
         time_antbase0=waterfall_antbase0[:]
         time_antbase1=waterfall_antbase1[:]
@@ -2074,9 +2031,7 @@ def waterfall_event(figno,*args):
 def matrix_event(figno,*args):
     global forcerecalc
     global dh,datasd,rows,startrow,spectrum_width
-    print(time.asctime()+' '+str(args[:-1]))
-    handlerkey=args[-1]
-    args=args[:-1];
+    print(time.asctime()+' '+str(args))
     if (len(args) and rows!=None and (args[0]=="nextchunk" or args[0]=="prevchunk")):
         try:
             if (startrow==None):
@@ -2096,15 +2051,13 @@ def matrix_event(figno,*args):
     f4.canvas.send_cmd("")
     
 def help_event(figno,*args):
-    print(time.asctime()+' '+str(args[:-1]))
-    handlerkey=args[-1]
-    args=args[:-1];
+    print(time.asctime()+' '+str(args))
     if (args[0]=="requestdata"):
         print args[0],args[1],args[2]
         for iline in range(int(args[1])):
             vals=np.random.rand(int(args[2]))
             linestr=('['+string.join(['%.4f'%(a) for a in vals],',')+']')
-            f5.canvas.send_cmd_handlerkey('receivedata(%d,%d,%d,'%(iline,int(args[1]),int(args[2]))+linestr+')',handlerkey)
+            f5.canvas.send_cmd('receivedata(%d,%d,%d,'%(iline,int(args[1]),int(args[2]))+linestr+')')
 
 f1=figure(1)
 f1a=f1.add_subplot(111)
@@ -2142,14 +2095,12 @@ if (datasd.storage.frame_count > 0):
 #
 lastmsg='loading'
 makedataservers();
-thisip=_external_ip()
-
 
 # show a plot
 f1=figure(1)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"newtime_plot.html")
-cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[0])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--data_port-->",str(data_server_port[0])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f1.canvas._custom_content = cc
 f1.canvas._user_event = timeseries_event
@@ -2159,7 +2110,7 @@ f1.canvas._user_event(0,time_corrHH, time_corrVV, time_corrHV, time_corrVH,time_
 f2=figure(2)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"newspectrum_plot.html")
-cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[1])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--data_port-->",str(data_server_port[1])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f2.canvas._custom_content = cc
 f2.canvas._user_event = spectrum_event
@@ -2169,7 +2120,7 @@ f2.canvas._user_event(1,spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spect
 f3=figure(3)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"newwaterfall_plot.html")
-cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[2])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--data_port-->",str(data_server_port[2])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f3.canvas._custom_content = cc
 f3.canvas._user_event = waterfall_event
@@ -2179,7 +2130,7 @@ f3.canvas._user_event(2,waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, wa
 f4=figure(4)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"matrix_plot.html")
-cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[3])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--data_port-->",str(data_server_port[3])).replace("<!--antposx-list-->",antposx_html).replace("<!--antposy-list-->",antposy_html).replace("<!--antdisp-list-->",antdisp_html).replace("<!--colour-list-R>",colourlist_R_html).replace("<!--colour-list-G>",colourlist_G_html).replace("<!--colour-list-B>",colourlist_B_html).replace("<!--antennamappingmode-->",str(antennamappingmode)).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f4.canvas._custom_content = cc
 f4.canvas._user_event = matrix_event
@@ -2189,7 +2140,7 @@ f4.canvas._user_event(3,-1);
 f5=figure(5)
 # setup custom events and html wrapper
 html_wrap_file = open(html_directory+"newhelp.html")
-cc = html_wrap_file.read().replace("<!--server_ip-->",thisip).replace("<!--data_port-->",str(data_server_port[4])).replace("<!--datafile-->",datafile)
+cc = html_wrap_file.read().replace("<!--data_port-->",str(data_server_port[4])).replace("<!--datafile-->",datafile)
 html_wrap_file.close()
 f5.canvas._custom_content = cc
 f5.canvas._user_event = help_event
