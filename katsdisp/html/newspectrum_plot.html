@@ -367,7 +367,6 @@
 				}
 				vviewmin=[]
 				vviewmax=[]
-				lenx=datax.length
 				if (datax.length==2 && (dataylist[0][0]).length>2)
 				{
 					localdatax=new Array((dataylist[0][0]).length)
@@ -408,10 +407,10 @@
 					context.fillStyle = "#000000";
 					xscale=axiscanvas.width/(hviewmax-hviewmin)
 					xoff=-hviewmin*xscale;
-					for (x=0;x<dataylist[0][0].length && (xoff+xscale*datax[x])<0;x++);
+					for (x=0;x<datax.length && (xoff+xscale*datax[x])<0;x++);
 					if (x>0)ixstart=x-1;else ixstart=0;
-					for (x=dataylist[0][0].length-1;x>=0 && (xoff+xscale*datax[x])>axiscanvas.width;x--);
-					if (x<dataylist[0][0].length-1)ixend=x+2;else ixend=dataylist[0][0].length;
+					for (x=datax-1;x>=0 && (xoff+xscale*datax[x])>axiscanvas.width;x--);
+					if (x<datax-1)ixend=x+2;else ixend=datax.length;
 					for (itwin=0;itwin<dataylist.length;itwin++)
 					{
 						vviewmin[itwin]=-60
