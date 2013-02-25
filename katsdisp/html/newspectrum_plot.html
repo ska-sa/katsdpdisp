@@ -409,8 +409,8 @@
 					xoff=-hviewmin*xscale;
 					for (x=0;x<datax.length && (xoff+xscale*datax[x])<0;x++);
 					if (x>0)ixstart=x-1;else ixstart=0;
-					for (x=datax-1;x>=0 && (xoff+xscale*datax[x])>axiscanvas.width;x--);
-					if (x<datax-1)ixend=x+2;else ixend=datax.length;
+					for (x=datax.length-1;x>=0 && (xoff+xscale*datax[x])>axiscanvas.width;x--);
+					if (x<datax.length-1)ixend=x+2;else ixend=datax.length;
 					for (itwin=0;itwin<dataylist.length;itwin++)
 					{
 						vviewmin[itwin]=-60
