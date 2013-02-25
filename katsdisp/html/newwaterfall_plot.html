@@ -829,7 +829,8 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 	}
 
 		    function start_data() {
-		      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
+//		      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
+			 datasocket = new WebSocket('ws://'+document.domain+':<!--data_port-->/');	
 			  var supports_binary = (datasocket.binaryType != undefined);
 	//see  matplotlib/lib/matplotlib/backends/webagg/..../mpl.js
 	 	    datasocket.binaryType = 'arraybuffer';
