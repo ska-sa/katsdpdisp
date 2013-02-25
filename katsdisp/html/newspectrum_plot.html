@@ -359,6 +359,12 @@
 					figureupdated=1
 					return;
 				}
+				if (xunit=='s')
+				{
+					thistimestamp=datax[datax.length-1]
+					for (i=0;i<datax.length;i++)
+						datax[i]-=thistimestamp;				
+				}
 				vviewmin=[]
 				vviewmax=[]
 				lenx=datax.length
@@ -394,13 +400,18 @@
 			   var context = axiscanvas.getContext('2d');
 			   linesdrawn=0
 			   linesnotdrawn=0
-				if (context){
+				ixstart=0;ixend=0;
+				if (context &&typeof(dataylist[0])!="undefined"){
 					oldlinewidth=context.lineWidth
 		  			context.fillStyle = "#FFFFFF";
 		  			context.fillRect(0, 0, axiscanvas.width, axiscanvas.height);
 					context.fillStyle = "#000000";
 					xscale=axiscanvas.width/(hviewmax-hviewmin)
 					xoff=-hviewmin*xscale;
+					for (x=0;x<dataylist[0][0].length && (xoff+xscale*datax[x])<0;x++);
+					if (x>0)ixstart=x-1;else ixstart=0;
+					for (x=dataylist[0][0].length-1;x>=0 && (xoff+xscale*datax[x])>axiscanvas.width;x--);
+					if (x<dataylist[0][0].length-1)ixend=x+2;else ixend=dataylist[0][0].length;
 					for (itwin=0;itwin<dataylist.length;itwin++)
 					{
 						vviewmin[itwin]=-60
@@ -418,16 +429,20 @@
 						}
 					yscale=axiscanvas.height/(vviewmax[itwin]-vviewmin[itwin])
 					yoff=axiscanvas.height+vviewmin[itwin]*yscale
+					
 					for (iline=0;iline<dataylist[itwin].length;iline++)
 					{
 						try{
 					    context.beginPath();
-						context.lineWidth=corrlinewidth[clrlist[iline][3]]
-						context.setLineDash(corrlinedash[clrlist[iline][3]])
+						if (ixend-ixstart<=1024)
+						{
+							context.lineWidth=corrlinewidth[clrlist[iline][3]]
+							context.setLineDash(corrlinedash[clrlist[iline][3]])
+						}
 						// context.strokeStyle = "rgb("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+")";
 						context.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
-				    	context.moveTo(xoff+xscale*datax[0],yoff-yscale*dataylist[itwin][iline][0]);
-						for (x=1;x<dataylist[0][iline].length;x++)
+				    	context.moveTo(xoff+xscale*datax[ixstart],yoff-yscale*dataylist[itwin][iline][ixstart]);
+						for (x=ixstart+1;x<ixend;x++)
 						{
 					   		context.lineTo(xoff+xscale*datax[x],yoff-yscale*dataylist[itwin][iline][x]);
 						}
@@ -506,8 +521,11 @@
 						for (iline=0,y=axisposy+labelfontHeight;iline<legend.length && y<axisposy+axiscanvas.height-labelfontHeight/5;iline++,y+=labelfontHeight)
 						{						
 							    figcontext.beginPath();
-								figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
-								figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
+								if (ixend-ixstart<=1024)
+								{
+									figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
+									figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
+								}
 								figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
 						    	figcontext.moveTo(x,y-labelfontHeight/2.0+labelfontHeight/5.0);
 							   	figcontext.lineTo(x+labelfontHeight*1.5,y-labelfontHeight/2.0+labelfontHeight/5.0);
@@ -534,15 +552,15 @@
 
 	    var datasocket = 0;
 		
-	    // var time_receive_user_cmd=0
-	    // var data_length_user_cmd=0
-	    // var data_length_user_cmd_acc=0
 		var time_receive_data_user_cmd=0
+	    var time_receive_user_cmd=0
+	    var data_length_user_cmd=0
+	    var data_length_user_cmd_acc=0
+	
 		
 	    function exec_data_user_cmd(cmd_str) {
 	     var ret_str = "";
 	     try {
-			time_receive_data_user_cmd=(new Date()).getTime();
 	      	ret_str=eval(cmd_str);
 	     } catch(err) { ret_str = "user command failed: " + err;}
 	    }
@@ -577,7 +595,7 @@
 			{
 				val=new Uint16Array(arraybuffer.slice(offset,offset+totdata*2))
 				offset+=totdata*2
-			}else if (dtype=='i')
+			}else if (dtype=='i' || dtype=='I')
 			{
 				val=new Uint32Array(arraybuffer.slice(offset,offset+totdata*4))
 				offset+=totdata*4
@@ -598,6 +616,19 @@
 				offset+=2*4
 				if (dtype=='B') scale=(convertminmax[1]-convertminmax[0])/(256.0-4.0)
 				else scale=(convertminmax[1]-convertminmax[0])/(65536.0-4.0)
+				for (idata=0;idata<totdata;idata++)
+				{
+					if (val[idata]==0) val[idata]=-Infinity
+					else if (val[idata]==1) val[idata]=Infinity
+					else if (val[idata]==2) val[idata]=NaN
+					else val[idata]=convertminmax[0]+(val[idata]-3)*scale
+				}				
+			}else if (dtype=='I')
+			{
+				val=new Float64Array(val)
+				convertminmax=new Float64Array(arraybuffer.slice(offset,offset+2*8))
+				offset+=2*8
+				scale=(convertminmax[1]-convertminmax[0])/(4294967296.0-4.0)
 				for (idata=0;idata<totdata;idata++)
 				{
 					if (val[idata]==0) val[idata]=-Infinity
@@ -706,6 +737,7 @@
 			return obj;
 		}
 				
+				
 	    function start_data() {
 	      datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
 		  var supports_binary = (datasocket.binaryType != undefined);
@@ -716,6 +748,7 @@
 		}
 	      datasocket.onmessage = function(e) {
 		   if (e.data instanceof ArrayBuffer){
+			time_receive_data_user_cmd=(new Date()).getTime();
 	        data_length_user_cmd=e.data.byteLength
 	        data_length_user_cmd_acc+=data_length_user_cmd
 			unpack_binarydata_msg(e.data)
@@ -738,15 +771,18 @@
 	       datasocket.send("<data_user_event_spectrum args='" + arg_string + "'>");
 	      } catch (err) {}
 	     } 
-	    
-	
-	
+	    	
 		var lastupdate=0
 		function updateFigure(){
 			time0=(new Date()).getTime();
-			if ((time_receive_data_user_cmd>0) &&(time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
+			if (lastupdate!=0 && (time_receive_data_user_cmd>0) &&(time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
 			{
 				document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
+			}
+			if (lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
+			{
+				document.getElementById("healthtext").innerHTML+=' ... requesting response'
+				lastupdate=0
 			}
 			if (figureupdated==1 || lastupdate==0)//|| (time0-lastupdate>30000))//30 second timeout
 			{

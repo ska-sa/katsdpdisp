@@ -64,7 +64,7 @@ import logging
 import sys
 from pkg_resources import resource_filename
 import signal
-import simple_server
+import mplh5canvas.simple_server as simple_server
 import thread
 import socket
 import struct
@@ -293,8 +293,11 @@ def wrap_get_time_series(self, dtype='mag', product=None, timestamps=None, start
         iprod=lasttimeproducts.index(product)
         
         subsubdebugline+='c'
-        if (len(timeseries_fig['ydata'])<1 or len(timeseries_fig['ydata'][0])<=iprod or len(timeseries_fig['ydata'][0][iprod])<2):
+        invalidts=(timestamp not in timestamps)
+        if (invalidts or len(timeseries_fig['ydata'])<1 or len(timeseries_fig['ydata'][0])<=iprod or len(timeseries_fig['ydata'][0][iprod])<2):
             subsubdebugline+='d'
+            if (invalidts):
+                print 'timestamp ',timestamp, ' not in timestamps of length ',len(timestamps)
             return get_time_series(self, dtype=dtype, product=product, timestamps=timestamps, start_channel=start_channel, stop_channel=stop_channel)
         elif (timestamp<timestamps[-1]):
             subsubdebugline+='e'
@@ -504,7 +507,7 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
                 plotlegend.append(data[1])
     #
     subdebugline+='e'
-    ts = s[0]-s[0][-1]    #time delay
+    ts = s[0]    #time delay
     time_now=s[0][-1]
     time_nownow=s[0][-2]
     if (time_timeavg!=''):
@@ -767,7 +770,7 @@ def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-12
     shp=np.shape(tp[1])
     tmp=tp[1].reshape(-1)
     tmp[np.nonzero(tp[2].reshape(-1))[0]]=np.nan;
-    ploty=tp[0]-tp[0][-1]
+    ploty=tp[0]
     plotyseries=tmp.reshape(shp)
     plotlegend=""
     return plotx,ploty,plotyseries,title,plotxlabel,plotylabel,plotclabel,plotxunit,plotyunit,plotcunit,plotlegend,plottimestamp
@@ -1244,6 +1247,7 @@ def matrix_draw():
         print time.asctime()+' Exception in matrix_draw (%s)'%e
     
 def timeseries_event(figno,*args):
+    global forcerecalc
     global dh,datasd,rows,startrow,spectrum_width
     global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
@@ -1259,12 +1263,16 @@ def timeseries_event(figno,*args):
         time_channelphase=args[1]
         if (datafile!='stream'):
             spectrum_draw()
+        else:
+            forcerecalc=True
     elif (args[0]=="settimeinstant"):
         xlim=f1a.get_xlim();
         spectrum_abstimeinst=time_now+double(args[1])*(xlim[1]-xlim[0])+xlim[0];
         spectrum_timeinst=time.ctime(spectrum_abstimeinst).split(' ')[-2];
         if (datafile!='stream'):
             spectrum_draw()
+        else:
+            forcerecalc=True
         newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
         f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
         f2.canvas.send_cmd(newcontent2)
@@ -1318,6 +1326,8 @@ def timeseries_event(figno,*args):
         if (datafile!='stream'):
             spectrum_draw()
             matrix_draw()
+        else:
+            forcerecalc=True
         newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
         f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
         f2.canvas.send_cmd(newcontent2)
@@ -1331,6 +1341,8 @@ def timeseries_event(figno,*args):
         spectrum_corrVH=time_corrVH;
         if (datafile!='stream'):
             spectrum_draw()
+        else:
+            forcerecalc=True
         newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
         f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
         if (len(time_antbase0)):
@@ -1354,6 +1366,8 @@ def timeseries_event(figno,*args):
             waterfall_corrVH='false';
         if (datafile!='stream'):
             waterfall_draw()
+        else:
+            forcerecalc=True
         newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
         f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
         f2.canvas.send_cmd(newcontent2)
@@ -1448,6 +1462,8 @@ def timeseries_event(figno,*args):
 
     if (datafile!='stream'):
         timeseries_draw()
+    else:
+        forcerecalc=True
     newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
     f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
     f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
@@ -1486,7 +1502,7 @@ def handle_data_user_event_timeseries(handlerkey,*args):
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',timeseries_fig['xunit'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',timeseries_fig['yunit'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',timeseries_fig['legend'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',timeseries_fig['xdata'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',timeseries_fig['xdata'],'I'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',timeseries_fig['color'],'b'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',timeseries_fig['xmin'],'f'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',timeseries_fig['xmax'],'f'),handlerkey)
@@ -1549,7 +1565,7 @@ def handle_data_user_event_waterfall(handlerkey,*args):
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cunit',waterfall_fig['cunit'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',waterfall_fig['legend'],'s'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',waterfall_fig['xdata'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',waterfall_fig['ydata'],'f'),handlerkey)
+            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',waterfall_fig['ydata'],'I'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',waterfall_fig['color'],'b'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
             send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
@@ -1589,8 +1605,8 @@ def handle_data_user_event_waterfall(handlerkey,*args):
 #if val is a list in cannot contain sublists - must be only one dimensional
 #val can be multidimensional if it is a np.dnarray
 def pack_binarydata_msg(varname,val,dtype):
-    bytesize  ={'s':1, 'f':4,   'd':8,   'b':1,   'h':2,   'i':4,   'B':1,   'H':2}
-    structconv={'s':1, 'f':'f', 'd':'d', 'b':'B', 'h':'H', 'i':'I', 'B':'B', 'H':'H'}
+    bytesize  ={'s':1, 'f':4,   'd':8,   'b':1,   'h':2,   'i':4,   'B':1,   'H':2,   'I':4}
+    structconv={'s':1, 'f':'f', 'd':'d', 'b':'B', 'h':'H', 'i':'I', 'B':'B', 'H':'H', 'I':'I'}
     lenvarname=len(varname)
     if (type(val)==np.ndarray):
         shp=val.shape
@@ -1609,7 +1625,7 @@ def pack_binarydata_msg(varname,val,dtype):
     if (dtype=='s'):#encodes a list of strings
         for sval in val:
             buff+=sval+'\x00';
-    elif (dtype=='B' or dtype=='H'):
+    elif (dtype=='B' or dtype=='H' or dtype=='I'):
         val=np.array(val,dtype='float')
         finiteind=np.nonzero(np.isfinite(val)==True)[0]
         finitevals=val[finiteind]
@@ -1623,8 +1639,12 @@ def pack_binarydata_msg(varname,val,dtype):
         val[np.nonzero(val==np.inf)[0]]=1
         val[np.nonzero(np.isnan(val)==True)[0]]=2
         buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*val)
-        buff+=struct.pack('<f',minval)
-        buff+=struct.pack('<f',maxval)
+        if (dtype=='I'):
+            buff+=struct.pack('<d',minval)#use double precision limits here
+            buff+=struct.pack('<d',maxval)
+        else:
+            buff+=struct.pack('<f',minval)
+            buff+=struct.pack('<f',maxval)
     elif (dtype=='f' or dtype=='d' or dtype =='b' or dtype =='h' or dtype =='i'):#encodes list or ndarray of floats
         buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*val)
     return buff
@@ -1761,6 +1781,7 @@ def stopdataservers():
     
     
 def spectrum_event(figno,*args):
+    global forcerecalc
     global dh,datasd,rows,startrow,spectrum_width
     global spectrum_abstimeinst,time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
@@ -1785,6 +1806,8 @@ def spectrum_event(figno,*args):
                 spectrum_abstimeinst=fkeys[-1]+double(spectrum_timeinst)
         if (datafile!='stream'):
             timeseries_draw()
+        else:
+            forcerecalc=True
     elif (args[0]=="setchannelphase"):
         xlim=f2a.get_xlim();
         chan=double(args[1])*(xlim[1]-xlim[0])+xlim[0];
@@ -1801,6 +1824,8 @@ def spectrum_event(figno,*args):
         time_channelphase=str(int(chan))
         if (datafile!='stream'):
             timeseries_draw()
+        else:
+            forcerecalc=True
         newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
         f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
         f1.canvas.send_cmd(newcontent1)
@@ -1854,6 +1879,8 @@ def spectrum_event(figno,*args):
         if (datafile!='stream'):
             timeseries_draw()
             matrix_draw()
+        else:
+            forcerecalc=True
         newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
         f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
         f1.canvas.send_cmd(newcontent1)
@@ -1867,6 +1894,8 @@ def spectrum_event(figno,*args):
         time_corrVH=spectrum_corrVH;
         if (datafile!='stream'):
             timeseries_draw()
+        else:
+            forcerecalc=True
         newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
         f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
         if (len(time_antbase0)):
@@ -1890,6 +1919,8 @@ def spectrum_event(figno,*args):
             waterfall_corrVH='false';
         if (datafile!='stream'):
             waterfall_draw()
+        else:
+            forcerecalc=True
         newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
         f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
         f1.canvas.send_cmd(newcontent1)
@@ -1950,11 +1981,14 @@ def spectrum_event(figno,*args):
             
     if (datafile!='stream'):
         spectrum_draw()
+    else:
+        forcerecalc=True
     newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
     f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
     f2.canvas.send_cmd(newcontent2)
 
 def waterfall_event(figno,*args):
+    global forcerecalc
     global dh,datasd,rows,startrow,spectrum_width
     global time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
@@ -1972,6 +2006,8 @@ def waterfall_event(figno,*args):
         time_corrVH=waterfall_corrVH;
         if (datafile!='stream'):
             timeseries_draw()
+        else:
+            forcerecalc=True
         newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
         f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
         spectrum_antbase0=waterfall_antbase0[:]
@@ -1982,6 +2018,8 @@ def waterfall_event(figno,*args):
         spectrum_corrVH=waterfall_corrVH;
         if (datafile!='stream'):
             spectrum_draw()
+        else:
+            forcerecalc=True
         newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg)
         f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
         f1.canvas.send_cmd(newcontent1)
@@ -2027,11 +2065,14 @@ def waterfall_event(figno,*args):
             f3.canvas.send_cmd('alert("Warning: no center frequencies available, reverting to channel")')
     if (datafile!='stream'):
         waterfall_draw()
+    else:
+        forcerecalc=True
     newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
     f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
     f3.canvas.send_cmd(newcontent3)
 
 def matrix_event(figno,*args):
+    global forcerecalc
     global dh,datasd,rows,startrow,spectrum_width
     print(time.asctime()+' '+str(args[:-1]))
     handlerkey=args[-1]
@@ -2050,6 +2091,8 @@ def matrix_event(figno,*args):
             print time.asctime()+" Failed to load file using k7 loader (%s)" % e
     if (datafile!='stream'):
         matrix_draw()
+    else:
+        forcerecalc=True
     f4.canvas.send_cmd("")
     
 def help_event(figno,*args):
@@ -2153,13 +2196,15 @@ f5.canvas._user_event = help_event
 f5.canvas._user_cmd_ret = user_cmd_ret
 f4.canvas._user_event(4,-1);
 
+forcerecalc=False
 antbase=0
 lastantbase=0
 iloop=0
-time_last=time.time()
-ifailedframe=0
+time_last=0
 loop_time=0
+last_real_time=time.time()
 reissuenotice=0
+nowdelay=0
 if (datafile!='stream'):
     show(layout='figure1',open_plot=opts.open_plot)
 else:
@@ -2171,67 +2216,55 @@ else:
             if (reissuenotice==0):
                 print 'Please resume capture, and then re-issue metadata'
                 reissuenotice=1;
-            msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-time_last)
+            msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
         else:
             reissuenotice=0
             if (datasd.receiver.channels==0):
-                msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-time_last)
+                msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
             elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
                 print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
                 spectrum_width=datasd.receiver.channels
                 spectrum_flagmask=np.ones([spectrum_width])
                 spectrum_flagstr=''
-                msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-time_last)
+                msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
             else:
                 antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
                 s = datasd.select_data(product=0, end_time=-2, start_channel=0, stop_channel=1, include_ts=True)
                 if (len(s[0])>0):#store not entirely empty
                     time_now=s[0][-1]
                     if (time_now==time_last):
-                        ifailedframe+=1
+                        nowdelay+=1;
                     else:
-                        ifailedframe=0
-                        time_last=time_now
+                        nowdelay=0;
                     if (len(s[0])>1):
                         time_nownow=s[0][-2]
-                        if (ifailedframe>4):
-#                        if (ifailedframe>(time_now-time_nownow)):
+                        if (nowdelay>(time_now-time_nownow)+1):
                             msg='document.getElementById("healthtext").innerHTML="halted stream";'
                         else:
                             msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
-                    else:
-                        if (ifailedframe>4):
-                            msg='document.getElementById("healthtext").innerHTML="halted stream";'
-                        else:
-                            msg='document.getElementById("healthtext").innerHTML="activating";'
+                    else:#one element in store
+                        msg='document.getElementById("healthtext").innerHTML="activating";'
                 else:#store is empty
-                    msg='document.getElementById("healthtext").innerHTML="store empty for %ds";'%(ts_start-time_last)
-                                    
-                timeseries_draw()
-                ts_ts_end = time.time()
-                spectrum_draw()
-                ts_sp_end = time.time()
-                waterfall_draw()
-                ts_wf_end = time.time()
-                #matrix_draw()
-                ts_end = time.time()
-                # if (time_now==0 or time_nownow==0):
-                #     msg='document.getElementById("healthtext").innerHTML="halted stream";'
-                # if (ifailedframe>4):
-                #     msg='document.getElementById("healthtext").innerHTML="halted stream";'
-                # else:
-                #     msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
-                ts_end2 = time.time()
-                strn="Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end2 - ts_start)
-                f1.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
-                f2.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
-                f3.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                    time_now=0
+                    msg='document.getElementById("healthtext").innerHTML="store empty for %ds";'%(ts_start-last_real_time)
                 
-                # strn='document.getElementById("timereceivelist").innerHTML+="'+str(iloop)+': sent at '+time.asctime()+' "+(new Date()).toTimeString().slice(0,8)+"<br>"'
-                # f1.canvas.send_cmd(strn)
-                # f2.canvas.send_cmd(strn)
-                logger.warning(strn)
-        if (lastmsg!=msg or not np.array_equal(lastantbase,antbase)):# sends health text if changed (might be better to send it anyways), deselect valid baselines
+                if (1):#forcerecalc or time_last!=time_now):
+                    forcerecalc=False
+                    timeseries_draw()
+                    ts_ts_end = time.time()
+                    spectrum_draw()
+                    ts_sp_end = time.time()
+                    waterfall_draw()
+                    ts_wf_end = time.time()
+                    #matrix_draw()
+                    ts_end = time.time()
+                    last_real_time=ts_end
+                    time_last=time_now
+                    strn="Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end - ts_start)
+                    f1.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                    f2.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                    f3.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+        if (lastmsg!=msg or not np.array_equal(lastantbase,antbase)):
             lastmsg=msg
             if (not np.array_equal(lastantbase,antbase)):
                 otime_antbase0=time_antbase0
@@ -2271,11 +2304,10 @@ else:
                 f2.canvas.send_cmd(newcontent2)
                 f3.canvas.send_cmd(newcontent3)
                 # f4.canvas.send_cmd(newcontent4)
-            else:
-                f1.canvas.send_cmd(msg)
-                f2.canvas.send_cmd(msg)
-                f3.canvas.send_cmd(msg)
-                # f4.canvas.send_cmd(msg)
+        f1.canvas.send_cmd(msg)
+        f2.canvas.send_cmd(msg)
+        f3.canvas.send_cmd(msg)
+        # f4.canvas.send_cmd(msg)
                 
         
         loop_time = time.time() - ts_start

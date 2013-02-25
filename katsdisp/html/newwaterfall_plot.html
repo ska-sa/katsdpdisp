@@ -409,6 +409,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				figureupdated=1
 				return;
 			}
+			if (yunit=='s')
+			{
+				thistimestamp=datay[datay.length-1]
+				for (i=0;i<datay.length;i++)
+					datay[i]-=thistimestamp;				
+			}			
 			vviewmin=[]
 			vviewmax=[]
 			lenx=datax.length
@@ -457,6 +463,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		   var context = axiscanvas.getContext('2d');
 		   linesdrawn=0
 		   linesnotdrawn=0
+			ixstart=0;ixend=0;
 			if (context){
 				oldlinewidth=context.lineWidth
 	  			context.fillStyle = "#FFFFFF";
@@ -588,8 +595,11 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					for (iline=0,y=axisposy+labelfontHeight;iline<legend.length && y<axisposy+axiscanvas.height-labelfontHeight/5;iline++,y+=labelfontHeight)
 					{						
 						    figcontext.beginPath();
-							figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
-							figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
+							if (ixend-ixstart<=1024)
+							{
+								figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
+								figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
+							}
 							figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
 					    	figcontext.moveTo(x,y-labelfontHeight/2.0+labelfontHeight/5.0);
 						   	figcontext.lineTo(x+labelfontHeight*1.5,y-labelfontHeight/2.0+labelfontHeight/5.0);
@@ -631,15 +641,14 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 
 	var datasocket = 0;
 
-    // var time_receive_user_cmd=0
-    // var data_length_user_cmd=0
-    // var data_length_user_cmd_acc=0
 	var time_receive_data_user_cmd=0
+    var time_receive_user_cmd=0
+    var data_length_user_cmd=0
+    var data_length_user_cmd_acc=0
 	
     function exec_data_user_cmd(cmd_str) {
      var ret_str = "";
      try {
-		time_receive_data_user_cmd=(new Date()).getTime();
       	ret_str=eval(cmd_str);
      } catch(err) { ret_str = "user command failed: " + err;}
     }
@@ -674,7 +683,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		{
 			val=new Uint16Array(arraybuffer.slice(offset,offset+totdata*2))
 			offset+=totdata*2
-		}else if (dtype=='i')
+		}else if (dtype=='i' || dtype=='I')
 		{
 			val=new Uint32Array(arraybuffer.slice(offset,offset+totdata*4))
 			offset+=totdata*4
@@ -703,6 +712,19 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 					val[idata]=Infinity
 				else if (val[idata]==2) 
 					val[idata]=NaN
+				else val[idata]=convertminmax[0]+(val[idata]-3)*scale
+			}				
+		}else if (dtype=='I')
+		{
+			val=new Float64Array(val)
+			convertminmax=new Float64Array(arraybuffer.slice(offset,offset+2*8))
+			offset+=2*8
+			scale=(convertminmax[1]-convertminmax[0])/(4294967296.0-4.0)
+			for (idata=0;idata<totdata;idata++)
+			{
+				if (val[idata]==0) val[idata]=-Infinity
+				else if (val[idata]==1) val[idata]=Infinity
+				else if (val[idata]==2) val[idata]=NaN
 				else val[idata]=convertminmax[0]+(val[idata]-3)*scale
 			}				
 		}
@@ -816,6 +838,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			}
 		      datasocket.onmessage = function(e) {
 			   if (e.data instanceof ArrayBuffer){
+				time_receive_data_user_cmd=(new Date()).getTime();
 		        data_length_user_cmd=e.data.byteLength
 		        data_length_user_cmd_acc+=data_length_user_cmd
 				unpack_binarydata_msg(e.data)
@@ -844,9 +867,14 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			var lastupdate=0
 			function updateFigure(){
 				time0=(new Date()).getTime();
-				if ((time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
+				if (lastupdate!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
 				{
 					document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
+				}
+				if (lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
+				{
+					document.getElementById("healthtext").innerHTML+=' ... requesting response'
+					lastupdate=0
 				}
 				if (figureupdated==1 || lastupdate==0)//|| (time0-lastupdate>30000))//30 second timeout
 				{
