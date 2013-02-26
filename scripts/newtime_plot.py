@@ -304,9 +304,11 @@ def wrap_get_time_series(self, dtype='mag', product=None, timestamps=None, start
             itimestamp=timestamps.index(timestamp)#this should always be in timestamp list
             [tp,prodstr]=get_time_series(self, dtype=dtype, product=product, timestamps=timestamps[itimestamp:], start_channel=start_channel, stop_channel=stop_channel)
             subsubdebugline+='f'
-            return [np.concatenate([(timeseries_fig['ydata'][0][iprod])[:-1],tp]),str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
+            startind=len(tp)+len((timeseries_fig['ydata'][0][iprod])[:-1])-len(timestamps);
+            return [np.concatenate([(timeseries_fig['ydata'][0][iprod])[startind:-1],tp]),str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
         else:
             subsubdebugline+='g'
+            print 'returning same'
             return [timeseries_fig['ydata'][0][iprod],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
     else:
         subsubdebugline+='h'
