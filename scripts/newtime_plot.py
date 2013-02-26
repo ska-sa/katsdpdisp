@@ -308,7 +308,6 @@ def wrap_get_time_series(self, dtype='mag', product=None, timestamps=None, start
             return [np.concatenate([(timeseries_fig['ydata'][0][iprod])[startind:-1],tp]),str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
         else:
             subsubdebugline+='g'
-            print 'returning same'
             return [timeseries_fig['ydata'][0][iprod],str(product[0])+str(product[2][0])+str(product[1])+str(product[2][1])]
     else:
         subsubdebugline+='h'
