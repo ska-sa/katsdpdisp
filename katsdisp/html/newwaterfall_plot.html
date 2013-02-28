@@ -409,11 +409,15 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				figureupdated=1
 				return;
 			}
+			var localdatay			
 			if (yunit=='s')
 			{
-				thistimestamp=datay[datay.length-1]
+				localdatay=new Array(datay.length)
 				for (i=0;i<datay.length;i++)
-					datay[i]-=thistimestamp;				
+					localdatay[i]=datay[i]-datay[datay.length-1];
+			}else
+			{
+				localdatay=datay
 			}			
 			vviewmin=[]
 			vviewmax=[]
@@ -436,9 +440,9 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				hviewmax+=0.5;
 				hviewmin-=0.5;
 			}
-			dataymin=Math.min(datay[0],datay[datay.length-1])
+			dataymin=Math.min(localdatay[0],localdatay[localdatay.length-1])
 			vviewmin=dataymin
-			dataymax=Math.max(datay[0],datay[datay.length-1])
+			dataymax=Math.max(localdatay[0],localdatay[localdatay.length-1])
 			vviewmax=dataymax
 			if (!isNaN(ymin)) vviewmin=ymin
 			if (!isNaN(ymax)) vviewmax=ymax
@@ -805,6 +809,42 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 			subobj[sublist[ilev]]=1
 			if (getmin(lastnamedobj.completed,lastnamedobj)>0)//trigger redraw
 			{//should ensure shape is correct
+				//check if augment is to be performed...
+				if (sublist[1]=='augment')
+				{
+					for (aug in (window[sublist[0]]).augment)
+					{
+						if (typeof(aug)=="string")
+						{
+							diff=(window[sublist[0]]).augmenttargetlength-(window[sublist[0]])[aug].length
+							if (diff==0)//buffer full
+							{
+								newvals=(window[sublist[0]]).augment[aug]
+								for (iv=newvals.length;iv<(window[sublist[0]])[aug].length;iv++)//shiftup
+									(window[sublist[0]])[aug][iv-newvals.length]=(window[sublist[0]])[aug][iv];
+								for (iv=0;iv<newvals.length;iv++)//assign new values
+									(window[sublist[0]])[aug][(window[sublist[0]])[aug].length-newvals.length+iv]=newvals[iv];
+							}else
+							{
+								newvals=(window[sublist[0]]).augment[aug]
+								if (diff==newvals.length)
+								{
+									for (iv=0;iv<newvals.length;iv++)//assign new values
+										(window[sublist[0]])[aug][(window[sublist[0]])[aug].length]=newvals[iv];									
+								}else if (diff+newvals.length>0)//perform partial shiftup
+								{
+									shiftby=diff+newvals.length
+									for (iv=shiftby;iv<(window[sublist[0]]).augmenttargetlength;iv++)//shiftup
+										(window[sublist[0]])[aug][iv-shiftby]=(window[sublist[0]])[aug][iv];
+									//NOTE THIS MUST STILL ASSIGN NEWVALS!
+								}else
+								{
+									alert('data lost?')
+								}
+							}
+						}
+					}
+				}
 				servermsgdraw()
 			}
 		}
@@ -864,8 +904,10 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		     } 
 
 
-
 			var lastupdate=0
+			var RG_fig=[]
+			RG_fig.ydata=[]
+			RG_fig.recalc=-1
 			function updateFigure(){
 				time0=(new Date()).getTime();
 				if (lastupdate!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
@@ -880,8 +922,9 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				if (figureupdated==1 || lastupdate==0)//|| (time0-lastupdate>30000))//30 second timeout
 				{
 					figureupdated=0;
-	//				handle_user_event("sendfigure",0);
-					handle_data_user_event("sendfigure")
+					ny=RG_fig.ydata.length
+					if (ny)	handle_data_user_event("sendfigure,"+RG_fig.ydata[ny-1]+","+RG_fig.recalc)
+					else handle_data_user_event("sendfigure,0,-1")						
 				}
 				time1=(new Date()).getTime();
 	//			document.getElementById("timeclientusereventroundtrip").innerHTML='usereventroundtrip '+(time1-time0);

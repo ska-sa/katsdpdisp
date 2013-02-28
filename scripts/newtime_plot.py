@@ -900,7 +900,7 @@ def setloadpage(cc,newcontent):
     cc=cc[:i0]+str(newcontent)+cc[i1:]
     return cc;
 
-timeseries_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
+timeseries_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':0}
 
 def timeseries_draw():
     global subdebugline
@@ -915,7 +915,7 @@ def timeseries_draw():
         global f1,f1a,f1b,spectrum_width
         ts_start = time.time()
         
-        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
+        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':0}
         time_serverselectdata=0
         time_serverflaglogavg=0
         products=[]
@@ -981,8 +981,9 @@ def timeseries_draw():
             
         global timeseries_fig
         timeseries_fig=new_fig
-
         ts_finalend = time.time()
+        global timeseries_recalc,timeseries_recalced
+        timeseries_recalced=timeseries_recalc
 
         time_servertotal=ts_end-ts_start
         time_serverprepmsg=ts_end-ts_draw
@@ -1005,7 +1006,7 @@ def timeseries_draw():
         print time.asctime()+' Exception in timeseries_draw (%s) debugline '%e,debugline,' subdebugline ',subdebugline, ' subsub ',subsubdebugline, ' sub3 ',sub3debugline
 
 
-spectrum_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
+spectrum_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':0}
 
 def spectrum_draw():
     try:
@@ -1014,7 +1015,7 @@ def spectrum_draw():
         global f2,f2a,f2b,spectrum_width
         ts_start = time.time()
         
-        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':[]}
+        new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':0}
         spectrum_serverselectdata=0
         spectrum_serverflaglogavg=0
         products=[]
@@ -1134,8 +1135,10 @@ def spectrum_draw():
 
         global spectrum_fig
         spectrum_fig=new_fig
-            
         ts_finalend = time.time()
+        global spectrum_recalc,spectrum_recalced
+        spectrum_recalced=spectrum_recalc
+        
         spectrum_servertotal=ts_finalend-ts_start
         spectrum_serverprepmsg=ts_end-ts_draw
         spectrum_serverinit=(ts_draw-ts_start)-(spectrum_serverselectdata+spectrum_serverflaglogavg)
@@ -1155,7 +1158,7 @@ def spectrum_draw():
         print time.asctime()+' Exception in spectrum_draw (%s)'%e
 
 
-waterfall_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':[]}
+waterfall_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':0}
 
 def waterfall_draw():
     try:
@@ -1164,7 +1167,7 @@ def waterfall_draw():
         global f3,f3a,spectrum_width
         ts_start = time.time()
 
-        new_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':[]}
+        new_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':0}
         waterfall_serverselectdata=0
         waterfall_serverflaglogavg=0
 
@@ -1211,6 +1214,8 @@ def waterfall_draw():
         global waterfall_fig
         waterfall_fig=new_fig
         ts_finalend = time.time()
+        global waterfall_recalc,waterfall_recalced
+        waterfall_recalced=waterfall_recalc
         
         waterfall_servertotal=ts_finalend-ts_start
         waterfall_serverprepmsg=ts_end-ts_draw
@@ -1222,7 +1227,7 @@ def waterfall_draw():
         strng='last server data requests (interval): '
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
-            if (_request_type[key]=='data_user_event_spectrum'):
+            if (_request_type[key]=='data_user_event_waterfall'):
                 strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
 
         f3.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
@@ -1248,7 +1253,7 @@ def matrix_draw():
         print time.asctime()+' Exception in matrix_draw (%s)'%e
     
 def timeseries_event(figno,*args):
-    global forcerecalc
+    global forcerecalc,timeseries_recalc
     global dh,datasd,rows,startrow,spectrum_width
     global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
@@ -1256,6 +1261,7 @@ def timeseries_event(figno,*args):
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask,spectrum_abstimeinst
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
     print(time.asctime()+' '+str(args))
+    resendall=True
     if (args[0]=='timer'):
         return;
     elif (args[0]=="settextchannelphase"):
@@ -1396,6 +1402,9 @@ def timeseries_event(figno,*args):
         except Exception,e:
             print time.asctime()+" Failed to load file using k7 loader (%s)" % e
     else:
+        if (time_corrHH==args[0] and time_corrVV==args[1] and time_corrHV==args[2] and time_corrVH==args[3] and time_legend==args[4] and time_seltypemenu==args[5] and time_timeavg==args[15] and time_channelphase==args[16]):
+            resendall=False
+            
         time_corrHH=args[0]
         time_corrVV=args[1]
         time_corrHV=args[2]
@@ -1467,6 +1476,9 @@ def timeseries_event(figno,*args):
     f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
     f1.canvas.send_cmd(newcontent1)#if there are other clients with this page
    # f1.canvas.send_cmd("alert('Server says: Plot updated...'); document.documentURI;")
+    if (resendall):
+        timeseries_recalc+=1
+   
 
 #coverts time from hms to a floating point value
 def converthmstof(hms):
@@ -1492,28 +1504,61 @@ def handle_data_user_event_timeseries(handlerkey,*args):
     try:
         # print(time.asctime()+' DATA '+str(args))
         if (args[0]=='sendfigure'):
-            send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
-            local_yseries=(timeseries_fig['ydata'])[:]
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',timeseries_fig['title'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',timeseries_fig['xlabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',timeseries_fig['ylabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',timeseries_fig['xunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',timeseries_fig['yunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',timeseries_fig['legend'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',timeseries_fig['xdata'],'I'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',timeseries_fig['color'],'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',timeseries_fig['xmin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',timeseries_fig['xmax'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',timeseries_fig['ymin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',timeseries_fig['ymax'],'f'),handlerkey)
-            for ispan,span in enumerate(timeseries_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
-                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(timeseries_fig['span'][ispan]),'H'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',timeseries_fig['spancolor'],'b'),handlerkey)
-            for itwin,twinplotyseries in enumerate(local_yseries):
-                for iline,linedata in enumerate(twinplotyseries):
-                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
-                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
+            lastts=float(args[1])
+            lastrecalc=float(args[2])
+            if (lastrecalc<timeseries_recalced):
+                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+                local_yseries=(timeseries_fig['ydata'])[:]
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.recalc',timeseries_recalced,'i'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',timeseries_fig['title'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',timeseries_fig['xlabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',timeseries_fig['ylabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',timeseries_fig['xunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',timeseries_fig['yunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',timeseries_fig['legend'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',timeseries_fig['xdata'],'I'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',timeseries_fig['color'],'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',timeseries_fig['xmin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',timeseries_fig['xmax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',timeseries_fig['ymin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',timeseries_fig['ymax'],'f'),handlerkey)
+                for ispan,span in enumerate(timeseries_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(timeseries_fig['span'][ispan]),'H'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',timeseries_fig['spancolor'],'b'),handlerkey)
+                for itwin,twinplotyseries in enumerate(local_yseries):
+                    for iline,linedata in enumerate(twinplotyseries):
+                        send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
+                        send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
+            else:#only send update
+                where=np.where(timeseries_fig['xdata']>lastts+0.01)[0]#next time stamp index
+                if (len(where)>0):
+                    its=np.min(where)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+                    local_yseries=(timeseries_fig['ydata'])[:,:,its:]
+#                    print 'its',its,'lastts',lastts,'shape ydata',np.shape(timeseries_fig['ydata']),'shape local_yseries',np.shape(local_yseries),'len xdata',len(timeseries_fig['xdata'])
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmentlevel',1,'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmenttargetlength',len(timeseries_fig['xdata']),'h'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',timeseries_fig['title'],'s'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',timeseries_fig['xlabel'],'s'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',timeseries_fig['xdata'],'I'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',timeseries_fig['xmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',timeseries_fig['xmax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',timeseries_fig['ymin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',timeseries_fig['ymax'],'f'),handlerkey)
+                    for itwin,twinplotyseries in enumerate(local_yseries):
+                        for iline,linedata in enumerate(twinplotyseries):
+                            send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
+                            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
+                else:#nothing new
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore.completed',np.zeros([1]),'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',timeseries_fig['xmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',timeseries_fig['xmax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',timeseries_fig['ymin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',timeseries_fig['ymax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1522,62 +1567,111 @@ def handle_data_user_event_spectrum(handlerkey,*args):
     try:
         # print(time.asctime()+' DATA '+str(args))
         if (args[0]=='sendfigure'):
-            send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
-            local_yseries=(spectrum_fig['ydata'])[:]
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',spectrum_fig['title'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',spectrum_fig['xlabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',spectrum_fig['ylabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',spectrum_fig['xunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',spectrum_fig['yunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',spectrum_fig['legend'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',spectrum_fig['xdata'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',spectrum_fig['color'],'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',spectrum_fig['xmin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',spectrum_fig['xmax'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',spectrum_fig['ymin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',spectrum_fig['ymax'],'f'),handlerkey)
-            for ispan,span in enumerate(spectrum_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
-                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(spectrum_fig['span'][ispan]),'H'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',spectrum_fig['spancolor'],'b'),handlerkey)
-            for itwin,twinplotyseries in enumerate(local_yseries):
-                for iline,linedata in enumerate(twinplotyseries):
-                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
-                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
+            lastts=float(args[1])
+            lastrecalc=float(args[2])
+            if (lastrecalc<spectrum_recalced or spectrum_fig['timestamp']>lastts+0.01):
+                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+                local_yseries=(spectrum_fig['ydata'])[:]
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata.completed',np.zeros(np.shape(local_yseries)[:2]),'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.timestamp',spectrum_fig['timestamp'],'d'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.recalc',spectrum_recalced,'i'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',spectrum_fig['title'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',spectrum_fig['xlabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',spectrum_fig['ylabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',spectrum_fig['xunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',spectrum_fig['yunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',spectrum_fig['legend'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',spectrum_fig['xdata'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',spectrum_fig['color'],'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',spectrum_fig['xmin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',spectrum_fig['xmax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',spectrum_fig['ymin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',spectrum_fig['ymax'],'f'),handlerkey)
+                for ispan,span in enumerate(spectrum_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(spectrum_fig['span'][ispan]),'H'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',spectrum_fig['spancolor'],'b'),handlerkey)
+                for itwin,twinplotyseries in enumerate(local_yseries):
+                    for iline,linedata in enumerate(twinplotyseries):
+                        send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(twinplotyseries)),handlerkey)
+                        send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata[%d][%d]'%(itwin,iline),linedata,'H'),handlerkey)
+            else:#nothing new
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore.completed',np.zeros([1]),'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',spectrum_fig['xmin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',spectrum_fig['xmax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',spectrum_fig['ymin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',spectrum_fig['ymax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
+                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
+                        
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
 
 def handle_data_user_event_waterfall(handlerkey,*args):
     try:
-        # print(time.asctime()+' DATA '+str(args))
+#        print(time.asctime()+' DATA '+str(args))
         if (args[0]=='sendfigure'):
-            send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
-            local_cseries=(waterfall_fig['cdata'])[:]
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',waterfall_fig['xlabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',waterfall_fig['ylabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.clabel',waterfall_fig['clabel'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',waterfall_fig['xunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',waterfall_fig['yunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cunit',waterfall_fig['cunit'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',waterfall_fig['legend'],'s'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',waterfall_fig['xdata'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',waterfall_fig['ydata'],'I'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',waterfall_fig['color'],'b'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',waterfall_fig['ymin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',waterfall_fig['ymax'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmin',waterfall_fig['cmin'],'f'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
-            for ispan,span in enumerate(waterfall_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
-                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(waterfall_fig['span'][ispan]),'H'),handlerkey)
-            send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',waterfall_fig['spancolor'],'b'),handlerkey)
-            for iline,linedata in enumerate(local_cseries):
-                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(local_cseries)),handlerkey)
-                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata[%d]'%(iline),linedata,'B'),handlerkey)
+            lastts=float(args[1])
+            lastrecalc=float(args[2])
+            if (lastrecalc<waterfall_recalced):
+                send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+                local_cseries=(waterfall_fig['cdata'])[:]
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.recalc',waterfall_recalced,'i'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',waterfall_fig['xlabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',waterfall_fig['ylabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.clabel',waterfall_fig['clabel'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xunit',waterfall_fig['xunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.yunit',waterfall_fig['yunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cunit',waterfall_fig['cunit'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.legend',waterfall_fig['legend'],'s'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xdata',waterfall_fig['xdata'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',waterfall_fig['ydata'],'I'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.color',waterfall_fig['color'],'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',waterfall_fig['ymin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',waterfall_fig['ymax'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmin',waterfall_fig['cmin'],'f'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
+                for ispan,span in enumerate(waterfall_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.span[%d]'%(ispan),np.array(waterfall_fig['span'][ispan]),'H'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.spancolor',waterfall_fig['spancolor'],'b'),handlerkey)
+                for iline,linedata in enumerate(local_cseries):
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(local_cseries)),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata[%d]'%(iline),linedata,'B'),handlerkey)
+            else:#only send update
+                where=np.where(waterfall_fig['ydata']>lastts+0.01)[0]#next time stamp index
+                if (len(where)>0):
+                    its=np.min(where)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
+                    local_cseries=(waterfall_fig['cdata'])[its:]
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmentlevel',1,'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmenttargetlength',len(waterfall_fig['ydata']),'h'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',waterfall_fig['ylabel'],'s'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',(waterfall_fig['ydata']),'I'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',waterfall_fig['ymin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',waterfall_fig['ymax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmin',waterfall_fig['cmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
+                    for iline,linedata in enumerate(local_cseries):
+                        send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(local_cseries)),handlerkey)
+                        send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.cdata[%d]'%(iline),linedata,'B'),handlerkey)
+                else:#nothing new
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore.completed',np.zeros([1]),'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmin',waterfall_fig['xmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xmax',waterfall_fig['xmax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymin',waterfall_fig['ymin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',waterfall_fig['ymax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmin',waterfall_fig['cmin'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
+                    send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1743,13 +1837,14 @@ def stopdataservers():
     
     
 def spectrum_event(figno,*args):
-    global forcerecalc
+    global forcerecalc,spectrum_recalc
     global dh,datasd,rows,startrow,spectrum_width
     global spectrum_abstimeinst,time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend,spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH,waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
+    resendall=True
     if (args[0]!="sendfigure"):
         print(time.asctime()+' '+str(args))
     if (args[0]=="settexttimeinst"):
@@ -1907,6 +2002,22 @@ def spectrum_event(figno,*args):
             datasd=dh.sd_hist
         except Exception,e:
             print time.asctime()+"Failed to load file using k7 loader (%s)" % e
+    elif (spectrum_corrHH==args[0] and spectrum_corrVV==args[1] and spectrum_corrHV==args[2] and spectrum_corrVH==args[3] and spectrum_legend==args[4] and spectrum_seltypemenu==args[5] and spectrum_seltypemenux==args[8] and spectrum_timeinst==args[14] and spectrum_timeavg==args[15]):
+        spectrum_minF=args[6]
+        spectrum_maxF=args[7]
+        spectrum_minx=args[9]
+        spectrum_maxx=args[10]
+        resendall=False
+        spectrum_abstimeinst=-1;
+        if (datasd.storage.frame_count > 0):
+            tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
+            fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
+            if (len(spectrum_timeinst.split(':'))==3):
+                for f in fkeys:
+                    if (time.ctime(f).split(' ')[-2]==spectrum_timeinst):
+                        spectrum_abstimeinst=f;
+            elif (spectrum_timeinst!=''):#possibly just a negative number (in seconds previous to now)
+                spectrum_abstimeinst=fkeys[-1]+double(spectrum_timeinst)
     else:
         spectrum_corrHH=args[0]
         spectrum_corrVV=args[1]
@@ -1946,15 +2057,19 @@ def spectrum_event(figno,*args):
     newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
     f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
     f2.canvas.send_cmd(newcontent2)
+    if (resendall):
+        spectrum_recalc+=1
+    
 
 def waterfall_event(figno,*args):
-    global forcerecalc
+    global forcerecalc,waterfall_recalc
     global dh,datasd,rows,startrow,spectrum_width
     global time_channelphase,antennamappingmode;
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global waterfall_antbase0, waterfall_antbase1, waterfall_corrHH, waterfall_corrVV, waterfall_corrHV, waterfall_corrVH, waterfall_seltypemenu, waterfall_minF, waterfall_maxF, waterfall_seltypemenux, waterfall_minx, waterfall_maxx, waterfall_miny, waterfall_maxy
     print(time.asctime()+' '+str(args))
+    resendall=True
     if (args[0]=="applytoall"):
         time_antbase0=waterfall_antbase0[:]
         time_antbase1=waterfall_antbase1[:]
@@ -2000,6 +2115,14 @@ def waterfall_event(figno,*args):
             datasd=dh.sd_hist
         except Exception,e:
             print time.asctime()+" Failed to load file using k7 loader (%s)" % e
+    elif (waterfall_corrHH==args[0] and waterfall_corrVV==args[1] and waterfall_corrHV==args[2] and waterfall_corrVH==args[3] and waterfall_seltypemenu==args[5] and waterfall_seltypemenux==args[8]):
+        waterfall_minF=args[6]
+        waterfall_maxF=args[7]
+        waterfall_minx=args[9]
+        waterfall_maxx=args[10]
+        waterfall_miny=args[12]
+        waterfall_maxy=args[13]
+        resendall=False
     else:
         waterfall_corrHH=args[0]
         waterfall_corrVV=args[1]
@@ -2028,6 +2151,8 @@ def waterfall_event(figno,*args):
     newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
     f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
     f3.canvas.send_cmd(newcontent3)
+    if (resendall):
+        waterfall_recalc+=1
 
 def matrix_event(figno,*args):
     global forcerecalc
@@ -2148,6 +2273,12 @@ f5.canvas._user_event = help_event
 f5.canvas._user_cmd_ret = user_cmd_ret
 f4.canvas._user_event(4,-1);
 
+timeseries_recalc=1
+timeseries_recalced=0
+spectrum_recalc=1
+spectrum_recalced=0
+waterfall_recalc=1#current version number for settings
+waterfall_recalced=0#version number used in last calculated figure
 forcerecalc=False
 antbase=0
 lastantbase=0
