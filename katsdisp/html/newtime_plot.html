@@ -749,10 +749,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 													(window[sublist[0]])[aug][itwin][iline][(window[sublist[0]])[aug][itwin][iline].length]=newvals[iv];
 											}else if (diff+newvals.length>0)//perform partial shiftup
 											{
+												(window[sublist[0]])[aug][itwin][iline] = Array.apply( [], (window[sublist[0]])[aug][itwin][iline] );												
 												shiftby=diff+newvals.length
 												for (iv=shiftby;iv<(window[sublist[0]]).augmenttargetlength;iv++)//shiftup
 													(window[sublist[0]])[aug][itwin][iline][iv-shiftby]=(window[sublist[0]])[aug][itwin][iline][iv];
-												//NOTE THIS MUST STILL ASSIGN NEWVALS!
+												for (iv=0;iv<newvals.length;iv++)//assign new values
+													(window[sublist[0]])[aug][itwin][iline][(window[sublist[0]])[aug][itwin][iline].length]=newvals[iv];
 											}else
 											{
 												alert('data lost?')
@@ -783,9 +785,11 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 										for (iv=shiftby;iv<(window[sublist[0]]).augmenttargetlength;iv++)//shiftup
 											(window[sublist[0]])[aug][iv-shiftby]=(window[sublist[0]])[aug][iv];
 										//NOTE THIS MUST STILL ASSIGN NEWVALS!
+										for (iv=0;iv<newvals.length;iv++)//assign new values
+											(window[sublist[0]])[aug][(window[sublist[0]])[aug].length]=newvals[iv];									
 									}else
 									{
-										alert('data lost?')
+										document.getElementById("healthtext").innerHTML='data lost?'
 									}
 								}
 						    }

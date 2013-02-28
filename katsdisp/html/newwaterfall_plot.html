@@ -837,9 +837,11 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 									for (iv=shiftby;iv<(window[sublist[0]]).augmenttargetlength;iv++)//shiftup
 										(window[sublist[0]])[aug][iv-shiftby]=(window[sublist[0]])[aug][iv];
 									//NOTE THIS MUST STILL ASSIGN NEWVALS!
+									for (iv=0;iv<newvals.length;iv++)//assign new values
+										(window[sublist[0]])[aug][(window[sublist[0]])[aug].length]=newvals[iv];									
 								}else
 								{
-									alert('data lost?')
+									document.getElementById("healthtext").innerHTML='data lost?'
 								}
 							}
 						}
