@@ -68,7 +68,7 @@ import mplh5canvas.simple_server as simple_server
 import thread
 import socket
 import struct
-import sys
+import sys,os
 import types
 import string
 import operator
@@ -1003,7 +1003,10 @@ def timeseries_draw():
         f1.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
     except Exception,e:
-        print time.asctime()+' Exception in timeseries_draw (%s) debugline '%e,debugline,' subdebugline ',subdebugline, ' subsub ',subsubdebugline, ' sub3 ',sub3debugline
+        print time.asctime()+' Exception in timeseries_draw (%s) at line %d'%(e,sys.exc_info()[2].tb_lineno),' debugline',debugline,' subdebugline ',subdebugline, ' subsub ',subsubdebugline, ' sub3 ',sub3debugline
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        # print(exc_type, fname, exc_tb.tb_lineno)
 
 
 spectrum_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[],'timestamp':0}
@@ -1068,7 +1071,7 @@ def spectrum_draw():
                 plotonlineflagspan1.append((pair[1]-0.5))
         elif (spectrum_seltypemenux=='mhz'):
             halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/2.0
-            minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]
+            minx=datasd.receiver.center_freqs_mhz[-1]
             maxx=datasd.receiver.center_freqs_mhz[0]
             if (time_channelphase!=''):
                 plottimechannelphase=(datasd.receiver.center_freqs_mhz[int(time_channelphase)]-halfchanwidth)
@@ -1080,7 +1083,7 @@ def spectrum_draw():
                 plotonlineflagspan1.append((datasd.receiver.center_freqs_mhz[pair[1]]-halfchanwidth))
         else:
             halfchanwidth=abs(datasd.receiver.center_freqs_mhz[0]-datasd.receiver.center_freqs_mhz[1])/1000.0/2.0
-            minx=datasd.receiver.center_freqs_mhz[spectrum_width-1]/1000.0
+            minx=datasd.receiver.center_freqs_mhz[-1]/1000.0
             maxx=datasd.receiver.center_freqs_mhz[0]/1000.0
             if (time_channelphase!=''):
                 plottimechannelphase=(datasd.receiver.center_freqs_mhz[int(time_channelphase)]/1000.0-halfchanwidth)
@@ -1155,7 +1158,10 @@ def spectrum_draw():
         f2.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
     except Exception,e:
-        print time.asctime()+' Exception in spectrum_draw (%s)'%e
+        print time.asctime()+' Exception in spectrum_draw (%s) at line %d'%(e,sys.exc_info()[2].tb_lineno)
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        # print(exc_type, fname, exc_tb.tb_lineno)
 
 
 waterfall_fig={'title':[],'xdata':[],'ydata':[],'cdata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'xlabel':[],'ylabel':[],'clabel':[],'xunit':[],'yunit':[],'cunit':[],'span':[],'spancolor':[],'timestamp':0}
@@ -1234,7 +1240,10 @@ def waterfall_draw():
         
 
     except Exception,e:
-        print time.asctime()+' Exception in waterfall_draw (%s)'%e
+        print time.asctime()+' Exception in waterfall_draw (%s) at line %d'%(e,sys.exc_info()[2].tb_lineno)
+        # exc_type, exc_obj, exc_tb = sys.exc_info()
+        # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        # print(exc_type, fname, exc_tb.tb_lineno)
 
 def matrix_draw():
     try:
@@ -1613,6 +1622,7 @@ def handle_data_user_event_waterfall(handlerkey,*args):
         if (args[0]=='sendfigure'):
             lastts=float(args[1])
             lastrecalc=float(args[2])
+#            print 'lastts',lastts,'lastrecalc',lastrecalc,'waterfall_recalced',waterfall_recalced
             if (lastrecalc<waterfall_recalced):
                 send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
                 local_cseries=(waterfall_fig['cdata'])[:]
@@ -1700,6 +1710,7 @@ def handle_data_user_event_waterfall(handlerkey,*args):
 def pack_binarydata_msg(varname,val,dtype):
     bytesize  ={'s':1, 'f':4,   'd':8,   'b':1,   'h':2,   'i':4,   'B':1,   'H':2,   'I':4}
     structconv={'s':1, 'f':'f', 'd':'d', 'b':'B', 'h':'H', 'i':'I', 'B':'B', 'H':'H', 'I':'I'}
+    npconv={'s':1, 'f':'float32', 'd':'float64', 'b':'uint8', 'h':'uint16', 'i':'uint32', 'B':'uint8', 'H':'uint16', 'I':'uint32'}
     lenvarname=len(varname)
     if (type(val)==np.ndarray):
         shp=val.shape
@@ -1720,6 +1731,7 @@ def pack_binarydata_msg(varname,val,dtype):
             buff+=sval+'\x00';
     elif (dtype=='B' or dtype=='H' or dtype=='I'):
         val=np.array(val,dtype='float')
+        wval=np.zeros(np.shape(val),dtype=npconv[dtype])
         finiteind=np.nonzero(np.isfinite(val)==True)[0]
         finitevals=val[finiteind]
         minval=np.min(finitevals)
@@ -1727,11 +1739,13 @@ def pack_binarydata_msg(varname,val,dtype):
         if (maxval==minval):
             maxval=minval+1
         maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
-        val[finiteind]=np.array((val[finiteind]-minval)/(maxval-minval)*(maxrange),dtype='int')+3
-        val[np.nonzero(val==-np.inf)[0]]=0
-        val[np.nonzero(val==np.inf)[0]]=1
-        val[np.nonzero(np.isnan(val)==True)[0]]=2
-        buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*val)
+    
+        wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3
+        wval[np.nonzero(val==-np.inf)[0]]=0
+        wval[np.nonzero(val==np.inf)[0]]=1
+        wval[np.nonzero(np.isnan(val)==True)[0]]=2
+                
+        buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*wval)
         if (dtype=='I'):
             buff+=struct.pack('<d',minval)#use double precision limits here
             buff+=struct.pack('<d',maxval)
@@ -1739,7 +1753,9 @@ def pack_binarydata_msg(varname,val,dtype):
             buff+=struct.pack('<f',minval)
             buff+=struct.pack('<f',maxval)
     elif (dtype=='f' or dtype=='d' or dtype =='b' or dtype =='h' or dtype =='i'):#encodes list or ndarray of floats
-        buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*val)
+        wval=np.array(val,dtype=npconv[dtype])
+        buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*wval)
+        
     return buff
 
 def parse_data_web_cmd(s, request):
@@ -1764,14 +1780,12 @@ def parse_data_web_cmd(s, request):
 
 def send_binarydata_cmd_handlerkey(binarydata, handlerkey):
     try:
-#        handlerkey._request_handler.connection.send(binarydata)
         handlerkey.ws_stream.send_message(binarydata,binary=True)
-    except AttributeError:
-         # connection has gone
-        logger.info("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+    except AttributeError:         # connection has gone
+        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
         deregister_request_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e))
+        print "Failed to send message (%s)" % str(e)
 
 def send_data_cmd_handlerkey(cmd, handlerkey):
     #for r in self._request_handlers.keys():
@@ -1780,7 +1794,7 @@ def send_data_cmd_handlerkey(cmd, handlerkey):
         handlerkey.ws_stream.send_message(frame.decode('utf-8'))
     except AttributeError:
          # connection has gone
-        logger.info("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
         deregister_request_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)" % str(e))
@@ -1790,29 +1804,19 @@ def register_request_handler(request):
 
 def deregister_request_handler(request):
     del _request_handlers[request]
-
-def web_binarydata_socket_transfer_data(request):
-    register_request_handler(request)
-    while True:
-        try:
-            data = request.ws_stream.receive_message()
-            # if isinstance(data, unicode):#unicode
-            # else:#binary
-            parse_data_web_cmd(line,request)
-        except Exception, e:
-            logger.error("Caught exception (%s). Removing registered handler" % str(e))
-            deregister_request_handler(request)
-            return
+    del _request_type[request]
+    del _request_time[request]
+    del _request_lasttime[request]
 
 def web_data_socket_transfer_data(request):
     register_request_handler(request)
     while True:
         try:
             line = request.ws_stream.receive_message()
-            logger.debug("Received web cmd: %s" % line)
+#            logger.debug("Received web cmd: %s" % line)
             parse_data_web_cmd(line,request)
         except Exception, e:
-            logger.error("Caught exception (%s). Removing registered handler" % str(e))
+            print "Caught exception (%s). Removing registered handler" % str(e)
             deregister_request_handler(request)
             return
         
