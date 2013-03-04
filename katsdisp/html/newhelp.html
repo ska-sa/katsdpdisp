@@ -5,7 +5,57 @@
 
 <body onload='myloadpage()' bgcolor="#FFFFFF">
 	<script>
+	var username=''
+	function createCookie(name,value,days) {
+		if (days) {
+			var date = new Date();
+			date.setTime(date.getTime()+(days*24*60*60*1000));
+			var expires = "; expires="+date.toGMTString();
+		}
+		else var expires = "";
+		document.cookie = name+"="+value+expires+"; path=/";
+	}
 
+	function readCookie(name) {
+		var nameEQ = name + "=";
+		var ca = document.cookie.split(';');
+		for(var i=0;i < ca.length;i++) {
+			var c = ca[i];
+			while (c.charAt(0)==' ') c = c.substring(1,c.length);
+			if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+		}
+		return null;
+	}
+	function checkCookie()
+	{
+	var username=readCookie("username");
+	if (username!=null && username!="")
+	  {
+		document.getElementById("usrname").innerHTML=username
+		setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+	  }
+	else 
+	  {
+	  	username=prompt("Please enter your name:","");
+	  	if (username!=null && username!="")
+	    {
+	    	createCookie("username",username,365);
+			document.getElementById("usrname").innerHTML=username
+			setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+	    }
+	  }
+	}
+	function newCookie()
+	{
+		var username=readCookie("username");
+	  	username=prompt("Please enter your name:",username);
+	  	if (username!=null && username!="")
+	    {
+	    	createCookie("username",username,365);
+			document.getElementById("usrname").innerHTML=username
+			handle_data_user_event("setusername,"+username)
+	    }
+	}
 	var timerid;
 	var g_icase=-1
 	var g_nlines=[1,10,20,40];
@@ -31,6 +81,7 @@
 			
 	function myloadpage(){
 		connect_manager();
+		checkCookie()
 		timerid=setInterval(requestdata,10000)
 	}
 	function showhideDebug(){
@@ -50,7 +101,7 @@
 	</div>
 	<div align="right" style="position: absolute; right:5px; top:6px"> 
 	<small>
-	 <A HREF="#" onClick="showhideDebug();">Debug</A>  <b>Help</b>
+	 <A id="usrname" HREF="#" onClick="newCookie();"></A> <A HREF="#" onClick="showhideDebug();">Debug</A>  <b>Help</b>
 	</small>
 	</div>
 

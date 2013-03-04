@@ -997,7 +997,7 @@ def timeseries_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_timeseries'):
-                strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
 
         debugline+='h'
         f1.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
@@ -1153,7 +1153,7 @@ def spectrum_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_spectrum'):
-                strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
 
         f2.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
@@ -1234,7 +1234,7 @@ def waterfall_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_waterfall'):
-                strng+=str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
 
         f3.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
@@ -1508,6 +1508,7 @@ _request_handlers = {}
 _request_type = {}
 _request_time = {}
 _request_lasttime = {}
+_request_username = {}
 
 def handle_data_user_event_timeseries(handlerkey,*args):
     try:
@@ -1568,6 +1569,10 @@ def handle_data_user_event_timeseries(handlerkey,*args):
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',timeseries_fig['ymax'],'f'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
                     send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
+        elif (args[0]=='setusername'):
+            _request_username[handlerkey]=args[1]
+            print 'username', args[1]
+            
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1611,6 +1616,9 @@ def handle_data_user_event_spectrum(handlerkey,*args):
                 send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ymax',spectrum_fig['ymax'],'f'),handlerkey)
                 send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
                 send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
+        elif (args[0]=='setusername'):
+            _request_username[handlerkey]=args[1]
+            print 'username', args[1]
                         
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
@@ -1622,11 +1630,11 @@ def handle_data_user_event_waterfall(handlerkey,*args):
         if (args[0]=='sendfigure'):
             lastts=float(args[1])
             lastrecalc=float(args[2])
-#            print 'lastts',lastts,'lastrecalc',lastrecalc,'waterfall_recalced',waterfall_recalced
             if (lastrecalc<waterfall_recalced):
+#                print 'lastts',lastts,'lastrecalc',lastrecalc,'waterfall_recalced',waterfall_recalced
                 send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
                 local_cseries=(waterfall_fig['cdata'])[:]
-                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
+                send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata.completed',np.zeros(np.shape(local_cseries)[:1]),'b'),handlerkey)
                 send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.recalc',waterfall_recalced,'i'),handlerkey)
                 send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
                 send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.xlabel',waterfall_fig['xlabel'],'s'),handlerkey)
@@ -1652,6 +1660,7 @@ def handle_data_user_event_waterfall(handlerkey,*args):
                     send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending line %d of %d"'%(iline+1,len(local_cseries)),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cdata[%d]'%(iline),linedata,'B'),handlerkey)
             else:#only send update
+#                print 'update lastts',lastts,'lastrecalc',lastrecalc,'waterfall_recalced',waterfall_recalced
                 where=np.where(waterfall_fig['ydata']>lastts+0.01)[0]#next time stamp index
                 if (len(where)>0):
                     its=np.min(where)
@@ -1659,7 +1668,7 @@ def handle_data_user_event_waterfall(handlerkey,*args):
                     local_cseries=(waterfall_fig['cdata'])[its:]
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmentlevel',1,'b'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augmenttargetlength',len(waterfall_fig['ydata']),'h'),handlerkey)
-                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.cdata.completed',np.zeros(np.shape(local_cseries)[:2]),'b'),handlerkey)
+                    send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.augment.cdata.completed',np.zeros(np.shape(local_cseries)[:1]),'b'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.title',waterfall_fig['title'],'s'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ylabel',waterfall_fig['ylabel'],'s'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ydata',(waterfall_fig['ydata']),'I'),handlerkey)
@@ -1682,6 +1691,9 @@ def handle_data_user_event_waterfall(handlerkey,*args):
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.cmax',waterfall_fig['cmax'],'f'),handlerkey)
                     send_binarydata_cmd_handlerkey(pack_binarydata_msg('fig.ignore[0]',np.zeros([1]),'b'),handlerkey)
                     send_data_cmd_handlerkey('document.getElementById("timeclientusereventroundtrip").innerHTML="sending nothing"',handlerkey)
+        elif (args[0]=='setusername'):
+            _request_username[handlerkey]=args[1]
+            print 'username', args[1]
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
@@ -1807,6 +1819,7 @@ def deregister_request_handler(request):
     del _request_type[request]
     del _request_time[request]
     del _request_lasttime[request]
+    del _request_username[request]
 
 def web_data_socket_transfer_data(request):
     register_request_handler(request)

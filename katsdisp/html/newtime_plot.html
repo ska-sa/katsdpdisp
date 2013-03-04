@@ -4,6 +4,57 @@
 </head>
 <body onload='myloadpage()' bgcolor="#FFFFFF">
 	<script>
+	var username=''
+	function createCookie(name,value,days) {
+		if (days) {
+			var date = new Date();
+			date.setTime(date.getTime()+(days*24*60*60*1000));
+			var expires = "; expires="+date.toGMTString();
+		}
+		else var expires = "";
+		document.cookie = name+"="+value+expires+"; path=/";
+	}
+
+	function readCookie(name) {
+		var nameEQ = name + "=";
+		var ca = document.cookie.split(';');
+		for(var i=0;i < ca.length;i++) {
+			var c = ca[i];
+			while (c.charAt(0)==' ') c = c.substring(1,c.length);
+			if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+		}
+		return null;
+	}
+	function checkCookie()
+	{
+	var username=readCookie("username");
+	if (username!=null && username!="")
+	  {
+		document.getElementById("usrname").innerHTML=username
+		setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+	  }
+	else 
+	  {
+	  	username=prompt("Please enter your name:","");
+	  	if (username!=null && username!="")
+	    {
+	    	createCookie("username",username,365);
+			document.getElementById("usrname").innerHTML=username
+			setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+	    }
+	  }
+	}
+	function newCookie()
+	{
+		var username=readCookie("username");
+	  	username=prompt("Please enter your name:",username);
+	  	if (username!=null && username!="")
+	    {
+	    	createCookie("username",username,365);
+			document.getElementById("usrname").innerHTML=username
+			handle_data_user_event("setusername,"+username)
+	    }
+	}
 		var log10=Math.log(10);
 		var tickfontHeight=15;
 		var tickfont2Height=tickfontHeight*0.7;
@@ -354,7 +405,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		
 
 		function drawFigure(datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist){
-			if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined")
+			if (document.getElementById('myfigurediv').style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
 			{
 				figureupdated=1
 				return;
@@ -865,12 +916,12 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				{
 					document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
 				}
-				if (lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
+				if (figureupdated==0 && lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
 				{
 					document.getElementById("healthtext").innerHTML+=' ... requesting response'
-					lastupdate=0
+					figureupdated=1
 				}
-				if (figureupdated==1 || lastupdate==0)//|| (time0-lastupdate>30000))//30 second timeout
+				if (figureupdated==1)//|| (time0-lastupdate>30000))//30 second timeout
 				{
 					figureupdated=0;
 					nx=RG_fig.xdata.length
@@ -999,6 +1050,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 				connect_manager();
 				start_data();
 				redrawlineCanvas()
+				checkCookie()
 				document.getElementById("healthtext").innerHTML=datafile;
 				if (datafile!='stream')
 				{
@@ -2064,7 +2116,7 @@ context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((number
 		</div>
 		<div align="right" style="position: absolute; right:5px; top:6px"> 
 		<small>
-			<A id="prevchunkid" HREF="#" onClick="prevchunk();" style="display:none">prev</A> <A id="nextchunkid" HREF="#" onClick="nextchunk();" style="display:none">next</A> <A id="saveid" HREF="#" onClick="saveFigure();">png</A> <A HREF="#" onClick="showhideControls();">Controls</A> <A HREF="#" onClick="showhideDebug();">Debug</A> <A HREF="figure5">Help</A>
+			<A id="prevchunkid" HREF="#" onClick="prevchunk();" style="display:none">prev</A> <A id="nextchunkid" HREF="#" onClick="nextchunk();" style="display:none">next</A> <A id="usrname" HREF="#" onClick="newCookie();"></A> <A id="saveid" HREF="#" onClick="saveFigure();">png</A> <A HREF="#" onClick="showhideControls();">Controls</A> <A HREF="#" onClick="showhideDebug();">Debug</A> <A HREF="figure5">Help</A>
 		</small>
 		</div>
 	<div id="controls" align="left" style="position: relative;">
