@@ -2312,103 +2312,105 @@ else:
     while True:
         #if (datasd.storage.frame_count > 0 and datasd.storage.frame_count % 20 == 0): print_top_100()
         ts_start = time.time()
-        if (datasd.storage.frame_count==0):
-            if (reissuenotice==0):
-                print 'Please resume capture, and then re-issue metadata'
-                reissuenotice=1;
-            msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
-        else:
-            reissuenotice=0
-            if (datasd.receiver.channels==0):
-                msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
-            elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
-                print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
-                spectrum_width=datasd.receiver.channels
-                spectrum_flagmask=np.ones([spectrum_width])
-                spectrum_flagstr=''
+        try:
+            if (datasd.storage.frame_count==0):
+                if (reissuenotice==0):
+                    print 'Please resume capture, and then re-issue metadata'
+                    reissuenotice=1;
                 msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
             else:
-                antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
-                s = datasd.select_data(product=0, end_time=-2, start_channel=0, stop_channel=1, include_ts=True)
-                if (len(s[0])>0):#store not entirely empty
-                    time_now=s[0][-1]
-                    if (time_now==time_last):
-                        nowdelay+=1;
-                    else:
-                        nowdelay=0;
-                    if (len(s[0])>1):
-                        time_nownow=s[0][-2]
-                        if (nowdelay>(time_now-time_nownow)+1):
-                            msg='document.getElementById("healthtext").innerHTML="halted stream";'
+                reissuenotice=0
+                if (datasd.receiver.channels==0):
+                    msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
+                elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
+                    print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
+                    spectrum_width=datasd.receiver.channels
+                    spectrum_flagmask=np.ones([spectrum_width])
+                    spectrum_flagstr=''
+                    msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
+                else:
+                    antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+                    s = datasd.select_data(product=0, end_time=-2, start_channel=0, stop_channel=1, include_ts=True)
+                    if (len(s[0])>0):#store not entirely empty
+                        time_now=s[0][-1]
+                        if (time_now==time_last):
+                            nowdelay+=1;
                         else:
-                            msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
-                    else:#one element in store
-                        msg='document.getElementById("healthtext").innerHTML="activating";'
-                else:#store is empty
-                    time_now=0
-                    msg='document.getElementById("healthtext").innerHTML="store empty for %ds";'%(ts_start-last_real_time)
-                
-                if (1):#forcerecalc or time_last!=time_now):
-                    forcerecalc=False
-                    timeseries_draw()
-                    ts_ts_end = time.time()
-                    spectrum_draw()
-                    ts_sp_end = time.time()
-                    waterfall_draw()
-                    ts_wf_end = time.time()
-                    #matrix_draw()
-                    ts_end = time.time()
-                    last_real_time=ts_end
-                    time_last=time_now
-                    strn="Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end - ts_start)
-                    f1.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
-                    f2.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
-                    f3.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
-        if (lastmsg!=msg or not np.array_equal(lastantbase,antbase)):
-            lastmsg=msg
-            if (not np.array_equal(lastantbase,antbase)):
-                otime_antbase0=time_antbase0
-                otime_antbase1=time_antbase1
-                time_antbase0=[]
-                time_antbase1=[]
-                for c in range(len(otime_antbase0)):
-                    if (otime_antbase0[c] in antbase and otime_antbase1[c] in antbase):
-                        time_antbase0.append(otime_antbase0[c])
-                        time_antbase1.append(otime_antbase1[c])
-                ospectrum_antbase0=spectrum_antbase0
-                ospectrum_antbase1=spectrum_antbase1
-                spectrum_antbase0=[]
-                spectrum_antbase1=[]
-                for c in range(len(ospectrum_antbase0)):
-                    if (ospectrum_antbase0[c] in antbase and ospectrum_antbase1[c] in antbase):
-                        spectrum_antbase0.append(ospectrum_antbase0[c])
-                        spectrum_antbase1.append(ospectrum_antbase1[c])
-                owaterfall_antbase0=waterfall_antbase0
-                owaterfall_antbase1=waterfall_antbase1
-                waterfall_antbase0=[]
-                waterfall_antbase1=[]
-                for c in range(len(owaterfall_antbase0)):
-                    if (owaterfall_antbase0[c] in antbase and owaterfall_antbase1[c] in antbase):
-                        waterfall_antbase0.append(owaterfall_antbase0[c])
-                        waterfall_antbase1.append(owaterfall_antbase1[c])
-            
-            newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
-            f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
-            newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
-            f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
-            newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
-            f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
-            if (not np.array_equal(lastantbase,antbase)):
-                lastantbase=antbase
-                f1.canvas.send_cmd(newcontent1)
-                f2.canvas.send_cmd(newcontent2)
-                f3.canvas.send_cmd(newcontent3)
-                # f4.canvas.send_cmd(newcontent4)
-        f1.canvas.send_cmd(msg)
-        f2.canvas.send_cmd(msg)
-        f3.canvas.send_cmd(msg)
-        # f4.canvas.send_cmd(msg)
-                
+                            nowdelay=0;
+                        if (len(s[0])>1):
+                            time_nownow=s[0][-2]
+                            if (nowdelay>(time_now-time_nownow)+1):
+                                msg='document.getElementById("healthtext").innerHTML="halted stream";'
+                            else:
+                                msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
+                        else:#one element in store
+                            msg='document.getElementById("healthtext").innerHTML="activating";'
+                    else:#store is empty
+                        time_now=0
+                        msg='document.getElementById("healthtext").innerHTML="store empty for %ds";'%(ts_start-last_real_time)
+
+                    if (1):#forcerecalc or time_last!=time_now):
+                        forcerecalc=False
+                        timeseries_draw()
+                        ts_ts_end = time.time()
+                        spectrum_draw()
+                        ts_sp_end = time.time()
+                        waterfall_draw()
+                        ts_wf_end = time.time()
+                        #matrix_draw()
+                        ts_end = time.time()
+                        last_real_time=ts_end
+                        time_last=time_now
+                        strn="Timeseries: %.2fs, Spectrum: %.2fs, Waterfall: %.2fs, Matrix: %.2fs, Total: %.2fs" % (ts_ts_end - ts_start, ts_sp_end - ts_ts_end, ts_wf_end - ts_sp_end, ts_end - ts_wf_end, ts_end - ts_start)
+                        f1.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                        f2.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+                        f3.canvas.send_cmd('document.getElementById("timeserveroverview").innerHTML="'+strn+'";')
+            if (lastmsg!=msg or not np.array_equal(lastantbase,antbase)):
+                lastmsg=msg
+                if (not np.array_equal(lastantbase,antbase)):
+                    otime_antbase0=time_antbase0
+                    otime_antbase1=time_antbase1
+                    time_antbase0=[]
+                    time_antbase1=[]
+                    for c in range(len(otime_antbase0)):
+                        if (otime_antbase0[c] in antbase and otime_antbase1[c] in antbase):
+                            time_antbase0.append(otime_antbase0[c])
+                            time_antbase1.append(otime_antbase1[c])
+                    ospectrum_antbase0=spectrum_antbase0
+                    ospectrum_antbase1=spectrum_antbase1
+                    spectrum_antbase0=[]
+                    spectrum_antbase1=[]
+                    for c in range(len(ospectrum_antbase0)):
+                        if (ospectrum_antbase0[c] in antbase and ospectrum_antbase1[c] in antbase):
+                            spectrum_antbase0.append(ospectrum_antbase0[c])
+                            spectrum_antbase1.append(ospectrum_antbase1[c])
+                    owaterfall_antbase0=waterfall_antbase0
+                    owaterfall_antbase1=waterfall_antbase1
+                    waterfall_antbase0=[]
+                    waterfall_antbase1=[]
+                    for c in range(len(owaterfall_antbase0)):
+                        if (owaterfall_antbase0[c] in antbase and owaterfall_antbase1[c] in antbase):
+                            waterfall_antbase0.append(owaterfall_antbase0[c])
+                            waterfall_antbase1.append(owaterfall_antbase1[c])
+
+                newcontent1=makenewcontent(spectrum_flagstr,antennamappingmode,time_antbase0,time_antbase1,time_corrHH,time_corrVV,time_corrHV,time_corrVH,time_legend,time_seltypemenu,time_minF,time_maxF,"",time_minx,time_maxx,"","","","",time_timeavg,time_channelphase,lastmsg);
+                f1.canvas._custom_content = setloadpage(f1.canvas._custom_content,newcontent1);
+                newcontent2=makenewcontent(spectrum_flagstr,antennamappingmode,spectrum_antbase0,spectrum_antbase1,spectrum_corrHH,spectrum_corrVV,spectrum_corrHV,spectrum_corrVH,spectrum_legend,spectrum_seltypemenu,spectrum_minF,spectrum_maxF,spectrum_seltypemenux,spectrum_minx,spectrum_maxx,"","","",spectrum_timeinst,spectrum_timeavg,"",lastmsg);
+                f2.canvas._custom_content = setloadpage(f2.canvas._custom_content,newcontent2);
+                newcontent3=makenewcontent("none",antennamappingmode,waterfall_antbase0,waterfall_antbase1,waterfall_corrHH,waterfall_corrVV,waterfall_corrHV,waterfall_corrVH,"",waterfall_seltypemenu,waterfall_minF,waterfall_maxF,waterfall_seltypemenux,waterfall_minx,waterfall_maxx,"",waterfall_miny,waterfall_maxy,"","","",lastmsg);
+                f3.canvas._custom_content = setloadpage(f3.canvas._custom_content,newcontent3);
+                if (not np.array_equal(lastantbase,antbase)):
+                    lastantbase=antbase
+                    f1.canvas.send_cmd(newcontent1)
+                    f2.canvas.send_cmd(newcontent2)
+                    f3.canvas.send_cmd(newcontent3)
+                    # f4.canvas.send_cmd(newcontent4)
+            f1.canvas.send_cmd(msg)
+            f2.canvas.send_cmd(msg)
+            f3.canvas.send_cmd(msg)
+            # f4.canvas.send_cmd(msg)
+        except Exception,e:
+            print time.asctime()+' Exception in main loop (%s) at line %d'%(e,sys.exc_info()[2].tb_lineno)
         
         loop_time = time.time() - ts_start
         iloop+=1
