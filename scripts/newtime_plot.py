@@ -995,13 +995,16 @@ def timeseries_draw():
 
         strng='last server data requests (interval): '
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
+        removelist=[]
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_timeseries'):
                 lastinterval=ts_finalend-_request_time[key]
                 strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
                 if (lastinterval>=120):
-                    print 'Removing',_request_username[key],'timeseries client due to inactivity '
-                    deregister_request_handler(key)
+                    removelist.append(key)
+        for key in removelist:
+            print 'Removing',_request_username[key],'timeseries client due to inactivity '
+            deregister_request_handler(key)
 
         debugline+='h'
         f1.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
@@ -1155,13 +1158,16 @@ def spectrum_draw():
 
         strng='last server data requests (interval): '
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
+        removelist=[]
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_spectrum'):
                 lastinterval=ts_finalend-_request_time[key]
                 strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
                 if (lastinterval>=120):
-                    print 'Removing',_request_username[key],'spectrum client due to inactivity '
-                    deregister_request_handler(key)
+                    removelist.append(key)
+        for key in removelist:
+            print 'Removing',_request_username[key],'spectrum client due to inactivity '
+            deregister_request_handler(key)
 
         f2.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
@@ -1240,13 +1246,16 @@ def waterfall_draw():
 
         strng='last server data requests (interval): '
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
+        removelist=[]
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_waterfall'):
                 lastinterval=ts_finalend-_request_time[key]
                 strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
                 if (lastinterval>=120):
-                    print 'Removing',_request_username[key],'waterfall client due to inactivity '
-                    deregister_request_handler(key)
+                    removelist.append(key)
+        for key in removelist:
+            print 'Removing',_request_username[key],'waterfall client due to inactivity '
+            deregister_request_handler(key)
 
         f3.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
@@ -1827,11 +1836,11 @@ def register_request_handler(request):
     _request_handlers[request] = request.connection.remote_addr[0]
 
 def deregister_request_handler(request):
-    del _request_handlers[request]
     del _request_type[request]
     del _request_time[request]
     del _request_lasttime[request]
     del _request_username[request]
+    del _request_handlers[request]
 
 def web_data_socket_transfer_data(request):
     register_request_handler(request)
