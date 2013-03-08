@@ -997,7 +997,11 @@ def timeseries_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_timeseries'):
-                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                lastinterval=ts_finalend-_request_time[key]
+                strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                if (lastinterval>=120):
+                    print 'Removing',_request_username[key],'timeseries client due to inactivity '
+                    deregister_request_handler(key)
 
         debugline+='h'
         f1.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
@@ -1153,7 +1157,11 @@ def spectrum_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_spectrum'):
-                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                lastinterval=ts_finalend-_request_time[key]
+                strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                if (lastinterval>=120):
+                    print 'Removing',_request_username[key],'spectrum client due to inactivity '
+                    deregister_request_handler(key)
 
         f2.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
@@ -1234,7 +1242,11 @@ def waterfall_draw():
         sortedbytime = sorted(_request_lasttime.iteritems(), key=operator.itemgetter(1), reverse=True)
         for key,lastreqtime in sortedbytime:
             if (_request_type[key]=='data_user_event_waterfall'):
-                strng+=_request_username[key]+': '+str(int(np.round(ts_finalend-_request_time[key])))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                lastinterval=ts_finalend-_request_time[key]
+                strng+=_request_username[key]+': '+str(int(np.round(lastinterval)))+'s ('+str(int(np.round((_request_time[key]-lastreqtime)*1000.0)))+')   '
+                if (lastinterval>=120):
+                    print 'Removing',_request_username[key],'waterfall client due to inactivity '
+                    deregister_request_handler(key)
 
         f3.canvas.send_cmd('document.getElementById("timeserverreqinterval").innerHTML="'+strng+'";')
         
