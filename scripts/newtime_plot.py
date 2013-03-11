@@ -2349,7 +2349,6 @@ else:
                             time_nownow=s[0][-2]
                             if (nowdelay>(time_now-time_nownow)+1):
                                 msg='document.getElementById("healthtext").innerHTML="halted stream";'
-                                print '(time_now-time_nownow)',(time_now-time_nownow),'nowdelay',nowdelay,'time_now',time_now
                             else:
                                 msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
                         else:#one element in store
