@@ -187,8 +187,6 @@ spectrum_flagstr='';
 spectrum_flag0=[]
 spectrum_flag1=[]
 spectrum_flagmask=[]
-time_now=0
-time_nownow=0
 linestyledict={'HH':'-','VV':'-','HV':'--','VH':':','XX':'-','YY':'-','XY':'--','YX':':','xx':'-','yy':'-','xy':'--','yx':':'}
 linewidthdict={'HH':2,'VV':1,'HV':1,'VH':1,'XX':2,'YY':1,'XY':1,'YX':1,'xx':2,'yy':1,'xy':1,'yx':1}
 antposx_html='['+''.join(str(x)+',' for x in antposx[:-1])+str(antposx[-1])+']'
@@ -256,14 +254,6 @@ def user_cmd_ret(*args):
     """Handle any data returned from calls to canvas.send_cmd()"""
 #    print "Got return from user event: %s" % str(args)#to debug
     logger.debug("Got return from user event: %s" % str(args))
-
-def delayformatter(x,pos):
-    global time_now,time_absminx,time_absmaxx
-    'The two args are the value and tick position'
-    if (time_absmaxx>=0):
-        return time.ctime(x+time_now).split(' ')[-2]
-    else:
-        return str(x)+' \n'+time.ctime(x+time_now).split(' ')[-2]
     
 time_serverselectdata=0
 time_serverflaglogavg=0
@@ -448,7 +438,7 @@ subdebugline='a'
 def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global subdebugline
     global time_serverselectdata, time_serverflaglogavg
-    global f1,f1a,f1b,spectrum_width,time_timeavg,time_now,time_nownow
+    global f1,f1a,f1b,spectrum_width,time_timeavg
     global time_absminx,time_absmaxx,time_minx,time_maxx
     plotyseries=[]
     plotyseries2=[]
@@ -509,16 +499,14 @@ def plot_time_series(self, dtype='mag', products=None, end_time=-120, start_chan
     #
     subdebugline+='e'
     ts = s[0]    #time delay
-    time_now=s[0][-1]
-    time_nownow=s[0][-2]
     if (time_timeavg!=''):
         reduction=int(time_timeavg);
         ts=(ts[0::reduction])[0:len(plotyseries[0])];
     
     plotx=ts
     subdebugline+='f'
-    plotxlabel="Time since " + time.ctime(s[0][-1])
     plottimestamp=s[0][-1]
+    plotxlabel="Time since " + time.ctime(plottimestamp)
     plotxunit='s'
     plotylabel2=""
     plotyunit2=""
@@ -709,7 +697,6 @@ def plot_spectrum(self, dtype='mag', products=None, start_channel=0, stop_channe
 
 def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=0, stop_channel=spectrum_width):
     global waterfall_serverselectdata,waterfall_serverflaglogavg
-    global time_now,time_nownow
     if product is None: product = self.default_product
     if (self.storage.frame_count==0 or self.cpref.user_to_id(product)<0):
         return [[],[],""]
@@ -725,8 +712,6 @@ def get_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120
         t1=time.time()
         t2=t1
     ts = tp0
-    time_now=tp0[-1]
-    time_nownow=tp0[-2]
     tp1=np.array(tp1)
     waterfall_serverselectdata+=t1-t0
     waterfall_serverflaglogavg+=t2-t1
@@ -952,13 +937,13 @@ def timeseries_draw():
         if (time_absminx<=0 and time_minx!=''):
             new_fig['xmin']=double(time_minx)
         elif (time_absminx>0):
-            new_fig['xmin']=double(time_absminx-time_now)
+            new_fig['xmin']=double(time_absminx-new_fig['timestamp'])
         else:
             new_fig['xmin']=np.nan
         if (time_absmaxx<=0 and time_maxx!=''):
             new_fig['xmax']=double(time_maxx)
         elif (time_absmaxx>0):
-            new_fig['xmax']=double(time_absmaxx-time_now)
+            new_fig['xmax']=double(time_absmaxx-new_fig['timestamp'])
         else:
             new_fig['xmax']=np.nan
         if (time_minF!=''):
@@ -1283,9 +1268,9 @@ def matrix_draw():
         print time.asctime()+' Exception in matrix_draw (%s)'%e
     
 def timeseries_event(figno,*args):
-    global forcerecalc,timeseries_recalc
+    global forcerecalc,timeseries_recalc,timeseries_fig
     global dh,datasd,rows,startrow,spectrum_width
-    global time_absminx,time_absmaxx,time_now,time_channelphase,antennamappingmode
+    global time_absminx,time_absmaxx,time_channelphase,antennamappingmode
     global time_antbase0, time_antbase1, time_corrHH, time_corrVV, time_corrHV, time_corrVH, time_legend, time_seltypemenu, time_minF, time_maxF, time_minx, time_maxx, time_timeavg
     global spectrum_antbase0, spectrum_antbase1, spectrum_corrHH, spectrum_corrVV, spectrum_corrHV, spectrum_corrVH, spectrum_legend, spectrum_seltypemenu, spectrum_minF, spectrum_maxF, spectrum_seltypemenux, spectrum_minx, spectrum_maxx, spectrum_timeinst, spectrum_timeavg
     global spectrum_flagstr,spectrum_flag0,spectrum_flag1,spectrum_flagmask,spectrum_abstimeinst
@@ -1302,7 +1287,7 @@ def timeseries_event(figno,*args):
             forcerecalc=True
     elif (args[0]=="settimeinstant"):
         xlim=f1a.get_xlim();
-        spectrum_abstimeinst=time_now+double(args[1])*(xlim[1]-xlim[0])+xlim[0];
+        spectrum_abstimeinst=timeseries_fig['timestamp']+double(args[1])*(xlim[1]-xlim[0])+xlim[0];
         spectrum_timeinst=time.ctime(spectrum_abstimeinst).split(' ')[-2];
         if (datafile!='stream'):
             spectrum_draw()
@@ -1459,7 +1444,7 @@ def timeseries_event(figno,*args):
         if (datasd.storage.frame_count > 0):
             tt = datasd.select_data(product=0, end_time=-1, start_channel=0, stop_channel=1, include_ts=True)
             fkeys = tt[0]#datasd.storage.corr_prod_frames[0].keys();
-            time_now=fkeys[-1];          #get latest element
+            thetime_now=fkeys[-1];          #get latest element
             if (len(time_minx.split(':'))==3):
                 for f in fkeys:
                     if (time.ctime(f).split(' ')[-2]==time_minx):    #f is presumably UTC
@@ -1469,7 +1454,7 @@ def timeseries_event(figno,*args):
                     #                'Tue Apr 12 14:13:23 2011'  (2011, 4, 12, 14, 13, 20, 1, 102, -1)
                     #                time.ctime(time.mktime(time.strptime(time.ctime(time.time()))))
                     thesplit=time_minx.split(':');
-                    thetuple=time.gmtime(time_now)#returns a tuple
+                    thetuple=time.gmtime(thetime_now)#returns a tuple
                     time_absminx=(time.mktime((thetuple[0],thetuple[1],thetuple[2],int(thesplit[0]),int(thesplit[1]),0,thetuple[6],thetuple[7],thetuple[8]))+double(thesplit[2]));
 #                    time_minx='';
                 time_tmpmin=time_absminx
@@ -1483,7 +1468,7 @@ def timeseries_event(figno,*args):
                         break
                 if (time_absmaxx==-1):
                     thesplit=time_maxx.split(':');
-                    thetuple=time.gmtime(time_now)#returns a tuple
+                    thetuple=time.gmtime(thetime_now)#returns a tuple
                     time_absmaxx=(time.mktime((thetuple[0],thetuple[1],thetuple[2],int(thesplit[0]),int(thesplit[1]),0,thetuple[6],thetuple[7],thetuple[8]))+double(thesplit[2]));
 #                    time_maxx='';
                 time_tmpmax=time_absmaxx
@@ -2311,6 +2296,8 @@ f5.canvas._user_event = help_event
 f5.canvas._user_cmd_ret = user_cmd_ret
 f4.canvas._user_event(4,-1);
 
+time_now=0
+time_nownow=0
 timeseries_recalc=1
 timeseries_recalced=0
 spectrum_recalc=1
@@ -2362,6 +2349,7 @@ else:
                             time_nownow=s[0][-2]
                             if (nowdelay>(time_now-time_nownow)+1):
                                 msg='document.getElementById("healthtext").innerHTML="halted stream";'
+                                print '(time_now-time_nownow)',(time_now-time_nownow),'nowdelay',nowdelay,'time_now',time_now
                             else:
                                 msg='document.getElementById("healthtext").innerHTML="%gs dumps";'%(time_now-time_nownow)
                         else:#one element in store
