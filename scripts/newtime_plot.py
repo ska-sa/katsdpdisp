@@ -1785,6 +1785,8 @@ def parse_data_web_cmd(s, request):
             _request_lasttime[request]=_request_time[request]
         else:
             _request_lasttime[request]=time.time()
+        if (request not in _request_username):
+            _request_username[request]='no-name'
         _request_time[request]=time.time()
         if (action=='data_user_event_timeseries'):
             handle_data_user_event_timeseries(request,*args)
