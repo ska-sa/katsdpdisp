@@ -2332,10 +2332,12 @@ else:
                 reissuenotice=0
                 if (datasd.receiver.channels==0):
                     msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
-                elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):
+                elif (spectrum_width is None or spectrum_width!=datasd.receiver.channels):#note if this happens then the new emply flag string should also be sent to all clients
                     print time.asctime()+' nchannels change from ',spectrum_width,' to ',datasd.receiver.channels
                     spectrum_width=datasd.receiver.channels
                     spectrum_flagmask=np.ones([spectrum_width])
+                    spectrum_flag0=[]
+                    spectrum_flag1=[]
                     spectrum_flagstr=''
                     msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
                 else:
