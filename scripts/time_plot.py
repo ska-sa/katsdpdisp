@@ -119,6 +119,8 @@ parser.add_option("-o", "--open_browser",dest="open_plot",action="store_true", d
                   help="Opens browser")
 parser.add_option("-d", "--debug", dest="debug", action="store_true",default=False,
                   help="Display debug messages.")
+parser.add_option("-m", "--memusage", dest="memusage", default=10, type='float'
+                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer. (default=10)")
 
 (opts, args) = parser.parse_args()
 
@@ -2210,6 +2212,8 @@ def help_event(figno,*args):
             linestr=('['+string.join(['%.4f'%(a) for a in vals],',')+']')
             f5.canvas.send_cmd('receivedata(%d,%d,%d,'%(iline,int(args[1]),int(args[2]))+linestr+')')
 
+if (opts.memusage>50):
+    print 'Warning: attempting to allocate more than ',opts.memusage,' percent of memory - might fail.'
 f1=figure(1)
 f1a=f1.add_subplot(111)
 f1b=0
@@ -2224,11 +2228,11 @@ f5=figure(5)
 f5a=f5.add_subplot(111)
 dh=katsdisp.KATData()
 if (datafile=='stream'):
-    dh.start_spead_receiver(capacity=0.05,store2=True)
+    dh.start_spead_receiver(capacity=opts.memusage/100.0,store2=True)
     datasd=dh.sd
 elif (datafile=='k7simulator'):
     datafile='stream'
-    dh.start_direct_spead_receiver(capacity=0.05,store2=True)
+    dh.start_direct_spead_receiver(capacity=opts.memusage/100.0,store2=True)
     datasd=dh.sd
 else:
     try:
