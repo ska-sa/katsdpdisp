@@ -119,7 +119,7 @@ parser.add_option("-o", "--open_browser",dest="open_plot",action="store_true", d
                   help="Opens browser")
 parser.add_option("-d", "--debug", dest="debug", action="store_true",default=False,
                   help="Display debug messages.")
-parser.add_option("-m", "--memusage", dest="memusage", default=10, type='float'
+parser.add_option("-m", "--memusage", dest="memusage", default=10, type='float',
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer. (default=10)")
 
 (opts, args) = parser.parse_args()
