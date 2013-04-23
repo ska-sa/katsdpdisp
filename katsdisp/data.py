@@ -751,8 +751,8 @@ class SpeadSDReceiver(threading.Thread):
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
-                    if self.ig['center_freq'] is not None:
-                        if self.ig['center_freq'] != self.center_freq:
+                    if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
+                        if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
                     if self.ig['bls_ordering'] is not None:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']] != self.bls_ordering:
