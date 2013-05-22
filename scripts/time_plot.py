@@ -2386,6 +2386,66 @@ else:
                 if (not np.array_equal(lastantbase,antbase)):
                     otime_antbase0=time_antbase0
                     otime_antbase1=time_antbase1
+                    #see if all last autos are selected; if so must select all available autos
+                    #see if all last crosses are selected; if so must select all available crosses
+                    nauto=0
+                    ncross=0
+                    for c in range(len(otime_antbase0)):
+                        if (otime_antbase0[c] == otime_antbase1[c]):
+                            nauto+=1
+                        else:
+                            ncross+=1
+                    if (nauto==len(lastantbase)):
+                        for iauto in antbase:#ensure all new auto ants included
+                            found=0
+                            for c in range(len(otime_antbase0)):
+                                if (otime_antbase0[c]==iauto and otime_antbase1[c]==iauto):
+                                    found=1
+                            if not found:
+                                otime_antbase0.append(iauto)
+                                otime_antbase1.append(iauto)
+                        
+                    if (ncross==len(lastantbase)*(len(lastantbase)-1)/2):
+                        for icross in antbase:#ensure all cross ants included
+                            for jcross in antbase:
+                                if (icross!=jcross):
+                                    found=0
+                                    for c in range(len(otime_antbase0)):
+                                        if ((otime_antbase0[c]==icross and otime_antbase1[c]==jcross) or (otime_antbase0[c]==jcross and otime_antbase1[c]==icross)):
+                                            found=1
+                                    if not found:
+                                        otime_antbase0.append(min([icross,jcross]))
+                                        otime_antbase1.append(max([icross,jcross]))
+
+                    nauto=0
+                    ncross=0
+                    for c in range(len(ospectrum_antbase0)):
+                        if (ospectrum_antbase0[c] == ospectrum_antbase1[c]):
+                            nauto+=1
+                        else:
+                            ncross+=1
+                    if (nauto==len(lastantbase)):
+                        for iauto in antbase:#ensure all new auto ants included
+                            found=0
+                            for c in range(len(ospectrum_antbase0)):
+                                if (ospectrum_antbase0[c]==iauto and ospectrum_antbase1[c]==iauto):
+                                    found=1
+                            if not found:
+                                ospectrum_antbase0.append(iauto)
+                                ospectrum_antbase1.append(iauto)
+                        
+                    if (ncross==len(lastantbase)*(len(lastantbase)-1)/2):
+                        for icross in antbase:#ensure all cross ants included
+                            for jcross in antbase:
+                                if (icross!=jcross):
+                                    found=0
+                                    for c in range(len(ospectrum_antbase0)):
+                                        if ((ospectrum_antbase0[c]==icross and ospectrum_antbase1[c]==jcross) or (ospectrum_antbase0[c]==jcross and ospectrum_antbase1[c]==icross)):
+                                            found=1
+                                    if not found:
+                                        ospectrum_antbase0.append(min([icross,jcross]))
+                                        ospectrum_antbase1.append(max([icross,jcross]))
+                    
                     time_antbase0=[]
                     time_antbase1=[]
                     for c in range(len(otime_antbase0)):
