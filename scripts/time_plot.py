@@ -2311,7 +2311,7 @@ spectrum_recalced=0
 waterfall_recalc=1#current version number for settings
 waterfall_recalced=0#version number used in last calculated figure
 forcerecalc=False
-antbase=0
+antbase=[]
 lastantbase=[]
 iloop=0
 time_last=0
@@ -2416,7 +2416,15 @@ else:
                                     if not found:
                                         otime_antbase0.append(min([icross,jcross]))
                                         otime_antbase1.append(max([icross,jcross]))
-
+                    time_antbase0=[]
+                    time_antbase1=[]
+                    for c in range(len(otime_antbase0)):
+                        if (otime_antbase0[c] in antbase and otime_antbase1[c] in antbase):
+                            time_antbase0.append(otime_antbase0[c])
+                            time_antbase1.append(otime_antbase1[c])
+                    
+                    ospectrum_antbase0=spectrum_antbase0
+                    ospectrum_antbase1=spectrum_antbase1
                     nauto=0
                     ncross=0
                     for c in range(len(ospectrum_antbase0)):
@@ -2446,14 +2454,6 @@ else:
                                         ospectrum_antbase0.append(min([icross,jcross]))
                                         ospectrum_antbase1.append(max([icross,jcross]))
                     
-                    time_antbase0=[]
-                    time_antbase1=[]
-                    for c in range(len(otime_antbase0)):
-                        if (otime_antbase0[c] in antbase and otime_antbase1[c] in antbase):
-                            time_antbase0.append(otime_antbase0[c])
-                            time_antbase1.append(otime_antbase1[c])
-                    ospectrum_antbase0=spectrum_antbase0
-                    ospectrum_antbase1=spectrum_antbase1
                     spectrum_antbase0=[]
                     spectrum_antbase1=[]
                     for c in range(len(ospectrum_antbase0)):
