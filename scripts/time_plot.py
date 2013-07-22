@@ -910,7 +910,7 @@ def timeseries_draw():
 
         efftime_antbase0=[]
         efftime_antbase1=[]
-        antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+        antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])#unique antenna zero based indices
         for c in range(len(time_antbase0)):
             if (time_antbase0[c] in antbase and time_antbase1[c] in antbase):
                 efftime_antbase0.append(time_antbase0[c])
@@ -1023,7 +1023,7 @@ def spectrum_draw():
         
         effspectrum_antbase0=[]
         effspectrum_antbase1=[]
-        antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+        antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])#unique antenna zero based indices
         for c in range(len(spectrum_antbase0)):
             if (spectrum_antbase0[c] in antbase and spectrum_antbase1[c] in antbase):
                 effspectrum_antbase0.append(spectrum_antbase0[c])
@@ -1397,7 +1397,7 @@ def timeseries_event(figno,*args):
     elif (args[0]=="setbaseline"):
         time_antbase0=[]
         time_antbase1=[]
-        antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+        antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])#unique antenna zero based indices
         for c in range((len(args)-1)/2):
             i0=int(args[c*2+1])
             i1=int(args[c*2+2])
@@ -2010,7 +2010,7 @@ def spectrum_event(figno,*args):
     elif (args[0]=="setbaseline"):
         spectrum_antbase0=[]
         spectrum_antbase1=[]
-        antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+        antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])#unique antenna zero based indices
         for c in range((len(args)-1)/2):
             i0=int(args[c*2+1])
             i1=int(args[c*2+2])
@@ -2345,7 +2345,7 @@ else:
                     spectrum_flagstr=''
                     msg='document.getElementById("healthtext").innerHTML="empty store for %ds";'%(ts_start-last_real_time)
                 else:
-                    antbase=np.unique(([int(c[3:-1])-1 for c in datasd.cpref.inputs]))#unique antenna zero based indices
+                    antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])
                     s = datasd.select_data(product=0, end_time=-2, start_channel=0, stop_channel=1, include_ts=True)
                     if (len(s[0])>0):#store not entirely empty
                         time_now=s[0][-1]
