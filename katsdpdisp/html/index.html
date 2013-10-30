@@ -1,0 +1,120 @@
+<style type="text/css" media="screen">
+	div.combobox	{font-family: Tahoma;font-size: 12px}
+	div.combobox	{position: relative;zoom: 1}
+	div.combobox	div.dropdownlist	{display: none;width: 300px;
+		border: solid 1px #000;background-color: #fff;
+		height: 200px;overflow: auto;position: absolute;
+		top: 18px;left: 0px;z-index: 3}
+	div.combobox	.dropdownlist	a	{display: block;text-decoration: none;
+		color: #000;padding: 1px;height: 1em;cursor: default}
+	div.combobox	.dropdownlist	a.light	{color: #fff;
+		background-color: #007}
+	div.combobox	.dropdownlist, input {font-family: Tahoma;font-size: 12px;}
+	div.combobox	input {float: left;width: 300px;
+		border: solid 1px #ccc;}
+</style>
+<html>
+<head>
+<link href="rightcontext.css" rel=STYLESHEET type="text/css">
+<script type="text/javascript" src="figure.js"></script>
+<script type="text/javascript" src="rightcontext.js"></script>
+<script type="text/javascript" src="combobox.js"></script>
+<title>MeerKAT signal displays</title>
+<style type="text/css">
+    body {
+    font-family: verdana, arial, helvetica;
+    font-size:12px;
+    font-weight:normal;
+    }
+</style>
+<script>
+function loadpage()
+{
+	start_data(<!--data_port-->);
+	checkCookie()
+	makejet()
+}
+function onMouseMove(event)
+{
+	document.body.style.cursor = 'default';
+	return;
+}
+function onMouseOut(event)
+{
+	document.body.style.cursor = 'default';
+	return;
+}
+</script>
+</head>
+<body onload='loadpage()' bgcolor="#FFFFFF">
+<div align="left" style="position: relative; left:5px; top:0px;"> 
+		<div class="combobox">
+			<input type="text" placeholder="type command" id="signaltext" onChange="if (thecombobox.currentitem==null) setsignals();">
+			<div align="left" class="dropdownlist">
+				<a>1h1h,1h2h,2h3h</a>
+				<a>auto,cross</a>
+				<a>clear</a>
+				<a>console on</a>
+				<a>console off</a>
+				<a>flags=..200,-200..</a>
+				<a>fmin=</a>
+				<a>fmax=</a>
+				<a>labels off</a>
+				<a>labels on</a>
+				<a>legend off</a>
+				<a>legend on</a>
+				<a>ncols=1</a>
+				<a>pmin=</a>
+				<a>pmax=</a>
+				<a>spectrum</a>
+				<a>timeseries</a>
+				<a>title off</a>
+				<a>title on</a>
+				<a>tmin=-1000</a>
+				<a>tmax=</a>
+				<a>waterfallautomax</a>
+				<a>waterfallcross</a>
+				<a>xlabel off</a>
+				<a>xlabel on</a>
+				<a>ylabel off</a>
+				<a>ylabel on</a>
+			</div>
+		</div>
+	<element style="position: relative; left:5px; top:2.5px;" id="healthtext"> </element>
+	</div>
+	<div align="right" style="position: absolute; right:10px; top:10.5px"> 
+	<A id="usrname" HREF="" onClick="newCookie();"></A>
+	</div>
+</div>
+<br>
+<div id="console">
+<textarea style="position: relative; left:5px; width: 300; height: 200; display:none;" wrap="off" id="consoletext" disabled></textarea>
+</div>
+<div id="overalldiv">
+<div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>
+<ELEMENT style="position: relative;z-index: 0; width: 0; height: 0" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event)">
+<div id="listoffigures">
+</div>
+</div>
+<div id="timingsignalsdiv" style="display:none">
+<element id="timeserveroverview"> </element><br>
+<element id="timeserverreqinterval"> </element><br>
+<element id="timeinterval"> </element><br>
+<element id="linesnotdrawn"> </element><br>
+<element id="mb_received"> </element><br>
+<element id="timeservertotal"> </element><br>
+<element id="timeserverinit"> </element><br>
+<element id="timeserverselectdata"> </element><br>
+<element id="timeserverflaglogavg"> </element><br>
+<element id="timeserverprepmsg"> </element><br>
+<element id="timeserversend"> </element><br>
+<element id="timeclientinit"> </element><br>
+<element id="timeclientdraw"> </element><br>
+<element id="timeclientusereventroundtrip"> </element><br>
+</div>
+
+</body>
+</html>
+<script>
+var thecombobox = new ComboBox('signaltext');
+</script>

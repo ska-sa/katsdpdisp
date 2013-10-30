@@ -5,7 +5,7 @@ setup (
     name = "katsdisp",
     version = "trunk",
     description = "Karoo Array Telescope Online Signal Displays",
-    author = "Simon Ratcliffe",
+    author = "Mattieu de Villiers",
     packages = find_packages(),
     package_data={'': ['html/*']},
     include_package_data = True,
