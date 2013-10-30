@@ -17,7 +17,7 @@ quitter = Quitter("exit")
  # create a quitter to handle exit conditions
 
 logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger("katsdisp.data")
+logger = logging.getLogger("katsdpdisp.data")
 
 try:
     import matplotlib.pyplot as pl

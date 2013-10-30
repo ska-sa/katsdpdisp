@@ -13,7 +13,7 @@ import sys
 import logging
 import numpy as np
 import copy
-import katsdisp
+import katsdpdisp
 import re
 
 #SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
@@ -91,7 +91,7 @@ class RingBufferWaterfallHandler(SocketServer.BaseRequestHandler):
     client.
     """
     def handle(self):
-        #handles requests that reads from katsdisp object
+        #handles requests that reads from katsdpdisp object
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
         print "{} wrote:".format(self.client_address[0])
@@ -100,7 +100,7 @@ class RingBufferWaterfallHandler(SocketServer.BaseRequestHandler):
         self.request.sendall(self.data.upper())
 
 def StartRingBufferWaterfallServer(host, port, memusage, datafilename):
-    dh=katsdisp.KATData()
+    dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
         dh.start_spead_receiver(capacity=memusage/100.0,store2=True)
         datasd=dh.sd
@@ -116,7 +116,7 @@ def StartRingBufferWaterfallServer(host, port, memusage, datafilename):
         datasd=dh.sd_hist    
     
     try:
-        #first construct katsdisp object
+        #first construct katsdpdisp object
         server = SocketServer.TCPServer((host, port), RingBufferWaterfallHandler)
         print 'Started ring RingBufferWaterfallServer on port ' , port
         server.serve_forever()
@@ -140,7 +140,7 @@ def report_compact_traceback(tb):
 def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':['my figure title'],'xdata':np.arange(100),'ydata':[[np.random.randn(100),np.random.randn(100)]],'color':np.array([[0,255,0,0],[255,0,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':['s'],'yunit':['dB'],'span':[],'spancolor':[]}
-    dh=katsdisp.KATData()
+    dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
         dh.start_spead_receiver(capacity=memusage/100.0,store2=True)
         datasd=dh.sd
