@@ -1912,12 +1912,12 @@ function assignvariable(varname,val)
             	    {
             	        if (sublist[2]!='ignore') 
             	        {
-            	            RG_fig[ifig]['lastts_local']=Date.UTC()
+            	            RG_fig[ifig]['lastts_local']=Date.now()/1000
             	            RG_fig[ifig]['lastdt_local']=0.0
                 	        servermsgdraw(ifig,true)
         	            }else
         	            {
-        	                RG_fig[ifig]['lastdt_local']=Date.UTC()-RG_fig[ifig]['lastts_local'];
+        	                RG_fig[ifig]['lastdt_local']=Date.now()/1000-RG_fig[ifig]['lastts_local'];
                 	        servermsgdraw(ifig,false)
         	            }
         	        }

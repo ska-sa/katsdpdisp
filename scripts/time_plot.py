@@ -17,7 +17,7 @@ import katsdpdisp
 import re
 
 #SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
-SERVE_PATH='/home/mattieu/katsdpdisp/katsdpdisp/html'
+SERVE_PATH='/home/mattieu/git/katsdpdisp/katsdpdisp/html'
 
 #To run simulator: 
 #first ./meertime_plot.py k7simulator 
