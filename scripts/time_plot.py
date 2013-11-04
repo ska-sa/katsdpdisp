@@ -178,6 +178,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     customsignals=thesignals[1]
                     
                     ts = datasd.select_data(product=0, start_time=0, end_time=1e100, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                    ch=datasd.receiver.center_freqs_mhz[:]
                     if (len(ts)>1):
                         samplingtime=ts[-1]-ts[-2]
                     else:
@@ -202,8 +203,11 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                     color.append(c)
                             
                         for product in customsignals:
-                            signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
-                            signal=np.array(signal).reshape(-1)
+                            if (list(product) in datasd.cpref.bls_ordering):
+                                signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                                signal=np.array(signal).reshape(-1)
+                            else:
+                                signal=np.nan*np.ones(len(ts))
                             ydata.append(signal)#should check that correct corresponding values are returned
                             legend.append(product[0][3:]+product[1][3:])
                             color.append(np.r_[np.random.random(3)*255,0])
@@ -233,7 +237,6 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         fig['xlabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     elif (theviewsettings['figtype']=='spectrum'):
                         #nchannels=datasd.receiver.channels
-                        ch=datasd.receiver.center_freqs_mhz[:]
                         ydata=[]
                         color=[]
                         legend=[]
@@ -253,8 +256,11 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                     color.append(c)
 
                         for product in customsignals:
-                            signal = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False)
-                            signal=np.array(signal).reshape(-1)
+                            if (list(product) in datasd.cpref.bls_ordering):
+                                signal = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False)
+                                signal=np.array(signal).reshape(-1)
+                            else:
+                                signal=np.nan*np.ones(len(ch))
                             ydata.append(signal)#should check that correct corresponding values are returned
                             legend.append(product[0][3:]+product[1][3:])
                             color.append(np.r_[np.random.random(3)*255,0])
@@ -317,9 +323,17 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         elif (productstr in collectionsalt):
                             product=collectionsalt.index(productstr)
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                            if (len(np.nonzero(rvcdata[1].reshape(-1)<=0.0)[0])):
+                                print 'issue encountered, zeros',len(np.nonzero(rvcdata[1].reshape(-1)<=0.0)[0]),'shape ',rvcdata[1].shape,'ts',rvcdata[0].shape
+                                print 'sums',np.sum(rvcdata[1],axis=1)
+                                print 'ts',rvcdata[0]
                         else:                        
                             product=decodecustomsignal(productstr)
-                            rvcdata = datasd.select_data(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                            if (list(product) in datasd.cpref.bls_ordering):
+                                rvcdata = datasd.select_data(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                            else:
+                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(ch)])]                                
+                            
                         cdata=rvcdata[1]
                         if (theviewsettings['type']=='pow'):
                             cdata=20.0*np.log10(cdata)
@@ -356,6 +370,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                             fig['xdata']=np.arange(len(ch))
                             fig['xlabel']='Channel number'
                             fig['xunit']=''
+                        
                     else:                        
                         ts=np.arange(-99,1)
                         ydata=[]
@@ -391,7 +406,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
 
 html_customsignals= {'default': [],
                      'all':     [],
-                     'test':    [('ant1h','ant2h'),('ant1h','ant2v'),('ant1v','ant2v')]
+                     'test':    [('ant1h','ant1h'),('ant2h','ant2h'),('ant3h','ant3h'),('ant4h','ant4h'),('ant5h','ant5h'),('ant6h','ant6h'),('ant7h','ant7h'),('ant1v','ant1v'),('ant2v','ant2v'),('ant3v','ant3v'),('ant4v','ant4v'),('ant5v','ant5v'),('ant6v','ant6v'),('ant7v','ant7v'),('ant1h','ant2h'),('ant2h','ant3h'),('ant3h','ant4h'),('ant4h','ant5h'),('ant5h','ant6h'),('ant6h','ant7h')]
                     }
 html_collectionsignals= {'default': ['auto','cross'],
                          'all':     ['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv'],
@@ -405,11 +420,17 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                              ],
                     'test':  [  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
                                 {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
-                                {'figtype':'spectrum'  ,'type':'pow','xtype':'ghz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
-                                {'figtype':'spectrum'  ,'type':'pow','xtype':'ch' ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
-                                {'figtype':'spectrum'  ,'type':'mag','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
-                                {'figtype':'spectrum'  ,'type':'mag','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
-                                {'figtype':'waterfall1h2h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0}
+                                {'figtype':'spectrum'  ,'type':'arg','xtype':'ghz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall2h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall3h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall4h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall5h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall6h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfall2h2v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfallautomax' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfallautohh' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfallautohv' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
+                                {'figtype':'waterfallcross' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0}
                              ]                            
                   }
 
@@ -527,6 +548,17 @@ def handle_websock_event(handlerkey,*args):
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
             ringbufferrequestqueue.put(['setflags',args[1:],0,0])
+        elif (args[0]=='getusers'):
+            print args
+            userstats=[]
+            usrnamelist=[]
+            nviewlist=[]
+            for thisusrname in html_viewsettings.keys():
+                usrnamelist.append(thisusrname)
+                nviewlist.append(int(sum([thisusrname==usrname for usrname in websockrequest_username.values()])))
+            for ind in np.argsort(nviewlist)[::-1]:
+                userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))            
+            send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true)',handlerkey)
 
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
@@ -665,6 +697,7 @@ def send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigu
     try:
         ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc])
         waterfall_fig=ringbufferresultqueue.get()
+
         # print 'waterfall newlastts',waterfall_fig['lastts'],'lastts',lastts,'new version',waterfall_fig['version'],'lastversion',lastrecalc
         if (lastrecalc<waterfall_fig['version']):
             send_websock_cmd('document.getElementById("timeclientusereventroundtrip").innerHTML="starting data transfer"',handlerkey)
@@ -788,20 +821,29 @@ def pack_binarydata_msg(varname,val,dtype):
         for sval in val:
             buff+=sval+'\x00';
     elif (dtype=='B' or dtype=='H' or dtype=='I'):
+        origval=val;
         val=np.array(val,dtype='float')
         wval=np.zeros(np.shape(val),dtype=npconv[dtype])
         finiteind=np.nonzero(np.isfinite(val)==True)[0]
-        finitevals=val[finiteind]
-        minval=np.min(finitevals)
-        maxval=np.max(finitevals)
-        if (maxval==minval):
-            maxval=minval+1
-        maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
-    
-        wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3
-        wval[np.nonzero(val==-np.inf)[0]]=0
-        wval[np.nonzero(val==np.inf)[0]]=1
-        wval[np.nonzero(np.isnan(val)==True)[0]]=2
+        minval=np.nan
+        maxval=np.nan
+        if (len(finiteind)):
+            finitevals=val[finiteind]
+            minval=np.min(finitevals)
+            maxval=np.max(finitevals)
+            if (maxval==minval):
+                maxval=minval+1
+
+            maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
+            wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3            
+
+        if (dtype=='B' and ((not np.isfinite(minval)) or np.isnan(minval)) ):
+            print 'WARNING: sent nan scale, len(finiteind)',len(finiteind),'len(val)',len(val),'varname',varname
+
+        if (len(finiteind) != len(wval)):
+            wval[np.nonzero(val==-np.inf)[0]]=0
+            wval[np.nonzero(val==np.inf)[0]]=1
+            wval[np.nonzero(np.isnan(val)==True)[0]]=2            
                 
         buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*wval.tolist())
         if (dtype=='I'):
@@ -843,6 +885,8 @@ def send_websock_data(binarydata, handlerkey):
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         print "Failed to send message (%s)" % str(e)
+        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
     try:
@@ -854,6 +898,9 @@ def send_websock_cmd(cmd, handlerkey):
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)" % str(e))
+        print "Failed to send message (%s)" % str(e)
+        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        deregister_websockrequest_handler(handlerkey)
 
 def register_websockrequest_handler(request):
     websockrequest_handlers[request] = request.connection.remote_addr[0]
@@ -864,6 +911,7 @@ def deregister_websockrequest_handler(request):
     del websockrequest_lasttime[request]
     del websockrequest_username[request]
     del websockrequest_handlers[request]
+    del request
 
 def websock_transfer_data(request):
     register_websockrequest_handler(request)
@@ -1063,7 +1111,7 @@ elif (args[0]=='file'):
     args=[SERVE_PATH+'/vira1822sep5_10.h5']
 
 ##Disable debug warning messages that clutters the terminal, especially when streaming
-np.seterr(divide='ignore')
+np.seterr(all='ignore')
 logging.basicConfig()
 logger = logging.getLogger()
 if (opts.debug):

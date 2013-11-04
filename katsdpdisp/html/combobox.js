@@ -137,8 +137,8 @@ ComboBox = function (object_name) {
     			parobject.currentitem.className = parobject.currentitem.className.replace(/light/g, '')
                 parobject.currentitem = null
                 parobject.currentitemindex = null
-    			setsignals()
-			};
+			}
+    		setsignals()
 			parobject.dropdownlist.style.display = 'none';
 			e.cancelBubble = true;
 			return false;

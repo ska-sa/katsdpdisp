@@ -13,6 +13,8 @@ from struct import unpack
 
 from quitter import Quitter
 
+datalock = threading.RLock()
+
 quitter = Quitter("exit")
  # create a quitter to handle exit conditions
 
@@ -521,29 +523,30 @@ class SignalDisplayStore2(object):
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
     def add_data2(self, timestamp_ms, data, flags=None):
-        if timestamp_ms != self._last_ts: self.frame_count += 1
-        if self.first_pass and self.frame_count > self.slots: self.first_pass = False
-        self.roll_point = (self.frame_count-1) % self.slots
-        self.ts[self.roll_point] = timestamp_ms
+        with datalock:
+            if timestamp_ms != self._last_ts: self.frame_count += 1
+            if self.first_pass and self.frame_count > self.slots: self.first_pass = False
+            self.roll_point = (self.frame_count-1) % self.slots
+            self.ts[self.roll_point] = timestamp_ms
 
-        #calculate timeseries masked average for all signals and overwrite it into channel 0
-        if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
-            data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
-        else:
-            data[:,0] = 0.0;
+            #calculate timeseries masked average for all signals and overwrite it into channel 0
+            if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
+                data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
+            else:
+                data[:,0] = 0.0;
 
-        #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
-        #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
-        percdata=[]
-        for iproducts in self.collectionproducts:
-            percdata.extend(self.percsort(data[iproducts,:]))
-        percdata=np.array(percdata,dtype='complex')
+            #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
+            #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
+            percdata=[]
+            for iproducts in self.collectionproducts:
+                percdata.extend(self.percsort(data[iproducts,:]))
+            percdata=np.array(percdata,dtype='complex')
 
-        self.data[self.roll_point,:,:] = data
-        self.percdata[self.roll_point,:,:]=percdata
-            
-        if flags is not None: self.flags[self.roll_point] = flags
-        self._last_ts = timestamp_ms
+            self.data[self.roll_point,:,:] = data
+            self.percdata[self.roll_point,:,:]=percdata
+
+            if flags is not None: self.flags[self.roll_point] = flags
+            self._last_ts = timestamp_ms
 
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
@@ -1920,62 +1923,61 @@ class DataHandler(object):
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
             
-        if product is None: product = self.default_product
-        orig_product = product
-        product = self.cpref.user_to_id(product)
+        with datalock:
+            if product is None: product = self.default_product
+            orig_product = product
+            product = self.cpref.user_to_id(product)
 
-        ts = []
-        roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
-         # temp value in case of change during search...
-        rolled_ts = np.roll(self.storage.ts,-roll_point)
-        if end_time >= 0:
-            split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-            validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
-            split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
-        else:
-            if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
-             # ensure we do not ask for more data than is available
-            split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
-            split_start = max(split_end + end_time,0)
-        split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
+            ts = []
+            roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
-#        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
-#       The following block of code replaces the take command above, which appears to be about 10 times slower.
-        arraylen=self.storage.data.shape[0];
-        _split_start=split_start%arraylen;
-        _split_end=split_end%arraylen;
-        if (_split_start<_split_end):
-            frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel]
+            arraylen=self.storage.data.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+            if (_split_start<_split_end):
+                frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel]
+                if include_flags:
+                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
+            else:
+                frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0)
+                if include_flags:
+                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
+
+            frames = frames.squeeze()
+            if include_flags: flags = flags.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if avg_axis is not None:
+                frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+            if sum_axis is not None:
+                frames = np.sum(frames, sum_axis)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
             if include_flags:
-                flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
-        else:
-            frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0)
-            if include_flags:
-                flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
-
-        frames = frames.squeeze()
-        if include_flags: flags = flags.squeeze()
-
-        if dtype == 'mag':
-            frames = np.abs(frames)
-        if dtype == 're':
-            frames = np.real(frames)
-        if dtype == 'imag':
-            frames = np.imag(frames)
-        if dtype == 'phase':
-            frames = np.angle(frames)
-        if avg_axis is not None:
-            frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
-        if sum_axis is not None:
-            frames = np.sum(frames, sum_axis)
-        if reverse_order:
-            frames = frames[::-1,...]
-        if include_ts:
-            frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
-            if reverse_order: frames[0] = frames[0][::-1]
-        if include_flags:
-            frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
-        return frames
+                frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
+            return frames
 
 
     #product is index to [0,100,25,75,50] for each of [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
@@ -1983,59 +1985,57 @@ class DataHandler(object):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
+        with datalock:
+            ts = []
+            roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
-        ts = []
-        roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
-         # temp value in case of change during search...
-        rolled_ts = np.roll(self.storage.ts,-roll_point)
-        if end_time >= 0:
-            split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-            validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
-            split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
-        else:
-            if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
-             # ensure we do not ask for more data than is available
-            split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
-            split_start = max(split_end + end_time,0)
-        split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
+            arraylen=self.storage.percdata.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+            if (_split_start<_split_end):
+                frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel]
+                if include_flags:
+                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
+            else:
+                frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel]),axis=0)
+                if include_flags:
+                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
 
-#        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
-#       The following block of code replaces the take command above, which appears to be about 10 times slower.
-        arraylen=self.storage.percdata.shape[0];
-        _split_start=split_start%arraylen;
-        _split_end=split_end%arraylen;
-        if (_split_start<_split_end):
-            frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel]
+            frames = frames.squeeze()
+            if include_flags: flags = flags.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if avg_axis is not None:
+                frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+            if sum_axis is not None:
+                frames = np.sum(frames, sum_axis)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
             if include_flags:
-                flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
-        else:
-            frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel]),axis=0)
-            if include_flags:
-                flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
-
-        frames = frames.squeeze()
-        if include_flags: flags = flags.squeeze()
-
-        if dtype == 'mag':
-            frames = np.abs(frames)
-        if dtype == 're':
-            frames = np.real(frames)
-        if dtype == 'imag':
-            frames = np.imag(frames)
-        if dtype == 'phase':
-            frames = np.angle(frames)
-        if avg_axis is not None:
-            frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
-        if sum_axis is not None:
-            frames = np.sum(frames, sum_axis)
-        if reverse_order:
-            frames = frames[::-1,...]
-        if include_ts:
-            frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
-            if reverse_order: frames[0] = frames[0][::-1]
-        if include_flags:
-            frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
-        return frames
+                frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
+            return frames
 
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
         map = np.array([[0, 0],

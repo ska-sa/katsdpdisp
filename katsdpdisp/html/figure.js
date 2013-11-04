@@ -100,6 +100,18 @@ function newCookie()
 	    }
 }
 
+//MESSAGE LOGGING ===================================
+
+function logconsole(msg,doshow,doscroll)
+{    
+    date=(new Date()).toLocaleString();
+    consolectl=document.getElementById("consoletext")
+    consolectl.innerHTML+=date+' '+msg+'\n'
+    consolectl.scrollTop = consolectl.scrollHeight;
+    if (doshow && consolectl.style.display=='none')
+        consolectl.style.display = 'block'
+}
+
 //RUBBER-BANDING CODE================================
 
 function rubberbandStart(x, y) 
@@ -1418,6 +1430,9 @@ function setsignals(){
     }else if (signaltext=='console off')
     {
         document.getElementById("consoletext").style.display = 'none'
+    }else if (signaltext=='users')
+    {   
+        handle_data_user_event('getusers');
     }else
     handle_data_user_event('setsignals,'+signaltext);
 }
@@ -1715,7 +1730,11 @@ function unpack_binarydata_msg(arraybuffer)
 			else if (val[idata]==1) val[idata]=Infinity
 			else if (val[idata]==2) val[idata]=NaN
 			else val[idata]=convertminmax[0]+(val[idata]-3)*scale
-		}				
+		}
+		if (dtype=='B' && (!isFinite(val[0]) ||isNaN(val[0])) )
+		{
+		    logconsole('Infinite or NaN received in figure '+sublist[1]+'. scale:'+scale+' val[0]'+val[0]+' val[1]:'+val[1]+' val[2]:'+val[2],false,true)
+		}
 	}else if (dtype=='I')
 	{
 		val=new Float64Array(val)
@@ -1760,7 +1779,8 @@ function unpack_binarydata_msg(arraybuffer)
 	}
 	assignvariable(varname,val)
 }
-	
+
+
 //typical calls would be...
 // figure[ifigure].title='hello'
 // figure[ifigure].legend=['er','re','e']
@@ -1798,6 +1818,10 @@ function assignvariable(varname,val)
 				lastnamedobjlev=ilev
 			}
 		}
+		if (sublist[ilev]=='version' && val>theobj.version)
+		{
+		    theobj.overridelimit=0
+		}
 		theobj[sublist[ilev]]=val
 		if (typeof(lastnamedobj.completed)!="undefined")//update completed array and test for completion.. to trigger redraw
 		{
@@ -1821,6 +1845,14 @@ function assignvariable(varname,val)
 							    ntwin=thisfigure[aug].length
 								for (itwin=0;itwin<ntwin;itwin++)
 								{
+								    if (thisfigure[aug][itwin].length!=thisfigure.augment[aug][itwin].length)
+								    {
+								        logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+thisfigure.augment[aug][itwin].length+', reloading figure '+sublist[1],false,true)
+										thisfigure[aug]=[[]]//force entire reload of figure data
+										thisfigure['lastts']=0
+										thisfigure['version']=-1
+										return;
+								    }else
 									for (iline=0;iline<thisfigure[aug][itwin].length;iline++)
 									{
 										diff=thisfigure.augmenttargetlength-thisfigure[aug][itwin][iline].length
@@ -1834,19 +1866,15 @@ function assignvariable(varname,val)
 										}else
 										{
 											newvals=thisfigure.augment[aug][itwin][iline]
-											if (newvals.length>1)
-											{
-											    date=(new Date()).toLocaleString();
-											    document.getElementById("consoletext").innerHTML+=date+' received '+newvals.length+' samples\n'
-											}
 											if (diff==newvals.length)
 											{
 												//convert to normal array
 												thisfigure[aug][itwin][iline] = Array.prototype.slice.call(thisfigure[aug][itwin][iline]);//Array.apply( [], thisfigure[aug][itwin][iline] );
 												for (iv=0;iv<newvals.length;iv++)//assign new values
 													thisfigure[aug][itwin][iline][thisfigure[aug][itwin][iline].length]=newvals[iv];
-											}else if (-diff+newvals.length>0)//perform partial shiftup
+											}else if (0)//-diff+newvals.length>0)//perform partial shiftup
 											{
+        								        logconsole('Timeseries partial shiftup, received '+newvals.length+' samples',false,true)
 												thisfigure[aug][itwin][iline] = Array.prototype.slice.call(thisfigure[aug][itwin][iline]);//Array.apply( [], thisfigure[aug][itwin][iline] );												
 												shiftby=-diff+newvals.length
 												for (iv=shiftby;iv<thisfigure.augmenttargetlength;iv++)//shiftup
@@ -1855,13 +1883,11 @@ function assignvariable(varname,val)
 													thisfigure[aug][itwin][iline][thisfigure.augmenttargetlength-newvals.length+iv]=newvals[iv];
 											}else
 											{
-											    date=(new Date()).toLocaleString();
-												document.getElementById("consoletext").innerHTML+=date+' timeseries data lost, reloading figure '+sublist[1]+'\n'
+        								        logconsole('Timeseries data lost, reloading figure '+sublist[1],false,true)
         										thisfigure[aug]=[[]]//force entire reload of figure data
-        										thisfigure['lastts']=-1
-        										thisfigure['version']=0
-        										ntwin=0
-        										break;
+        										thisfigure['lastts']=0
+        										thisfigure['version']=-1
+        										return;
 											}
 										}
 									}
@@ -1883,8 +1909,9 @@ function assignvariable(varname,val)
 									{
 										for (iv=0;iv<newvals.length;iv++)//assign new values
 											thisfigure[aug][thisfigure[aug].length]=newvals[iv];									
-									}else if (-diff+newvals.length>0)//perform partial shiftup
+									}else if (0)//-diff+newvals.length>0)//perform partial shiftup
 									{
+								        logconsole('Waterfall partial shiftup, received '+newvals.length+' samples',false,true)
 										shiftby=-diff+newvals.length
 										for (iv=shiftby;iv<thisfigure[aug].length;iv++)//shiftup
 											thisfigure[aug][iv-shiftby]=thisfigure[aug][iv];
@@ -1893,11 +1920,11 @@ function assignvariable(varname,val)
 											thisfigure[aug][thisfigure.augmenttargetlength-newvals.length+iv]=newvals[iv];									
 									}else
 									{
-									    date=(new Date()).toLocaleString();
-										document.getElementById("consoletext").innerHTML+=date+' waterfall data lost, reloading figure '+sublist[1]+'\n'
+								        logconsole('Waterfall data lost, reloading figure '+sublist[1],false,true)
 										thisfigure[aug]=[]//force entire reload of figure data
-										thisfigure['lastts']=-1
-										thisfigure['version']=0
+										thisfigure['lastts']=0
+										thisfigure['version']=-1
+										return
 									}
 								}
 						    }
@@ -1953,7 +1980,7 @@ function start_data(webdataportnumber)
 	datasocket.binaryType = 'arraybuffer';
 	datasocket.onerror = function(e) 
 	{
-		var thisiserror=1;
+        logconsole('Websocket error occurred',false,true)
 	}
 	datasocket.onmessage = function(e) 
 	{
@@ -1984,7 +2011,17 @@ function stop_data()
 function handle_data_user_event(arg_string) 
 {
   try {
-       datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
+        if (datasocket.readyState==1)
+        {
+            datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
+        }else if (datasocket.readyState==3)
+        {
+            logconsole('Websocket connection closed, trying to reestablish',false,true)
+		    loadpage()
+        }else
+        {
+            logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,false,true)
+        }
       } catch (err) {}
  } 
 
@@ -2033,7 +2070,7 @@ function servermsgdraw(ifig,redraw)
     	dt0=RG_fig[ifig].lastdt.toFixed(0)
     	if (Math.abs(dt0-dt2)<0.01)
             document.getElementById("healthtext").innerHTML=''+dt0+'s dumps'
-        else if (Math.abs(dt1-dt2)<0.1)
+        else if (Math.abs(dt1-dt2)<0.01)
             document.getElementById("healthtext").innerHTML=''+dt1+'s dumps'
         else
             document.getElementById("healthtext").innerHTML=''+dt2+'s dumps'
