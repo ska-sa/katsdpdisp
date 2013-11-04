@@ -12,7 +12,6 @@ var minorticklength=tickfontHeight/6; //2 for 12 pt font
 
 var linesdrawn=0
 var linesnotdrawn=0;
-var figureupdated=1;
 var nfigures=0
 var nfigcols=2
 
@@ -523,7 +522,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 {
 	if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
 	{
-		figureupdated=1
+		RG_fig[ifig].figureupdated=true
 		return;
 	}
 	vviewmin=[]
@@ -749,7 +748,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		    }
 			figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
 		}		
-	figureupdated=1
+	RG_fig[ifig].figureupdated=true
 	lastupdate=(new Date()).getTime();
 	RG_fig[ifig].xmin_eval=hviewmin;
     RG_fig[ifig].xmax_eval=hviewmax;
@@ -761,7 +760,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 {
 			if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined" || typeof(dataylist[0])=="undefined")
 			{
-				figureupdated=1
+				RG_fig[ifig].figureupdated=true
 				return;
 			}
 			var localdatay			
@@ -987,7 +986,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 			    }
 				
 		}
-		figureupdated=1
+		RG_fig[ifig].figureupdated=true
 		lastupdate=(new Date()).getTime();
     	RG_fig[ifig].xmin_eval=hviewmin;
         RG_fig[ifig].xmax_eval=hviewmax;
@@ -1590,6 +1589,7 @@ function ApplyViewLayout(nfig)
         RG_fig[ifig].xdata=[]
         RG_fig[ifig].lastts=0
         RG_fig[ifig].version=-1
+        RG_fig[ifig].figureupdated=true
         menuname='figmenu'+ifig
         thismenu = { attributes: "attr_ifig,attr_type,attr_xtype,cond" ,
 
@@ -1649,7 +1649,7 @@ function ApplyViewLayout(nfig)
             innerHTML+='</tr>'
             rowcomplete=1;
         }
-        RightContext.addMenu(menuname, thismenu);
+        RightContext.addMenu(menuname, thismenu);        
     }
     if (rowcomplete==0)
     {
@@ -1658,8 +1658,7 @@ function ApplyViewLayout(nfig)
     }
     innerHTML+='</table>'
     listoffigures.innerHTML=innerHTML
-    RightContext.initialize();
-    figureupdated=1
+    RightContext.initialize();    
     updateFigure()
 }
 
@@ -1676,7 +1675,7 @@ function exec_data_user_cmd(cmd_str)
 //performs assignment of data to global variable
 function unpack_binarydata_msg(arraybuffer)
 {
-	varname='RG_'
+	varname='RCV_'
 	offset=0;
 	data = new Uint8Array(arraybuffer)			
 	while(data[offset]){varname+=String.fromCharCode(data[offset++]);}	
@@ -1788,170 +1787,144 @@ function unpack_binarydata_msg(arraybuffer)
 function assignvariable(varname,val)
 {
 	sublist=[]
-		thisname=''
-		for (ic=0;ic<varname.length;ic++)
+	thisname=''
+	for (ic=0;ic<varname.length;ic++)
+	{
+		if (varname[ic]=='.' || varname[ic]==']' || varname[ic]=='[')
 		{
-			if (varname[ic]=='.' || varname[ic]==']' || varname[ic]=='[')
-			{
-				if (thisname.length>0)
-				{						
-					if (varname[ic]==']') sublist[sublist.length]=parseInt(thisname);
-					else sublist[sublist.length]=thisname;
-					thisname='';
-				}
-			}else
-			{
-				thisname+=varname[ic];
+			if (thisname.length>0)
+			{						
+				if (varname[ic]==']') sublist[sublist.length]=parseInt(thisname);
+				else sublist[sublist.length]=thisname;
+				thisname='';
 			}
-		}
-		if (thisname.length)sublist[sublist.length]=thisname;
-		theobj=window;
-		lastnamedobj=[]
-		lastnamedobjlev=0
-		for (ilev=0;ilev<sublist.length-1;ilev++)
+		}else
 		{
-			if (typeof(theobj[sublist[ilev]])=="undefined") theobj[sublist[ilev]]=[];
-			theobj=theobj[sublist[ilev]];
-			if (typeof(sublist[ilev])=="string") 
+			thisname+=varname[ic];
+		}
+	}
+	if (thisname.length)sublist[sublist.length]=thisname;
+	theobj=window;
+	lastnamedobj=[]
+	lastnamedobjlev=0
+	for (ilev=0;ilev<sublist.length-1;ilev++)
+	{
+		if (typeof(theobj[sublist[ilev]])=="undefined") theobj[sublist[ilev]]=[];
+		theobj=theobj[sublist[ilev]];
+		if (typeof(sublist[ilev])=="string") 
+		{
+			lastnamedobj=theobj
+			lastnamedobjlev=ilev
+		}
+	}
+	if (sublist[ilev]=='version' && val>theobj.version)
+	{
+	    theobj.overridelimit=0
+	}
+	theobj[sublist[ilev]]=val
+	if (sublist[0]!='RCV_fig') return
+	rcvfig=window[sublist[0]][sublist[1]]
+	if (typeof(rcvfig.recvcount)=="undefined") rcvfig.recvcount=1;
+	else rcvfig.recvcount++;
+	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
+	{
+		rcvfig['lastts_local']=Date.now()/1000;
+	    thisfigure=window['RG_fig'][sublist[1]]
+	    if (rcvfig.action=='none')
+	    {
+		    window['RCV_fig'][sublist[1]]=undefined
+		    window['RG_fig'][sublist[1]].figureupdated=true
+		    return
+	    }else if (rcvfig.action=='reset')
+		{
+		    window['RG_fig'][sublist[1]]=[]
+		    for (var thevar in window['RCV_fig'][sublist[1]])
+		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+		    window['RCV_fig'][sublist[1]]=undefined
+		}else if (rcvfig.action=='set')
+		{
+		    for (var thevar in window['RCV_fig'][sublist[1]])
+		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+		    window['RCV_fig'][sublist[1]]=undefined
+		}else if (rcvfig.action=='augmentydata')
+		{
+		    aug='ydata'
+		    ntwin=thisfigure[aug].length
+			for (itwin=0;itwin<ntwin;itwin++)
 			{
-				lastnamedobj=theobj
-				lastnamedobjlev=ilev
-			}
-		}
-		if (sublist[ilev]=='version' && val>theobj.version)
-		{
-		    theobj.overridelimit=0
-		}
-		theobj[sublist[ilev]]=val
-		if (typeof(lastnamedobj.completed)!="undefined")//update completed array and test for completion.. to trigger redraw
-		{
-			subobj=lastnamedobj.completed
-			for (ilev=lastnamedobjlev+1;ilev<sublist.length-1;ilev++)
-				subobj=subobj[sublist[ilev]]
-			subobj[sublist[ilev]]=1
-            
-			if (getmin(lastnamedobj.completed,lastnamedobj)>0)//trigger redraw
-			{//should ensure shape is correct
-				//check if augment is to be performed...
-				if (sublist[2]=='augment')
+                if (thisfigure[aug][itwin].length!=rcvfig[aug][itwin].length)
+                {
+                    logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],false,true)
+                    thisfigure['lastts']=0
+                    thisfigure['version']=-1
+                    window[sublist[0]][sublist[1]]=undefined
+                    return;
+                }
+    		    misalignment=thisfigure['lastts']-rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1]
+                if (Math.abs(misalignment)>0.1)
+                {
+                    logconsole('Timeseries time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1])+'; reloading figure '+sublist[1],false,true)
+                    for (it=0;it<rcvfig[aug][itwin].length;it++)
+                        logconsole(' t['+(it-rcvfig[aug][itwin].length+1)+']='+rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length+it],false,true)
+
+                    thisfigure['lastts']=0
+                    thisfigure['version']=-1
+                    window[sublist[0]][sublist[1]]=undefined
+                    return;
+                }else
+				for (iline=0;iline<thisfigure[aug][itwin].length;iline++)//loops through each line to augment
 				{
-				    thisfigure=window[sublist[0]][sublist[1]]
-					for (aug in thisfigure.augment)
-					{
-						if (typeof(aug)=="string")
-						{
-							if (thisfigure.augmentlevel)
-							{
-							    ntwin=thisfigure[aug].length
-								for (itwin=0;itwin<ntwin;itwin++)
-								{
-								    if (thisfigure[aug][itwin].length!=thisfigure.augment[aug][itwin].length)
-								    {
-								        logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+thisfigure.augment[aug][itwin].length+', reloading figure '+sublist[1],false,true)
-										thisfigure[aug]=[[]]//force entire reload of figure data
-										thisfigure['lastts']=0
-										thisfigure['version']=-1
-										return;
-								    }else
-									for (iline=0;iline<thisfigure[aug][itwin].length;iline++)
-									{
-										diff=thisfigure.augmenttargetlength-thisfigure[aug][itwin][iline].length
-										if (diff==0)//buffer full
-										{
-											newvals=thisfigure.augment[aug][itwin][iline]
-											for (iv=newvals.length;iv<thisfigure[aug][itwin][iline].length;iv++)//shiftup
-												thisfigure[aug][itwin][iline][iv-newvals.length]=thisfigure[aug][itwin][iline][iv];
-											for (iv=0;iv<newvals.length;iv++)//assign new values
-												thisfigure[aug][itwin][iline][thisfigure[aug][itwin][iline].length-newvals.length+iv]=newvals[iv];
-										}else
-										{
-											newvals=thisfigure.augment[aug][itwin][iline]
-											if (diff==newvals.length)
-											{
-												//convert to normal array
-												thisfigure[aug][itwin][iline] = Array.prototype.slice.call(thisfigure[aug][itwin][iline]);//Array.apply( [], thisfigure[aug][itwin][iline] );
-												for (iv=0;iv<newvals.length;iv++)//assign new values
-													thisfigure[aug][itwin][iline][thisfigure[aug][itwin][iline].length]=newvals[iv];
-											}else if (0)//-diff+newvals.length>0)//perform partial shiftup
-											{
-        								        logconsole('Timeseries partial shiftup, received '+newvals.length+' samples',false,true)
-												thisfigure[aug][itwin][iline] = Array.prototype.slice.call(thisfigure[aug][itwin][iline]);//Array.apply( [], thisfigure[aug][itwin][iline] );												
-												shiftby=-diff+newvals.length
-												for (iv=shiftby;iv<thisfigure.augmenttargetlength;iv++)//shiftup
-													thisfigure[aug][itwin][iline][iv-shiftby]=thisfigure[aug][itwin][iline][iv];
-												for (iv=0;iv<newvals.length;iv++)//assign new values
-													thisfigure[aug][itwin][iline][thisfigure.augmenttargetlength-newvals.length+iv]=newvals[iv];
-											}else
-											{
-        								        logconsole('Timeseries data lost, reloading figure '+sublist[1],false,true)
-        										thisfigure[aug]=[[]]//force entire reload of figure data
-        										thisfigure['lastts']=0
-        										thisfigure['version']=-1
-        										return;
-											}
-										}
-									}
-								}
-							}else
-							{
-								diff=thisfigure.augmenttargetlength-thisfigure[aug].length
-								if (diff==0)//buffer full
-								{
-									newvals=thisfigure.augment[aug]
-									for (iv=newvals.length;iv<thisfigure[aug].length;iv++)//shiftup
-										thisfigure[aug][iv-newvals.length]=thisfigure[aug][iv];
-									for (iv=0;iv<newvals.length;iv++)//assign new values
-										thisfigure[aug][thisfigure[aug].length-newvals.length+iv]=newvals[iv];
-								}else
-								{
-									newvals=thisfigure.augment[aug]
-									if (diff==newvals.length)
-									{
-										for (iv=0;iv<newvals.length;iv++)//assign new values
-											thisfigure[aug][thisfigure[aug].length]=newvals[iv];									
-									}else if (0)//-diff+newvals.length>0)//perform partial shiftup
-									{
-								        logconsole('Waterfall partial shiftup, received '+newvals.length+' samples',false,true)
-										shiftby=-diff+newvals.length
-										for (iv=shiftby;iv<thisfigure[aug].length;iv++)//shiftup
-											thisfigure[aug][iv-shiftby]=thisfigure[aug][iv];
-										//NOTE THIS MUST STILL ASSIGN NEWVALS!
-										for (iv=0;iv<newvals.length;iv++)//assign new values
-											thisfigure[aug][thisfigure.augmenttargetlength-newvals.length+iv]=newvals[iv];									
-									}else
-									{
-								        logconsole('Waterfall data lost, reloading figure '+sublist[1],false,true)
-										thisfigure[aug]=[]//force entire reload of figure data
-										thisfigure['lastts']=0
-										thisfigure['version']=-1
-										return
-									}
-								}
-						    }
-						}
-					}
+					diff=rcvfig['xdata'].length-thisfigure[aug][itwin][iline].length
+					newvals=rcvfig[aug][itwin][iline]
+					rcvfig[aug][itwin][iline]=[]
+					for (iv=0;iv<rcvfig['xdata'].length-newvals.length;iv++)
+					    rcvfig[aug][itwin][iline][iv]=thisfigure[aug][itwin][iline][iv+newvals.length-diff]
+					for (iv=0;iv<newvals.length;iv++)
+						rcvfig[aug][itwin][iline][rcvfig['xdata'].length-newvals.length+iv]=newvals[iv];
 				}
-            	if (varname.substring(0, 7)=='RG_fig[')
-            	{
-            	    for (ic=7;ic<varname.length;ic++) if (varname[ic]==']') break;
-            	    ifig=parseInt(varname.substring(7,ic))
-            	    if (ifig>=0) 
-            	    {
-            	        if (sublist[2]!='ignore') 
-            	        {
-            	            RG_fig[ifig]['lastts_local']=Date.now()/1000
-            	            RG_fig[ifig]['lastdt_local']=0.0
-                	        servermsgdraw(ifig,true)
-        	            }else
-        	            {
-        	                RG_fig[ifig]['lastdt_local']=Date.now()/1000-RG_fig[ifig]['lastts_local'];
-                	        servermsgdraw(ifig,false)
-        	            }
-        	        }
-            	}
 			}
-		}
+			for (var thevar in window['RCV_fig'][sublist[1]])
+		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+		    window['RCV_fig'][sublist[1]]=undefined		    
+		}else if (rcvfig.action=='augmentcdata')
+		{
+		    aug='cdata'
+		    misalignment=thisfigure['lastts']-rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1]
+            if (Math.abs(misalignment)>0.1)
+            {
+                logconsole('Waterfall time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1])+'; reloading figure '+sublist[1],false,true)
+                for (it=0;it<rcvfig[aug].length;it++)
+                    logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],false,true)
+                thisfigure['lastts']=0
+                thisfigure['version']=-1
+                window[sublist[0]][sublist[1]]=undefined
+                return;
+            }else
+            {
+				diff=rcvfig['ydata'].length-thisfigure[aug].length
+				newvals=rcvfig[aug]
+				rcvfig[aug]=[]
+				for (iv=0;iv<rcvfig['ydata'].length-newvals.length;iv++)
+				    rcvfig[aug][iv]=thisfigure[aug][iv+newvals.length-diff]
+				for (iv=0;iv<newvals.length;iv++)
+					rcvfig[aug][rcvfig['ydata'].length-newvals.length+iv]=newvals[iv];
+			}
+			for (var thevar in window['RCV_fig'][sublist[1]])
+		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+		    window['RCV_fig'][sublist[1]]=undefined				
+		}else//unknown action
+		{
+            logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],false,true)
+            thisfigure['lastts']=0
+            thisfigure['version']=-1
+            window[sublist[0]][sublist[1]]=undefined
+            return;
+        }
+		//issue draw instruction
+		servermsgdraw(sublist[1],true)
+	}
 }
+
 
 function getmin(obj,clipthisobj)
 {
@@ -2032,25 +2005,32 @@ function updateFigure()
 	{
 		document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
 	}
-	if (figureupdated==0 && lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
+	for (ifig=0;ifig<nfigures;ifig++)
 	{
-		document.getElementById("healthtext").innerHTML+=' ... requesting response'
-		figureupdated=1
-	}
-	if (figureupdated==1)//|| (time0-lastupdate>30000))//30 second timeout
-	{
-		figureupdated=0;
-		for (ifig=0;ifig<nfigures;ifig++)
-		{
-		    if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length)	handle_data_user_event("sendfigure,"+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+ifig)
-		    else handle_data_user_event("sendfigure,0,-1,"+ifig)
-	    }
-	}
+	    if (RG_fig[ifig].figureupdated)
+	    {
+	        RG_fig[ifig].figureupdated=false
+	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length)	handle_data_user_event("sendfigure,"+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+ifig)
+	        else handle_data_user_event("sendfigure,0,-1,"+ifig)
+        }else
+        {
+        	if (lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
+        	{
+        		document.getElementById("healthtext").innerHTML+='.'
+        		RG_fig[ifig].figureupdated=false
+        	}
+        }
+    }
+	
 	time1=(new Date()).getTime();
 }
 	
 function servermsgdraw(ifig,redraw)
 {
+    if (typeof(RG_fig[ifig])=="undefined")
+    {
+        return
+    }
 	document.getElementById("timeclientusereventroundtrip").innerHTML+='drawing';
 	if (redraw)
 	    setTimeout(function(){redrawfigure(ifig)},1)
@@ -2060,8 +2040,9 @@ function servermsgdraw(ifig,redraw)
 	document.getElementById("timeinterval").innerHTML='time interval '+(timereceivemsg-timelastreceive);
 	document.getElementById("mb_received").innerHTML='MB received '+(data_length_user_cmd_acc/1E6);
 	document.getElementById("timeclientinit").innerHTML='time client init '+(timereceivemsg-time_receive_user_cmd);
+	
 	dt2=RG_fig[ifig].lastdt.toFixed(2)
-	if (RG_fig[ifig].lastdt_local>dt2*2.0)
+	if (0)//RG_fig[ifig].lastdt_local>dt2*2.0)
 	{
 	    document.getElementById("healthtext").innerHTML='halted stream'
 	}else
