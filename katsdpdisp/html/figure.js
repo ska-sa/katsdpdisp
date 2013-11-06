@@ -1197,8 +1197,7 @@ function setsignals(){
         }
         else
         {
-            nfigcols=parseInt(signaltext.slice(6))
-            ApplyViewLayout(nfigures)
+            handle_data_user_event('setncols,'+signaltext.slice(6));
         }
     }else if (signaltext.slice(0,6)=='flags=')
     {
@@ -1577,9 +1576,10 @@ function saveFigure(ifig){
 }
 
 //FIGURE LAYOUT FUNCTIONS================================================================
-function ApplyViewLayout(nfig)
+function ApplyViewLayout(nfig,ncols)
 {        
     nfigures=nfig
+    nfigcols=ncols
     var listoffigures = document.getElementById("listoffigures")
     innerHTML='<table width="100%">'
     RG_fig=[]
@@ -2027,6 +2027,11 @@ function updateFigure()
             {
                 logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
                 RG_fig[ifig].figureupdated=true
+            }else
+            if (reqts-RG_fig[ifig].receivingts>30 && (time0-time_receive_data_user_cmd)<10000)
+            {
+                logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
+                RG_fig[ifig].figureupdated=true                
             }
         }
     }
