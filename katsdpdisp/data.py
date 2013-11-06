@@ -1844,7 +1844,7 @@ class DataHandler(object):
         pl.draw()
 
 
-    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
+    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         """Used to select a particular window of data from the store for use in the signal displays...
         Once the window has been chosen then the particular plot will subsample and reformat the data window
         to suit it's requirements.
@@ -1918,7 +1918,7 @@ class DataHandler(object):
             frames = [ts_ms,frames[0],frames[1]] if include_flags else [ts_ms,frames]
         return frames
 
-    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
+    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
@@ -1946,14 +1946,15 @@ class DataHandler(object):
             arraylen=self.storage.data.shape[0];
             _split_start=split_start%arraylen;
             _split_end=split_end%arraylen;
+                    
             if (_split_start<_split_end):
-                frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel]
+                frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
                 if include_flags:
-                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
+                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
             else:
-                frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0)
+                frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.data[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
                 if include_flags:
-                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
+                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
 
             frames = frames.squeeze()
             if include_flags: flags = flags.squeeze()
@@ -1981,7 +1982,7 @@ class DataHandler(object):
 
 
     #product is index to [0,100,25,75,50] for each of [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-    def select_data_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
+    def select_data_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
@@ -2004,14 +2005,15 @@ class DataHandler(object):
             arraylen=self.storage.percdata.shape[0];
             _split_start=split_start%arraylen;
             _split_end=split_end%arraylen;
+                    
             if (_split_start<_split_end):
-                frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel]
+                frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
                 if include_flags:
-                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
+                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
             else:
-                frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel]),axis=0)
+                frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
                 if include_flags:
-                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
+                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
 
             frames = frames.squeeze()
             if include_flags: flags = flags.squeeze()

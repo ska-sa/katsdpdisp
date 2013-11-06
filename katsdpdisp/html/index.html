@@ -1,7 +1,7 @@
 <style type="text/css" media="screen">
 	div.combobox	{font-family: Tahoma;font-size: 12px}
 	div.combobox	{position: relative;zoom: 1}
-	div.combobox	div.dropdownlist	{display: none;width: 300px;
+	div.combobox	div.dropdownlist	{display: none;width: 500px;
 		border: solid 1px #000;background-color: #fff;
 		height: 200px;overflow: auto;position: absolute;
 		top: 18px;left: 0px;z-index: 3}
@@ -10,7 +10,7 @@
 	div.combobox	.dropdownlist	a.light	{color: #fff;
 		background-color: #007}
 	div.combobox	.dropdownlist, input {font-family: Tahoma;font-size: 12px;}
-	div.combobox	input {float: left;width: 300px;
+	div.combobox	input {float: left;width: 500px;
 		border: solid 1px #ccc;}
 </style>
 <html>
@@ -56,6 +56,7 @@ function onMouseOut(event)
 				<a>1h1h,2h2h,3h3h,4h4h,5h5h,6h6h,7h7h,1v1v,2v2v,3v3v,4v4v,5v5v,6v6v,7v7v</a>
 				<a>auto,cross</a>
 				<a>clear</a>
+				<a>console clear</a>
 				<a>console on</a>
 				<a>console off</a>
 				<a>flags=..200,-200..</a>
@@ -68,6 +69,8 @@ function onMouseOut(event)
 				<a>ncols=1</a>
 				<a>pmin=</a>
 				<a>pmax=</a>
+				<a>server ps</a>
+				<a>server top</a>
 				<a>spectrum</a>
 				<a>timeseries</a>
 				<a>title off</a>
@@ -94,7 +97,7 @@ function onMouseOut(event)
 </div>
 <br>
 <div id="console">
-<textarea style="position: relative; left:5px; width: 300; height: 200; display:none;" wrap="off" id="consoletext" disabled></textarea>
+<textarea style="position: relative; left:5px; width: 500; height: 200; display:none;" wrap="off" id="consoletext" disabled></textarea>
 </div>
 <div id="overalldiv">
 <div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>

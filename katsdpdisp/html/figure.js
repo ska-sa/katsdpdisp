@@ -10,29 +10,25 @@ var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
 
-var linesdrawn=0
-var linesnotdrawn=0;
 var nfigures=0
 var nfigcols=2
+var console_timing='off'
+var console_sendfigure='off'
 
-var lastupdate=0
 var RG_fig=[[]]
 RG_fig[0].xdata=[]
-RG_fig[0].lastts=0
 RG_fig[0].version=-1
 
 var timedrawstart=0;
 
-var timereceivemsg=0
 var timedraw=0
-var timelastreceive=0
+var timedrawcomplete=0
 var datasocket = 0;
+var the_lastts = 0;
+var local_last_lastts_change = 0;
 
 var time_receive_data_user_cmd=0
 var time_receive_user_cmd=0
-var data_length_user_cmd=0
-var data_length_user_cmd_acc=0
-
 
 var corrlinepoly=[0,1,0,0,0,0,0,0]
 var corrlinewidth=[2,2,1,1,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
@@ -474,7 +470,11 @@ function getminmax(datalist)
 
 function redrawfigure(ifig)
 {
-	timedrawstart=(new Date()).getTime();
+    if (typeof(RG_fig[ifig])=="undefined")
+        return
+    
+    timedrawstart=(new Date()).getTime();
+    RG_fig[ifig].drawstartts=timedrawstart/1000.0
 	setaxiscanvasrect(ifig)
 	timedrawstart=(new Date()).getTime();
 	if (RG_fig[ifig].overridelimit!=undefined && RG_fig[ifig].overridelimit)
@@ -507,22 +507,22 @@ function redrawfigure(ifig)
 	        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
     }
 	timedraw=(new Date()).getTime();
-	document.getElementById("linesnotdrawn").innerHTML='lines '+linesdrawn+' not drawn '+(linesnotdrawn);			
-	document.getElementById("timeclientdraw").innerHTML='time client draw '+(timedraw-timedrawstart);
-	setTimeout(completefigure,1)
+	RG_fig[ifig].drawstoptts=timedraw/1000.0
+	setTimeout(completefigure,1,[ifig])
 }
 
-function completefigure()
-{
+function completefigure(ifig)
+{    
 	timedrawcomplete=(new Date()).getTime();
-	document.getElementById("timeclientdraw").innerHTML+=' render '+(timedrawcomplete-timedrawstart);				
+	RG_fig[ifig].renderts=timedrawcomplete/1000.0
+	RG_fig[ifig].figureupdated=true
+	if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),false,true)
 }
 
 function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
 {
 	if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
 	{
-		RG_fig[ifig].figureupdated=true
 		return;
 	}
 	vviewmin=[]
@@ -572,8 +572,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		figcontext.fillStyle = "#000000";
 	}
 	var context = axiscanvas.getContext('2d');
-	linesdrawn=0
-	linesnotdrawn=0
 	ixstart=0;ixend=0;
 	if (context &&typeof(dataylist[0])!="undefined")
 	{
@@ -606,8 +604,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			yoff=axiscanvas.height+vviewmin[itwin]*yscale
 			for (iline=0;iline<dataylist[itwin].length;iline++)
 			{
-				try
-				{
 			        context.beginPath();
 					if (ixend-ixstart<=1024)
 					{
@@ -630,7 +626,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 					    }
 					    context.closePath();
 					    context.fill()
-					    linesdrawn+=2;
 					}else
 					{
 					    context.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
@@ -641,12 +636,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 					    }
 				        context.stroke();
 					    context.closePath();
-					    linesdrawn++;
 				    }
-				}catch(err)
-				{//may have not yet received this line through network link ... then dont plot it
-						linesnotdrawn++;
-				}
 			}
 		}
 			context.lineWidth=oldlinewidth;
@@ -748,8 +738,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		    }
 			figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
 		}		
-	RG_fig[ifig].figureupdated=true
-	lastupdate=(new Date()).getTime();
 	RG_fig[ifig].xmin_eval=hviewmin;
     RG_fig[ifig].xmax_eval=hviewmax;
     RG_fig[ifig].ymin_eval=vviewmin[0];
@@ -760,7 +748,6 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 {
 			if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined" || typeof(dataylist[0])=="undefined")
 			{
-				RG_fig[ifig].figureupdated=true
 				return;
 			}
 			var localdatay			
@@ -820,8 +807,6 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 		  			figcontext.fillStyle = "#000000";
 		  }
 		   var context = axiscanvas.getContext('2d');
-		   linesdrawn=0
-		   linesnotdrawn=0
 			ixstart=0;ixend=0;
 			if (context){
 				oldlinewidth=context.lineWidth
@@ -986,8 +971,6 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 			    }
 				
 		}
-		RG_fig[ifig].figureupdated=true
-		lastupdate=(new Date()).getTime();
     	RG_fig[ifig].xmin_eval=hviewmin;
         RG_fig[ifig].xmax_eval=hviewmax;
         RG_fig[ifig].ymin_eval=vviewmin;
@@ -1029,12 +1012,14 @@ function onFigureMouseDown(event){
 		figdragstart=[event.clientX+document.body.scrollLeft,event.clientY+document.body.scrollTop]
 		figdragstartevent=event
 		figdragsizestart=[canvas.width,canvas.height]
-        if (window.addEventListener) {  // all browsers except IE before version 9
+        if (window.addEventListener) 
+        {  // all browsers except IE before version 9
             window.addEventListener ("mousemove", onFigureMouseMove, true);
             window.addEventListener ("mouseup", onFigureMouseUp, true);
-        }
-        else {
-            if (figurediv.setCapture) {    // IE before version 9
+        }else 
+        {
+            if (figurediv.setCapture) 
+            {    // IE before version 9
                 figurediv.setCapture ();
             }
         }					
@@ -1049,12 +1034,14 @@ function onFigureMouseDown(event){
 		figdragstart=[event.clientX,event.clientY]
 		figdragstartevent=event
 		figdragsizestart=[canvas.width,canvas.height]
-        if (window.addEventListener) {  // all browsers except IE before version 9
+        if (window.addEventListener) 
+        {  // all browsers except IE before version 9
             window.addEventListener ("mousemove", onFigureMouseMove, true);
             window.addEventListener ("mouseup", onFigureMouseUp, true);
-        }
-        else {
-            if (figurediv.setCapture) {    // IE before version 9
+        }else 
+        {
+            if (figurediv.setCapture) 
+            {    // IE before version 9
                 figurediv.setCapture ();
             }
         }
@@ -1140,12 +1127,14 @@ function onFigureMouseUp(event){
 		document.body.style.cursor = 'default';
 		redrawfigure(ifigure)
 		figdragmode=0;
-       if (window.removeEventListener) {   // all browsers except IE before version 9
+        if (window.removeEventListener) 
+        {   // all browsers except IE before version 9
             window.removeEventListener ("mousemove", onFigureMouseMove, true);
             window.removeEventListener ("mouseup", onFigureMouseUp, true);
-        }
-        else {
-            if (figurediv.releaseCapture) {    // IE before version 9
+        }else 
+        {
+            if (figurediv.releaseCapture) 
+            {    // IE before version 9
                 figurediv.releaseCapture ();
             }
         }
@@ -1156,10 +1145,10 @@ function onFigureMouseUp(event){
 		pixx1=figdragstartevent.offsetX-axiscanvas.offsetLeft
 		pixy1=axiscanvas.height-(figdragstartevent.offsetY-axiscanvas.offsetTop)
 	
-	figx0=(pixx0)/axiscanvas.width*(RG_fig[ifigure].xmax_eval-RG_fig[ifigure].xmin_eval)+RG_fig[ifigure].xmin_eval;
-	figy0=(pixy0)/axiscanvas.height*(RG_fig[ifigure].ymax_eval-RG_fig[ifigure].ymin_eval)+RG_fig[ifigure].ymin_eval;
-	figx1=(pixx1)/axiscanvas.width*(RG_fig[ifigure].xmax_eval-RG_fig[ifigure].xmin_eval)+RG_fig[ifigure].xmin_eval;
-	figy1=(pixy1)/axiscanvas.height*(RG_fig[ifigure].ymax_eval-RG_fig[ifigure].ymin_eval)+RG_fig[ifigure].ymin_eval;
+    	figx0=(pixx0)/axiscanvas.width*(RG_fig[ifigure].xmax_eval-RG_fig[ifigure].xmin_eval)+RG_fig[ifigure].xmin_eval;
+    	figy0=(pixy0)/axiscanvas.height*(RG_fig[ifigure].ymax_eval-RG_fig[ifigure].ymin_eval)+RG_fig[ifigure].ymin_eval;
+    	figx1=(pixx1)/axiscanvas.width*(RG_fig[ifigure].xmax_eval-RG_fig[ifigure].xmin_eval)+RG_fig[ifigure].xmin_eval;
+    	figy1=(pixy1)/axiscanvas.height*(RG_fig[ifigure].ymax_eval-RG_fig[ifigure].ymin_eval)+RG_fig[ifigure].ymin_eval;
 
 		if (Math.abs(figx0-figx1)>0 && Math.abs(figy0-figy1)>0)
 		{
@@ -1180,12 +1169,14 @@ function onFigureMouseUp(event){
 		}
 		
 		figdragmode=0;
-       if (window.removeEventListener) {   // all browsers except IE before version 9
+        if (window.removeEventListener) 
+        {   // all browsers except IE before version 9
             window.removeEventListener ("mousemove", onFigureMouseMove, true);
             window.removeEventListener ("mouseup", onFigureMouseUp, true);
-        }
-        else {
-            if (figurediv.releaseCapture) {    // IE before version 9
+        }else 
+        {
+            if (figurediv.releaseCapture) 
+            {    // IE before version 9
                 figurediv.releaseCapture ();
             }
         }
@@ -1429,9 +1420,36 @@ function setsignals(){
     }else if (signaltext=='console off')
     {
         document.getElementById("consoletext").style.display = 'none'
+    }else if (signaltext=='console clear')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        document.getElementById("consoletext").innerHTML=''
     }else if (signaltext=='users')
     {   
         handle_data_user_event('getusers');
+    }else if (signaltext=='timing on')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_timing='on'
+    }else if (signaltext=='timing off')
+    {
+        console_timing='off'
+    } else if (signaltext=='sendfigure on')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_sendfigure='on'
+    }else if (signaltext=='sendfigure off')
+    {
+        console_sendfigure='off'
+    }else if (signaltext=='server top')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        //handle_data_user_event('server,'+'ps -eo pcpu,pmem,pid,user,args | sort -k 1 -r | head -10');
+        handle_data_user_event('server,'+'top -bn 1 | head -20');
+    }else if (signaltext=='server ps')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        handle_data_user_event('server,'+'top -bd1n 2 | grep time_plot.py');
     }else
     handle_data_user_event('setsignals,'+signaltext);
 }
@@ -1444,8 +1462,8 @@ function onFigureDblclick(event){
 		RG_fig[ifigure].overridexmax=NaN
 		RG_fig[ifigure].overrideymin=NaN
 		RG_fig[ifigure].overrideymax=NaN
-		RG_fig[ifigure].overridecmin=NaN
-		RG_fig[ifigure].overridecmax=NaN
+		RG_fig[ifigure].overridecmin=RG_fig[ifigure].cmin
+		RG_fig[ifigure].overridecmax=RG_fig[ifigure].cmax
 		RG_fig[ifigure].overridelimit=1;
 	    redrawfigure(ifigure)
 	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].overridexmin+','+RG_fig[ifigure].overridexmax+','+RG_fig[ifigure].overrideymin+','+RG_fig[ifigure].overrideymax+','+RG_fig[ifigure].overridecmin+','+RG_fig[ifigure].overridecmax)
@@ -1505,37 +1523,39 @@ function onFigureMouseMove(event){
 		var x = event.clientX+document.body.scrollLeft;
 		var y = event.clientY+document.body.scrollTop;
 		event.preventDefault();
-		if (rubberbanddragging) {
+		if (rubberbanddragging) 
+		{
 		     rubberbandStretch(x, y);
 		}
 		document.body.style.cursor = 'crosshair';
 	}else
 	if (figdragmode==1)
 	{
-		if (1){						
-			newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
-			newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
-		// newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
-		// newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
-		if (newsizex<300)newsizex=300;
-		if (newsizey<300)newsizey=300;
-        figurediv.style.width = newsizex + 'px';
-        figurediv.style.height = newsizey + 'px';
-		figurediv.offsetWidth=newsizex
-		figurediv.offsetHeight=newsizey
-        canvas.style.width = newsizex + 'px';
-        canvas.style.height = newsizey + 'px';
-		canvas.width=newsizex;
-		canvas.height=newsizey;
-		redrawfigure(ifigure)
+		if (1)
+		{
+    		newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
+    		newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
+    		if (newsizex<300)newsizex=300;
+    		if (newsizey<300)newsizey=300;
+            figurediv.style.width = newsizex + 'px';
+            figurediv.style.height = newsizey + 'px';
+    		figurediv.offsetWidth=newsizex
+    		figurediv.offsetHeight=newsizey
+            canvas.style.width = newsizex + 'px';
+            canvas.style.height = newsizey + 'px';
+    		canvas.width=newsizex;
+    		canvas.height=newsizey;
+    		redrawfigure(ifigure)
     	}
 		document.body.style.cursor = 'se-resize';
 	}else if ((Math.abs(event.offsetX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.offsetY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
 	{
 		document.body.style.cursor = 'se-resize';
 	}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
-	{ document.body.style.cursor = 'crosshair';
-	}else{
+	{ 
+	    document.body.style.cursor = 'crosshair';
+	}else
+	{
 		document.body.style.cursor = 'default';
 	}
 }
@@ -1553,11 +1573,6 @@ function saveFigure(ifig){
 	context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
 	var img     = canvas.toDataURL("image/png");
 	context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-
-	var heading=document.getElementById("saveid")
-	//saveid.firstChild.nodeValue="hello"
-	//	document.write('<img src="'+img+'"/>');
-//				self.location=img;
 	window.open(img);
 }
 
@@ -1587,7 +1602,6 @@ function ApplyViewLayout(nfig)
         }
         RG_fig[ifig]=[]
         RG_fig[ifig].xdata=[]
-        RG_fig[ifig].lastts=0
         RG_fig[ifig].version=-1
         RG_fig[ifig].figureupdated=true
         menuname='figmenu'+ifig
@@ -1636,10 +1650,6 @@ function ApplyViewLayout(nfig)
                             onclick:function() {handle_data_user_event('deletefigure,[attr_ifig]')} }
                          ]
                  };
-        // innerHTML+='<td><div id="myfigurediv'+ifig+'" context="'+menuname+'" attr_ifig="'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: 1100; height: 550;">'+
-        //     '<canvas id="myfigurecanvas'+ifig+'"  width="1100"  height="550" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
-        //     '<canvas id="myaxiscanvas'+ifig+'"  width="900"  height="400" style="z-index: 1; position: absolute; left:50; top:75"></canvas>'+
-        //     '</div></td>'
         innerHTML+='<td valign="top"><div id="myfigurediv'+ifig+'" context="'+menuname+'" attr_ifig="'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+figheight+';">'+
         '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+figheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
         '<canvas id="myaxiscanvas'+ifig+'"  width="0" height= "0" style="z-index: 1; position: absolute; left:0; top:0"></canvas>'+
@@ -1673,7 +1683,7 @@ function exec_data_user_cmd(cmd_str)
 }
 
 //performs assignment of data to global variable
-function unpack_binarydata_msg(arraybuffer)
+function unpack_binarydata_msg(arraybuffer,arrivets)
 {
 	varname='RCV_'
 	offset=0;
@@ -1776,7 +1786,7 @@ function unpack_binarydata_msg(arraybuffer)
 	}
 	val=entry[0];
 	}
-	assignvariable(varname,val)
+	assignvariable(varname,val,arraybuffer.byteLength,arrivets)
 }
 
 
@@ -1784,7 +1794,7 @@ function unpack_binarydata_msg(arraybuffer)
 // figure[ifigure].title='hello'
 // figure[ifigure].legend=['er','re','e']
 // figure[ifigure].ydata[itwin][iline]=linedata
-function assignvariable(varname,val)
+function assignvariable(varname,val,ntxbytes,arrivets)
 {
 	sublist=[]
 	thisname=''
@@ -1821,15 +1831,29 @@ function assignvariable(varname,val)
 	{
 	    theobj.overridelimit=0
 	}
+	if (sublist[ilev]=='lastts' && Math.abs(the_lastts-val)>0.1)
+	{//the most recent local time that a change in data timestamp is detected
+	    the_lastts=val;
+	    local_last_lastts_change=arrivets
+	}
 	theobj[sublist[ilev]]=val
 	if (sublist[0]!='RCV_fig') return
 	rcvfig=window[sublist[0]][sublist[1]]
-	if (typeof(rcvfig.recvcount)=="undefined") rcvfig.recvcount=1;
-	else rcvfig.recvcount++;
+    thisfigure=window['RG_fig'][sublist[1]]
+	if (typeof(rcvfig.recvcount)=="undefined")//receiving first variable of a figure
+	{
+	    rcvfig.recvcount=1;
+		rcvfig['receivingts']=arrivets;
+		rcvfig['reqts']=thisfigure['reqts']//steals reqts
+		rcvfig['ntxbytes']=0
+    }else//receiving subsequent variables of a figure 
+    {
+        rcvfig.recvcount++;
+        rcvfig['ntxbytes']+=ntxbytes
+    }
 	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
 	{
-		rcvfig['lastts_local']=Date.now()/1000;
-	    thisfigure=window['RG_fig'][sublist[1]]
+		rcvfig['receivedts']=Date.now()/1000;
 	    if (rcvfig.action=='none')
 	    {
 		    window['RCV_fig'][sublist[1]]=undefined
@@ -1837,7 +1861,11 @@ function assignvariable(varname,val)
 		    return
 	    }else if (rcvfig.action=='reset')
 		{
+		    lastts=window['RG_fig'][sublist[1]].lastts//this might be a bug - why not [sublist[1]]
+		    viewwidth=window['RG_fig'][sublist[1]].viewwidth
 		    window['RG_fig'][sublist[1]]=[]
+		    window['RG_fig'][sublist[1]].viewwidth=viewwidth
+		    window['RG_fig'][sublist[1]].lastts=lastts
 		    for (var thevar in window['RCV_fig'][sublist[1]])
 		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined
@@ -1855,7 +1883,6 @@ function assignvariable(varname,val)
                 if (thisfigure[aug][itwin].length!=rcvfig[aug][itwin].length)
                 {
                     logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],false,true)
-                    thisfigure['lastts']=0
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
                     return;
@@ -1867,7 +1894,6 @@ function assignvariable(varname,val)
                     for (it=0;it<rcvfig[aug][itwin].length;it++)
                         logconsole(' t['+(it-rcvfig[aug][itwin].length+1)+']='+rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length+it],false,true)
 
-                    thisfigure['lastts']=0
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
                     return;
@@ -1895,7 +1921,6 @@ function assignvariable(varname,val)
                 logconsole('Waterfall time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1])+'; reloading figure '+sublist[1],false,true)
                 for (it=0;it<rcvfig[aug].length;it++)
                     logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],false,true)
-                thisfigure['lastts']=0
                 thisfigure['version']=-1
                 window[sublist[0]][sublist[1]]=undefined
                 return;
@@ -1915,41 +1940,19 @@ function assignvariable(varname,val)
 		}else//unknown action
 		{
             logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],false,true)
-            thisfigure['lastts']=0
             thisfigure['version']=-1
             window[sublist[0]][sublist[1]]=undefined
             return;
         }
 		//issue draw instruction
-		servermsgdraw(sublist[1],true)
+		setTimeout(redrawfigure,1,[sublist[1]])
 	}
-}
-
-
-function getmin(obj,clipthisobj)
-{
-	mn=Infinity;
-	if (typeof(obj.length)!="undefined")
-	{
-		if (typeof(clipthisobj)!="undefined" && obj.length<clipthisobj.length)
-			clipthisobj.splice(obj.length,clipthisobj.length-obj.length)					
-		if (obj.length>0 && (typeof(obj[0].length)=="undefined"))
-			for (iel=0;iel<obj.length;iel++)
-				mn=Math.min(obj[iel],mn)
-		else 
-			for (iel=0;iel<obj.length;iel++)
-				mn=Math.min(getmin(obj[iel],clipthisobj[iel]),mn)
-		return mn
-	}
-	return obj;
 }
 			
 function start_data(webdataportnumber) 
 {
-//    datasocket = new WebSocket('ws://<!--server_ip-->:<!--data_port-->/');
     datasocket = new WebSocket('ws://'+document.domain+':'+webdataportnumber);	
 	var supports_binary = (datasocket.binaryType != undefined);
-	//see  matplotlib/lib/matplotlib/backends/webagg/..../mpl.js
 	datasocket.binaryType = 'arraybuffer';
 	datasocket.onerror = function(e) 
 	{
@@ -1960,23 +1963,18 @@ function start_data(webdataportnumber)
 	    if (e.data instanceof ArrayBuffer)
 	    {
 		    time_receive_data_user_cmd=(new Date()).getTime();
-		    data_length_user_cmd=e.data.byteLength
-		    data_length_user_cmd_acc+=data_length_user_cmd
-			unpack_binarydata_msg(e.data)
+			unpack_binarydata_msg(e.data,time_receive_data_user_cmd/1000.0)
 		}else if (e.data.indexOf("/*exec_user_cmd*/") == 0) 
 		{
 		    time_receive_user_cmd=(new Date()).getTime();
-		    data_length_user_cmd=e.data.length
-		    data_length_user_cmd_acc+=data_length_user_cmd
 		    exec_data_user_cmd(e.data);
         }
-    } // end of function(e)
+    }
 }
 
 function stop_data() 
 {
     datasocket.onmessage = function(e) {};
-	// reset the handler so that the buffer behind this socket does not polute new plots
 	datasocket.close();
 	datasocket=0;
 }
@@ -2000,8 +1998,9 @@ function handle_data_user_event(arg_string)
 
 function updateFigure()
 {
+    reqts=(new Date()).getTime()/1000.0
 	time0=(new Date()).getTime();
-	if (lastupdate!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
+	if (timedrawcomplete!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
 	{
 		document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
 	}
@@ -2009,64 +2008,47 @@ function updateFigure()
 	{
 	    if (RG_fig[ifig].figureupdated)
 	    {
+	        var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
 	        RG_fig[ifig].figureupdated=false
-	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length)	handle_data_user_event("sendfigure,"+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+ifig)
-	        else handle_data_user_event("sendfigure,0,-1,"+ifig)
+	        RG_fig[ifig].reqts=reqts
+            oldwidth=RG_fig[ifig].viewwidth
+	        RG_fig[ifig].viewwidth=axiscanvas.width
+	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
+	        {
+	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
+	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
+            }else 
+	        {
+	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth)
+            }
         }else
         {
-        	if (lastupdate!=0 && time0-time_receive_data_user_cmd>10000)
-        	{
-        		document.getElementById("healthtext").innerHTML+='.'
-        		RG_fig[ifig].figureupdated=false
-        	}
+            if (timedrawcomplete!=0 && time0-time_receive_data_user_cmd>10000)
+            {
+                logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
+                RG_fig[ifig].figureupdated=true
+            }
         }
     }
-	
-	time1=(new Date()).getTime();
-}
-	
-function servermsgdraw(ifig,redraw)
-{
-    if (typeof(RG_fig[ifig])=="undefined")
+    if (RG_fig.length && typeof(RG_fig[0].lastdt)!="undefined")
     {
-        return
+        dt2=RG_fig[0].lastdt.toFixed(2)
+        
+    	if ((reqts-local_last_lastts_change)>(dt2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
+    	{//checks that longer than dump local delay occurr for change in last timestamp while still having received updates within this time
+    	    document.getElementById("healthtext").innerHTML='halted stream'
+    	}else
+    	{
+        	dt1=RG_fig[0].lastdt.toFixed(1)
+        	dt0=RG_fig[0].lastdt.toFixed(0)
+        	if (Math.abs(dt0-dt2)<0.01)
+                document.getElementById("healthtext").innerHTML=''+dt0+'s dumps'
+            else if (Math.abs(dt1-dt2)<0.01)
+                document.getElementById("healthtext").innerHTML=''+dt1+'s dumps'
+            else
+                document.getElementById("healthtext").innerHTML=''+dt2+'s dumps'
+        }
     }
-	document.getElementById("timeclientusereventroundtrip").innerHTML+='drawing';
-	if (redraw)
-	    setTimeout(function(){redrawfigure(ifig)},1)
-	
-	timelastreceive=timereceivemsg
-	timereceivemsg=(new Date()).getTime();
-	document.getElementById("timeinterval").innerHTML='time interval '+(timereceivemsg-timelastreceive);
-	document.getElementById("mb_received").innerHTML='MB received '+(data_length_user_cmd_acc/1E6);
-	document.getElementById("timeclientinit").innerHTML='time client init '+(timereceivemsg-time_receive_user_cmd);
-	
-	dt2=RG_fig[ifig].lastdt.toFixed(2)
-	if (0)//RG_fig[ifig].lastdt_local>dt2*2.0)
-	{
-	    document.getElementById("healthtext").innerHTML='halted stream'
-	}else
-	{
-    	dt1=RG_fig[ifig].lastdt.toFixed(1)
-    	dt0=RG_fig[ifig].lastdt.toFixed(0)
-    	if (Math.abs(dt0-dt2)<0.01)
-            document.getElementById("healthtext").innerHTML=''+dt0+'s dumps'
-        else if (Math.abs(dt1-dt2)<0.01)
-            document.getElementById("healthtext").innerHTML=''+dt1+'s dumps'
-        else
-            document.getElementById("healthtext").innerHTML=''+dt2+'s dumps'
-    }
-	data_length_user_cmd_acc=0
-}
-
-function serverperf(servertotal,serverinit,serverselectdata,serverflaglogavg,serverprepmsg,serversend)
-{
-	document.getElementById("timeservertotal").innerHTML='time server total '+(servertotal);
-	document.getElementById("timeserverinit").innerHTML='time server init '+(serverinit);
-	document.getElementById("timeserverselectdata").innerHTML='time server selectdata '+(serverselectdata);
-	document.getElementById("timeserverflaglogavg").innerHTML='time server flag log avg '+(serverflaglogavg);
-	document.getElementById("timeserverprepmsg").innerHTML='time server prep msg '+(serverprepmsg);
-	document.getElementById("timeserversend").innerHTML='time server send msg '+(serversend);
 }
 
 timerid=setInterval(updateFigure,1000)

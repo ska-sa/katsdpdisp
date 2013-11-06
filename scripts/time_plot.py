@@ -4,6 +4,7 @@ from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 import mplh5canvas.simple_server as simple_server
 from os import curdir, sep
+import commands
 import time
 import SocketServer
 import socket
@@ -136,6 +137,59 @@ def report_compact_traceback(tb):
         tb = tb.tb_next
     print '--------------------------------------------------------'
 
+#returns minimum and maximum channel numbers, and channel increment, and channels
+def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
+    if (thetype=='mhz'):
+        if (themin==None or type(themin)==list or not np.isfinite(themin)):
+            stop_channel=len(ch_mhz)
+        else:
+            stop_channel=int(((themin-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
+        if (themax==None or type(themax)==list or not np.isfinite(themax)):
+            start_channel=0
+        else:
+            start_channel=int(((themax-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))
+    elif (thetype=='ghz'):
+        if (themin==None or type(themin)==list or not np.isfinite(themin)):
+            stop_channel=len(ch_mhz)
+        else:
+            stop_channel=int(((themin*1e3-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
+        if (themax==None or type(themax)==list or not np.isfinite(themax)):
+            start_channel=0
+        else:
+            start_channel=int(((themax*1e3-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))
+    else:#channel
+        if (themin==None or type(themin)==list or not np.isfinite(themin)):
+            start_channel=0
+        else:
+            start_channel=int(themin)
+        if (themax==None or type(themax)==list or not np.isfinite(themax)):
+            stop_channel=len(ch_mhz)
+        else:
+            stop_channel=int(themax+1)
+        
+    if (start_channel>stop_channel):#ensures at least 2 channels even if clipped
+        tmp=start_channel
+        start_channel=stop_channel
+        stop_channel=tmp
+    if (start_channel<0):
+        start_channel=0
+    elif (start_channel>=len(ch_mhz)-1):
+        start_channel=len(ch_mhz)-2
+    if (stop_channel>len(ch_mhz)):
+        stop_channel=len(ch_mhz)
+    elif (stop_channel<=0):
+        stop_channel=1
+    
+    if (view_nchannels==None or view_nchannels<1):
+        channelincr=1
+    else:
+        channelincr=int(abs(stop_channel-start_channel)/view_nchannels)
+        if (channelincr<1):
+            channelincr=1
+    return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
+    
+        
+    
 #idea is to store the averaged time series profile in channel 0
 def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
@@ -167,7 +221,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                 #datasd.cpref.inputs=['ant1h','ant1v','ant2h','ant2v','ant3h','ant3v','ant4h','ant4v','ant5h','ant5v','ant6h','ant6v']
                 #print antbase
                 #ts[0] # [  1.37959922e+09   1.37959922e+09]
-                [theviewsettings,thesignals,lastts,lastrecalc]=ringbufferrequestqueue.get()
+                [theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
                 try:
                     if (theviewsettings=='setflags'):
                         datasd.storage.set_mask(str(','.join(thesignals)))
@@ -240,6 +294,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         ydata=[]
                         color=[]
                         legend=[]
+                        start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                         np.random.seed(0)
                         collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                         for colprod in collectionsignals:
@@ -248,7 +303,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
-                                    signal = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False)
+                                    signal = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod)
                                     if (iprod==4):
@@ -257,10 +312,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
 
                         for product in customsignals:
                             if (list(product) in datasd.cpref.bls_ordering):
-                                signal = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False)
+                                signal = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                                 signal=np.array(signal).reshape(-1)
                             else:
-                                signal=np.nan*np.ones(len(ch))
+                                signal=np.nan*np.ones(len(thech))
                             ydata.append(signal)#should check that correct corresponding values are returned
                             legend.append(product[0][3:]+product[1][3:])
                             color.append(np.r_[np.random.random(3)*255,0])
@@ -288,21 +343,21 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         spancolor=[]
                         span=[]
                         if (theviewsettings['xtype']=='mhz'):
-                            fig['xdata']=ch
+                            fig['xdata']=thech
                             fig['xlabel']='Frequency'
                             fig['xunit']='MHz'
                             if (len(datasd.storage.spectrum_flag0)):
                                 spancolor.append([255,0,0,128])
                                 span.append([[ch[datasd.storage.spectrum_flag0[a]],ch[datasd.storage.spectrum_flag1[a]]] for a in range(len(datasd.storage.spectrum_flag0))])
                         elif (theviewsettings['xtype']=='ghz'):
-                            fig['xdata']=np.array(ch)/1e3
+                            fig['xdata']=np.array(thech)/1e3
                             fig['xlabel']='Frequency'
                             fig['xunit']='GHz'
                             if (len(datasd.storage.spectrum_flag0)):
                                 spancolor.append([255,0,0,128])
                                 span.append([[ch[datasd.storage.spectrum_flag0[a]]/1e3,ch[datasd.storage.spectrum_flag1[a]]/1e3] for a in range(len(datasd.storage.spectrum_flag0))])
                         else:
-                            fig['xdata']=np.arange(len(ch))
+                            fig['xdata']=np.arange(start_chan,stop_chan,chanincr)
                             fig['xlabel']='Channel number'
                             fig['xunit']=''
                             if (len(datasd.storage.spectrum_flag0)):
@@ -313,22 +368,23 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         fig['span']=span
                             
                     elif (theviewsettings['figtype'][:9]=='waterfall'):
+                        start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                         collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                         collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                         productstr=theviewsettings['figtype'][9:]
                         if (productstr in collections):
                             product=collections.index(productstr)
                             productstr=collectionsalt[product]
-                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                         elif (productstr in collectionsalt):
                             product=collectionsalt.index(productstr)
-                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                         else:                        
                             product=decodecustomsignal(productstr)
                             if (list(product) in datasd.cpref.bls_ordering):
-                                rvcdata = datasd.select_data(dtype=thetype, product=product, end_time=-120, include_ts=True)
+                                rvcdata = datasd.select_data(dtype=thetype, product=product, end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                             else:
-                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(ch)])]                                
+                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                                
                             
                         cdata=rvcdata[1]
                         if (theviewsettings['type']=='pow'):
@@ -355,15 +411,15 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         fig['showxlabel']=theviewsettings['showxlabel']
                         fig['showylabel']=theviewsettings['showylabel']
                         if (theviewsettings['xtype']=='mhz'):
-                            fig['xdata']=ch
+                            fig['xdata']=thech
                             fig['xlabel']='Frequency'
                             fig['xunit']='MHz'
                         elif (theviewsettings['xtype']=='ghz'):
-                            fig['xdata']=np.array(ch)/1e3
+                            fig['xdata']=np.array(thech)/1e3
                             fig['xlabel']='Frequency'
                             fig['xunit']='GHz'
                         else:
-                            fig['xdata']=np.arange(len(ch))
+                            fig['xdata']=np.arange(start_chan,stop_chan,chanincr)
                             fig['xlabel']='Channel number'
                             fig['xunit']=''
                         
@@ -427,7 +483,178 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                 {'figtype':'waterfallautohh' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
                                 {'figtype':'waterfallautohv' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0},
                                 {'figtype':'waterfallcross' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showtitle':'on','version':0}
-                             ]                            
+                             ],
+                    'hh':  [  {'figtype':'waterfall1h1h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h2h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h2h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h2h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h3h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h3h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h4h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h4h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h4h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h5h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h5h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h5h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h5h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h5h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h6h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h6h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h6h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h6h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h6h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h6h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall7h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0}
+                             ],
+                        'vv':  [  {'figtype':'waterfall1v1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall1v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v2v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall5v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall5v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall5v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall5v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall6v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall6v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                    {'figtype':'waterfall1v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall2v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall3v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall4v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall5v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall6v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                    {'figtype':'waterfall7v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0}
+                                 ],
+                            'hv':  [  {'figtype':'waterfall1h1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall1h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h2v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall5h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall5h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall5h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall5h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall6h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall6h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+
+                                        {'figtype':'waterfall1h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall2h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall3h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall4h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall5h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall6h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0},
+                                        {'figtype':'waterfall7h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showtitle':'off','version':0}
+                                     ]                            
+                            
+                             
+                    
                   }
 
 websockrequest_handlers = {}
@@ -456,20 +683,25 @@ def handle_websock_event(handlerkey,*args):
             print 'Warning: unrecognised username'            
         elif (args[0]=='sendfigure'):
             # print args
-            lastts=np.round(float(args[1])*1000.0)/1000.0
-            lastrecalc=float(args[2])
-            ifigure=int(args[3])
+            ifigure=int(args[1])
+            reqts=float(args[2])# timestamp on browser side when sendfigure request was issued
+            lastts=np.round(float(args[3])*1000.0)/1000.0
+            lastrecalc=float(args[4])
+            view_npixels=int(args[5])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
                 print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
                 return
+            if (view_npixels<128):
+                print 'Warning: view_npixels clipped to 128 from',view_npixels 
+                view_npixels=128
             theviewsettings=html_viewsettings[username][ifigure]
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             if (theviewsettings['figtype']=='timeseries'):
-                send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure)
+                send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
             elif (theviewsettings['figtype']=='spectrum'):
-                send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure)
+                send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure)
+                send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
         elif (args[0]=='setzoom'):
             print args
             ifigure=int(args[1])
@@ -543,7 +775,7 @@ def handle_websock_event(handlerkey,*args):
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
-            ringbufferrequestqueue.put(['setflags',args[1:],0,0])
+            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0])
         elif (args[0]=='getusers'):
             print args
             userstats=[]
@@ -555,6 +787,12 @@ def handle_websock_event(handlerkey,*args):
             for ind in np.argsort(nviewlist)[::-1]:
                 userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))            
             send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true)',handlerkey)
+        elif (args[0]=='server'):
+            cmd=','.join(args[1:])
+            print args[0],':',cmd
+            ret=commands.getoutput(cmd).split('\n')
+            for thisret in ret:
+                send_websock_cmd('logconsole("'+thisret+'",true,true)',handlerkey)            
 
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
@@ -567,9 +805,9 @@ def decodecustomsignal(signalstr):
         return ();
     return ('ant'+sreg[0]+signalstr[len(sreg[0])].lower(),'ant'+sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
     
-def send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure):
+def send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc])
+        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         timeseries_fig=ringbufferresultqueue.get()
         count=0
         if (lastrecalc<timeseries_fig['version']):
@@ -630,9 +868,9 @@ def send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifig
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
-def send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure):
+def send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc])
+        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         spectrum_fig=ringbufferresultqueue.get()
         count=0
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
@@ -674,9 +912,9 @@ def send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigur
         logger.warning("User event exception %s" % str(e))
 
 
-def send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,ifigure):
+def send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc])
+        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         waterfall_fig=ringbufferresultqueue.get()
         count=0
         if (lastrecalc<waterfall_fig['version']):
