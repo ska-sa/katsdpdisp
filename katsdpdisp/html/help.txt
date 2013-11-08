@@ -1,0 +1,77 @@
+[]
+
+The signal displays 
+
+[console]
+
+The console shows information such as warnings, exceptions and debugging information to the advanced user. It is also used for displaying help. The following console related commands can be issued:
+
+'console on' shows the console
+'console off' hides the console
+'console clear' clears the contents of the console
+
+[loop]
+
+The loop command can be used to loop the current page through a list of profiles at regular intervals in an ongoing manner. Named profiles should first be created, and should preferably be saved.
+
+'loop name1,name2,name3,name4' loops through named profiles name1, name2, name3, name4 in turn repeatedly
+'loopdelay=5' sets the delay between each change in profile view to 5 seconds
+'loop off' stops looping
+
+[flags]
+
+The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which affects which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
+
+A few examples:
+'flags=' clears all flags
+'flags=500' flags channel 500
+'flags=..200' flags the first 200 channels
+'flags=-200..' flags the last 200 channels
+'flags=300..350' flags channels 300 to 350
+'flags=..200,300..350,500,-200' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
+
+[update]
+
+The update command provides the advanced user with useful debugging information in order to investigate the speed performance of the signal display system. Updates of a few measured quantities can be printed per figure to the console at regular update intervals. 
+
+'update byte' the number of bytes of data received from the server
+'update kb' the number of kilobytes of data received from the server
+'update mb' number of megabytes of data received from the server
+'update nvars' number of variables received from the server
+'update status' the success status of communication with the server
+'update servertime' the time lapsed since the update request is issued until the moment when the first data is received
+'update receivetime' the time to receive the data
+'update drawtime' time consumed to draw excluding rendering
+'update rendertime' time lapsed during the course of rendering
+'update off' stops the printing of the above-mentioned updates to the console
+
+[timeseries]
+
+Adds a new time series figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
+
+[spectrum]
+
+Adds a new spectrum plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel.
+
+[server top]
+
+Prints out to the console the load and process summary of the server.
+
+[server ps]
+
+Prints out to the console the process usage of the signal display processes.
+
+[users]
+
+Prints the list of named user profiles that the server is currently maintaining, to the console. A count is also provided next to each user profile showing how many user pages are currently logged into the respective profiles.
+
+[min,max,tmin,tmax,fmin,fmax,pmin,pmax]
+
+Sets the limits for axes used on the page. These commands applies to all figures on the page that contains the implied axis. 
+
+'tmin=-100' sets the lower limit of the time axes for all timeseries plots to -100 s
+'tmax=' clears the upper limit of the time axes for all time series plots (i.e. set to autoscale)
+'fmin=1600' sets the minimum frequency of all spectrum and waterfall plots that have MHz units to 1600 MHz
+'Fmin=1.6' sets the minimum frequency of all spectrum and waterfall plots that have GHz units to 1.6 GHz
+'pmin=-60' sets the minimum power of all plots that have power units to -60 dB. Also may affect colour scale of waterfall plots.
+'pmax=' clears the upper limit of power in all plots (i.e. set to autoscale)

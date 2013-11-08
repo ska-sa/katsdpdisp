@@ -11,17 +11,17 @@ var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
 
 var nfigures=0
-var nfigcols=2
 var console_timing='off'
 var console_sendfigure='off'
+var console_update='off'
+
+var looptimer= null
+var loopdelay=5
 
 var RG_fig=[[]]
 RG_fig[0].xdata=[]
 RG_fig[0].version=-1
 
-var timedrawstart=0;
-
-var timedraw=0
 var timedrawcomplete=0
 var datasocket = 0;
 var the_lastts = 0;
@@ -206,21 +206,6 @@ function intensityToJet(inten,min,max)
 	}
 }
 
-
-function oldmakejet()
-{
-	for (c=0;c<256;c++)
-	{
-		RGB=intensityToJet(c,0,255)
-		jetR256[c]=RGB[0]
-		jetG256[c]=RGB[1]
-		jetB256[c]=RGB[2]
-	}
-	jetR256[NaN]=255
-	jetG256[NaN]=255
-	jetB256[NaN]=255
-}
-
 function makejet()
 {
 	for (c=0;c<256;c++)
@@ -315,7 +300,7 @@ function roundprecision(val,numsigfig)
 }
 
 //timelabel can be '' to indicate none or of form '12:34:35'
-function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, units, label, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix, timelabel)
+function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, units, label, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix, timelabel)
 {
     var physicalspan=viewmax-viewmin;
 	var scale=physicalspan/pixspan;
@@ -339,8 +324,8 @@ function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, un
 		
 	context.font=""+labelfontHeight+"px sans-serif";
 	sz=context.measureText(label)
-	if (labelpos)	context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy-((numberpos)?tickfontHeight:0)-((timelabel!='')?tickfont2Height:0)-tickfontHeightspace*2-((dotickpos)?majorticklength:0))
-	else context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((numberpos==0)?tickfontHeight:0)+((timelabel!='')?tickfont2Height:0)+tickfontHeightspace+((dotickneg)?majorticklength:0))
+    if (labelpos)	context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy-((numberpos)?tickfontHeight:0)-((timelabel!='')?tickfont2Height:0)-tickfontHeightspace*2-((dotickpos)?majorticklength:0))
+    else context.fillText(label,pixx+pixspan/2-sz.width/2.0,pixy+labelfontHeight+((numberpos==0)?tickfontHeight:0)+((timelabel!='')?tickfont2Height:0)+tickfontHeightspace+((dotickneg)?majorticklength:0))
 		
 	context.font=""+tickfontHeight+"px sans-serif";
 	ticks=calcLinearTicksFrom(maxval,scale);
@@ -348,7 +333,7 @@ function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, un
 	m_TickMinor=ticks[1]
 
 	unitsz = context.measureText(unitwithprefix)
-	context.fillText(unitwithprefix,pixx+pixspan-unitsz.width,pixy+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight))
+	if (doticklabel) context.fillText(unitwithprefix,pixx+pixspan-unitsz.width,pixy+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight))
 	numberrightmax=unitsz.width;
 
 	var sofar=(-viewmin/(m_TickMinor*m_nTicksMajor));
@@ -392,20 +377,23 @@ function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, un
 
 		 if (x-sz.width/2.0>pixx-7 && x+sz.width/2.0<pixx+pixspan-numberrightmax)
 		 {
-			context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight)) 
-			if (timelabel!='')
-			{					
-				val+=timenow
-				if (val<0)val+=24*60*60
-				hh=Math.floor(val/60/60)
-				mm=Math.floor((val-hh*60*60)/60)
-				ss=Math.floor(val-hh*60*60-mm*60)
-				valstr=''+((hh<10)?'0':'')+hh+':'+((mm<10)?'0':'')+mm+':'+((ss<10)?'0':'')+ss;					
-			 	context.font=""+tickfont2Height+"px sans-serif";				
-			 	sz=context.measureText(valstr)
-	            context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace-tickfontHeight:majorticklength*dotickneg+tickfontHeight+tickfont2Height+tickfont2Heightspace))
-	 			context.font=""+tickfontHeight+"px sans-serif";					
-			}
+		    if (doticklabel)
+		    {
+			    context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace:majorticklength*dotickneg+tickfontHeight)) 
+			    if (timelabel!='')
+			    {					
+				    val+=timenow
+				    if (val<0)val+=24*60*60
+				    hh=Math.floor(val/60/60)
+				    mm=Math.floor((val-hh*60*60)/60)
+				    ss=Math.floor(val-hh*60*60-mm*60)
+				    valstr=''+((hh<10)?'0':'')+hh+':'+((mm<10)?'0':'')+mm+':'+((ss<10)?'0':'')+ss;					
+			 	    context.font=""+tickfont2Height+"px sans-serif";				
+			 	    sz=context.measureText(valstr)
+	                context.fillText(valstr,x-sz.width/2.0,y+((numberpos)?-majorticklength*dotickpos-tickfontHeightspace-tickfontHeight:majorticklength*dotickneg+tickfontHeight+tickfont2Height+tickfont2Heightspace))
+	 			    context.font=""+tickfontHeight+"px sans-serif";					
+			    }
+		    }
 		 }
         }else
 		{
@@ -432,8 +420,45 @@ function getminmax(datalist)
     if (datalist.length==0) return [NaN,NaN]
 	mn=datalist[0][0]
 	mx=mn
+	if (typeof(mn)=="undefined")//so it is just a vector, not a vector of vector
+	{
+	    mn=Math.min.apply(Math, datalist)
+	    mx=Math.max.apply(Math, datalist)
+	    
+    	if (!isFinite(mn) || !isFinite(mx))
+    	{
+    		mn=NaN
+    		mx=NaN
+			for (iel=0;iel<datalist.length;iel++)
+			{
+				if (isFinite(datalist[iel]))
+				{
+					if (!isFinite(mn))
+					{
+						mn=datalist[iel];
+						mx=datalist[iel];
+					}else if (mn>datalist[iel])
+					{
+						mn=datalist[iel];
+					}else if (mx<datalist[iel])
+					{
+						mx=datalist[iel];
+					}
+				}
+			}						
+    	}
+	    return [mn,mx]
+    }
 	for (iline=0;iline<datalist.length;iline++)
 	{
+	    try 
+        {
+          	thismin=Math.min.apply(Math, datalist[iline])
+        } catch(err) 
+        { 
+            ret_str = "user command failed: " + err;
+        }
+        
 		thismin=Math.min.apply(Math, datalist[iline])
 		thismax=Math.max.apply(Math, datalist[iline])
 		mn=Math.min(thismin,mn)
@@ -473,10 +498,8 @@ function redrawfigure(ifig)
     if (typeof(RG_fig[ifig])=="undefined")
         return
     
-    timedrawstart=(new Date()).getTime();
-    RG_fig[ifig].drawstartts=timedrawstart/1000.0
+    RG_fig[ifig].drawstartts=(new Date()).getTime()/1000.0
 	setaxiscanvasrect(ifig)
-	timedrawstart=(new Date()).getTime();
 	if (RG_fig[ifig].overridelimit!=undefined && RG_fig[ifig].overridelimit)
 	{
 	    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
@@ -506,9 +529,8 @@ function redrawfigure(ifig)
 	    else
 	        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
     }
-	timedraw=(new Date()).getTime();
-	RG_fig[ifig].drawstoptts=timedraw/1000.0
-	setTimeout(completefigure,1,[ifig])
+	RG_fig[ifig].drawstoptts=(new Date()).getTime()/1000.0
+	setTimeout(completefigure,1,ifig)
 }
 
 function completefigure(ifig)
@@ -670,8 +692,9 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			doprefix=0
 			timelabel=(units=='s')?xlabel:''
 			if (RG_fig[ifig].showxlabel!='on') xlabel=''
+			if (RG_fig[ifig].showxticklabel!='on') doticklabel=0; else doticklabel=1
 				
-			drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+			drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 
 			figcontext.save();
 			figcontext.rotate(-Math.PI/2);
@@ -685,8 +708,9 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			doprefix=1
 			timelabel=''
 			if (RG_fig[ifig].showylabel!='on') ylabel[0]=''
-			  					
-			drawMetricLinearAtPt(figcontext, vviewmin[0], vviewmax[0], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel[0], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+			if (RG_fig[ifig].showyticklabel!='on') doticklabel=0; else doticklabel=1
+			
+			drawMetricLinearAtPt(figcontext, vviewmin[0], vviewmax[0], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel[0], dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 
 			if (ylabel.length>1)//twin axis
 			{
@@ -699,8 +723,9 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 				doprefix=1
 				timelabel=''
     			if (RG_fig[ifig].showylabel!='on') ylabel[1]=''
+				if (RG_fig[ifig].showyticklabel!='on') doticklabel=0; else doticklabel=1
 				
-				drawMetricLinearAtPt(figcontext, vviewmin[1], vviewmax[1], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx+axiscanvas.width, units, ylabel[1], dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+				drawMetricLinearAtPt(figcontext, vviewmin[1], vviewmax[1], axiscanvas.height, -(axisposy+axiscanvas.height),axisposx+axiscanvas.width, units, ylabel[1], dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 			}
 			figcontext.restore();
 
@@ -909,8 +934,9 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 				timelabel=''
 			  	displaxisx={viewmin:hviewmin,viewmax:hviewmax,pixspan:axiscanvas.width};
 				if (RG_fig[ifig].showxlabel!='on') xlabel=''
+				if (RG_fig[ifig].showxticklabel!='on') doticklabel=0; else doticklabel=1
 				
-				drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+				drawMetricLinearAtPt(figcontext, hviewmin, hviewmax, axiscanvas.width, axisposx, axisposy+axiscanvas.height, units, xlabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 
 				figcontext.save();
 			 	figcontext.rotate(-Math.PI/2);
@@ -925,8 +951,9 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 				timelabel=(units=='s')?ylabel:''
 				displaxisy={viewmin:vviewmin,viewmax:vviewmax,pixspan:axiscanvas.height};
 				if (RG_fig[ifig].showylabel!='on') ylabel=''
-			  					
-				drawMetricLinearAtPt(figcontext, vviewmin, vviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+			  	if (RG_fig[ifig].showyticklabel!='on') doticklabel=0; else doticklabel=1
+			  	
+				drawMetricLinearAtPt(figcontext, vviewmin, vviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 
                 if (RG_fig[ifig].showlegend=='on')
                 {
@@ -937,12 +964,13 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
     				dotickpos=0
     				dotickneg=1
     				doprefix=1
+    				doticklabel=1
         			timelabel=(units=='s')?clabel:''
     				displaxisc={viewmin:cviewmin,viewmax:cviewmax,pixspan:axiscanvas.height};
     				colorbaroff=titlefontHeightspace*2;
     				colorbarwidth=titlefontHeight;
 
-    				drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+    				drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
                 }
 				figcontext.restore();
 
@@ -1070,10 +1098,14 @@ function setaxiscanvasrect(ifig)
         _left=50;_top=55;_width=figcanvas.width-130;_height=figcanvas.height-130;
     }else
     {
-        if (RG_fig[ifig].showylabel=='on')
-            _left=50
+        if (RG_fig[ifig].showyticklabel=='on')
+            _left=30
         else
-            _left=33
+            _left=0
+        if (RG_fig[ifig].showylabel=='on')
+            _left+=20
+        else
+            _left+=3
         if (RG_fig[ifig].showtitle=='on')
             _top=50
         else
@@ -1086,6 +1118,10 @@ function setaxiscanvasrect(ifig)
         	_height=figcanvas.height-55-_top;
         else
         	_height=figcanvas.height-33-_top
+        if (RG_fig[ifig].showxticklabel=='on')
+            _height-=0
+        else
+            _height+=30
 	}
 	if (axiscanvas.style.left!=_left)
         axiscanvas.style.left = _left + 'px';
@@ -1433,7 +1469,35 @@ function setsignals(){
     }else if (signaltext=='timing off')
     {
         console_timing='off'
-    } else if (signaltext=='sendfigure on')
+    }else if (signaltext.slice(0,7)=='update ')//note space# nvars, byte
+    {
+        valid=['off','nvars','byte','mb','kb','status','servertime','receivetime','drawtime','rendertime'];
+        if (valid.indexOf(signaltext.slice(7)) >= 0)
+        {
+            document.getElementById("consoletext").style.display = 'block'
+            console_update=signaltext.slice(7)
+        }
+    }
+    else if (signaltext=='update nvars')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_update='nvars'
+    }else if (signaltext=='update byte' )
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_update='byte'
+    }else if (signaltext=='update kb' || signaltext=='update kilobyte')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_update='kb'
+    }else if (signaltext=='update mb' || signaltext=='update megabyte')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        console_update='mb'
+    }else if (signaltext=='update off')
+    {
+        console_update='off'
+    }else if (signaltext=='sendfigure on')
     {
         document.getElementById("consoletext").style.display = 'block'
         console_sendfigure='on'
@@ -1448,9 +1512,55 @@ function setsignals(){
     }else if (signaltext=='server ps')
     {
         document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bd1n 2 | grep time_plot.py');
-    }else
+        handle_data_user_event('server,'+'top -bd1n 2 | grep time_plot.py | tail -n 2');
+    }else if (signaltext.slice(0,4)=='save')
+    {
+        if (signaltext.length>4)
+            handle_data_user_event('save,'+signaltext.slice(5));
+        else
+            handle_data_user_event('save');
+    }else if (signaltext.slice(0,4)=='load')
+    {
+        if (signaltext.length>4)
+            handle_data_user_event('load,'+signaltext.slice(5));
+        else
+            handle_data_user_event('load');
+    }else if (signaltext.slice(0,4)=='loop')
+    {
+        if (signaltext=='loop off')
+        {
+            clearTimeout(looptimer)
+        }else if (signaltext.slice(0,10)=='loopdelay=')
+        {
+            loopdelay=parseFloat(signaltext.slice(10))
+        }else
+        {
+            clearTimeout(looptimer)
+            usernames=signaltext.slice(5).split(',')
+            if (usernames.length>1)
+            {
+                looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,0)
+            }else
+            {
+                logconsole('Need to specify more than one view to loop through',true,true)
+            }
+        }
+    }else if (signaltext=='metadata')
+    { //ssh-keygen -t rsa
+      //scp .ssh/id_rsa.pub kat@kat-ops.karoo
+      //ssh kat@kat-ops.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'
+      handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
+      //'ssh kat@kat-ops.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
+    }
+    else
     handle_data_user_event('setsignals,'+signaltext);
+}
+
+function loopfunction(usernames,iusername)
+{
+    iusername=iusername%usernames.length
+    handle_data_user_event('load,'+usernames[iusername]);
+    looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,iusername+1)
 }
 
 function onFigureDblclick(event){
@@ -1576,14 +1686,15 @@ function saveFigure(ifig){
 }
 
 //FIGURE LAYOUT FUNCTIONS================================================================
-function ApplyViewLayout(nfig,ncols)
+function ApplyViewLayout(nfig,nfigcols)
 {        
     nfigures=nfig
-    nfigcols=ncols
     var listoffigures = document.getElementById("listoffigures")
+    var consolectl=document.getElementById("consoletext")
     innerHTML='<table width="100%">'
     RG_fig=[]
     rowcomplete=1;
+    consolectl.style.width=window.innerWidth-listoffigures.offsetLeft*2-5
     figwidth=(window.innerWidth-listoffigures.offsetLeft*2)/nfigcols-5
     if (figwidth<200)
     {
@@ -1603,6 +1714,7 @@ function ApplyViewLayout(nfig,ncols)
         RG_fig[ifig]=[]
         RG_fig[ifig].xdata=[]
         RG_fig[ifig].version=-1
+        RG_fig[ifig].viewwidth=parseInt(figwidth)
         RG_fig[ifig].figureupdated=true
         menuname='figmenu'+ifig
         thismenu = { attributes: "attr_ifig,attr_type,attr_xtype,cond" ,
@@ -1724,7 +1836,22 @@ function unpack_binarydata_msg(arraybuffer,arrivets)
 	{
 		val=new Float64Array(arraybuffer.slice(offset,offset+totdata*8))
 		offset+=totdata*8
+	}else if (dtype=='m')
+	{
+		vmm=new Float32Array(arraybuffer.slice(offset,offset+2*4))
+		val=new Float32Array(totdata)
+		for(ind=0;ind<totdata;ind++)
+		    val[ind]=ind*(vmm[1]-vmm[0])/(totdata-1)+vmm[0]
+		offset+=2*4
 	}
+	else if (dtype=='M')
+	{
+		vmm=new Float64Array(arraybuffer.slice(offset,offset+2*8))
+		val=new Float64Array(totdata)
+		for(ind=0;ind<totdata;ind++)
+		    val[ind]=ind*(vmm[1]-vmm[0])/(totdata-1)+vmm[0]
+		offset+=2*8
+	}	
 	//seperate decode			
 	if (dtype=='B'||dtype=='H')
 	{
@@ -1763,28 +1890,28 @@ function unpack_binarydata_msg(arraybuffer,arrivets)
 		val=val[0]
 	}else if (ndims>1 && dtype!='s')//perform reshape
 	{
-	entry=[]
-	stateindex=[]
-	varoffset=0
-	for (ilev=0;ilev<ndims;ilev++){entry=[entry];stateindex[ilev]=0;}
-	while(varoffset<totdata)
-	{
-		for (thisentry=entry[0],ilev=0;ilev<ndims-2;ilev++)//ensure array elements exist
-		{
-			if (typeof(thisentry[stateindex[ilev]])=="undefined") thisentry[stateindex[ilev]]=[];
-			thisentry=thisentry[stateindex[ilev]];
-		}
-		thisentry[stateindex[ilev]]=val.subarray(varoffset,varoffset+dims[ndims-1]);//assign data
-		varoffset+=dims[ndims-1];
-		stateindex[ilev]++;//increment state index
-		for (ilev=ndims-2;ilev>=0;ilev--)// and perform carry overs
-			if (stateindex[ilev]>=dims[ilev])
-			{
-				stateindex[ilev]=0;
-			 	if (ilev>0)stateindex[ilev-1]++;
-			}
-	}
-	val=entry[0];
+    	entry=[]
+    	stateindex=[]
+    	varoffset=0
+    	for (ilev=0;ilev<ndims;ilev++){entry=[entry];stateindex[ilev]=0;}
+    	while(varoffset<totdata)
+    	{
+    		for (thisentry=entry[0],ilev=0;ilev<ndims-2;ilev++)//ensure array elements exist
+    		{
+    			if (typeof(thisentry[stateindex[ilev]])=="undefined") thisentry[stateindex[ilev]]=[];
+    			thisentry=thisentry[stateindex[ilev]];
+    		}
+    		thisentry[stateindex[ilev]]=val.subarray(varoffset,varoffset+dims[ndims-1]);//assign data
+    		varoffset+=dims[ndims-1];
+    		stateindex[ilev]++;//increment state index
+    		for (ilev=ndims-2;ilev>=0;ilev--)// and perform carry overs
+    			if (stateindex[ilev]>=dims[ilev])
+    			{
+    				stateindex[ilev]=0;
+    			 	if (ilev>0)stateindex[ilev-1]++;
+    			}
+    	}
+    	val=entry[0];
 	}
 	assignvariable(varname,val,arraybuffer.byteLength,arrivets)
 }
@@ -1851,6 +1978,10 @@ function assignvariable(varname,val,ntxbytes,arrivets)
         rcvfig.recvcount++;
         rcvfig['ntxbytes']+=ntxbytes
     }
+    if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount<rcvfig.recvcount)
+    {
+        var err=1;
+    }
 	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
 	{
 		rcvfig['receivedts']=Date.now()/1000;
@@ -1877,6 +2008,14 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		}else if (rcvfig.action=='augmentydata')
 		{
 		    aug='ydata'
+		    if (typeof(thisfigure[aug])=="undefined")
+		    {
+		        logconsole('Timeseries figure ydata incorrectly shaped, reloading figure '+sublist[1],false,true)
+                thisfigure['version']=-1
+                window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
+    		    window['RG_fig'][sublist[1]].figureupdated=true
+                return;
+		    }
 		    ntwin=thisfigure[aug].length
 			for (itwin=0;itwin<ntwin;itwin++)
 			{
@@ -1885,6 +2024,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
                     logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],false,true)
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
+        		    window['RG_fig'][sublist[1]].figureupdated=true
                     return;
                 }
     		    misalignment=thisfigure['lastts']-rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1]
@@ -1896,6 +2036,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
+        		    window['RG_fig'][sublist[1]].figureupdated=true
                     return;
                 }else
 				for (iline=0;iline<thisfigure[aug][itwin].length;iline++)//loops through each line to augment
@@ -1915,6 +2056,14 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		}else if (rcvfig.action=='augmentcdata')
 		{
 		    aug='cdata'
+		    if (typeof(thisfigure[aug])=="undefined")
+		    {
+		        logconsole('Waterfall figure cdata incorrectly shaped, reloading figure '+sublist[1],false,true)
+                thisfigure['version']=-1
+                window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
+    		    window['RG_fig'][sublist[1]].figureupdated=true
+                return;
+		    }
 		    misalignment=thisfigure['lastts']-rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1]
             if (Math.abs(misalignment)>0.1)
             {
@@ -1923,6 +2072,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
                     logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],false,true)
                 thisfigure['version']=-1
                 window[sublist[0]][sublist[1]]=undefined
+    		    window['RG_fig'][sublist[1]].figureupdated=true
                 return;
             }else
             {
@@ -1942,10 +2092,11 @@ function assignvariable(varname,val,ntxbytes,arrivets)
             logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],false,true)
             thisfigure['version']=-1
             window[sublist[0]][sublist[1]]=undefined
+		    window['RG_fig'][sublist[1]].figureupdated=true
             return;
         }
 		//issue draw instruction
-		setTimeout(redrawfigure,1,[sublist[1]])
+		setTimeout(redrawfigure,1,sublist[1])
 	}
 }
 			
@@ -2004,37 +2155,88 @@ function updateFigure()
 	{
 		document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
 	}
+	summary=[]
 	for (ifig=0;ifig<nfigures;ifig++)
 	{
+        if (console_update=='byte')
+            summary[ifig]=''+ifig+': '+RG_fig[ifig].ntxbytes
+        else if (console_update=='kb')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].ntxbytes/1024).toFixed(2)
+        else if (console_update=='mb')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].ntxbytes/1024/1024).toFixed(2)
+        else if (console_update=='nvars')
+            summary[ifig]=''+ifig+': '+RG_fig[ifig].recvcount
+        else if (console_update=='servertime')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)
+        else if (console_update=='receivetime')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)
+        else if (console_update=='drawtime')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)
+        else if (console_update=='rendertime')
+            summary[ifig]=''+ifig+': '+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3)
+        
 	    if (RG_fig[ifig].figureupdated)
 	    {
 	        var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
 	        RG_fig[ifig].figureupdated=false
 	        RG_fig[ifig].reqts=reqts
             oldwidth=RG_fig[ifig].viewwidth
-	        RG_fig[ifig].viewwidth=axiscanvas.width
+            if (axiscanvas.width!=0)
+	            RG_fig[ifig].viewwidth=axiscanvas.width//else already has value from applyviewlayout
 	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
 	        {
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': Ok'
 	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
 	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
+	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),false,true)
             }else 
 	        {
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': reloading'
 	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth)
             }
         }else
         {
             if (timedrawcomplete!=0 && time0-time_receive_data_user_cmd>10000)
             {
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': waiting for server orig'
                 logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
                 RG_fig[ifig].figureupdated=true
             }else
             if (reqts-RG_fig[ifig].receivingts>30 && (time0-time_receive_data_user_cmd)<10000)
             {
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': waiting for server'
                 logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
-                RG_fig[ifig].figureupdated=true                
+                RG_fig[ifig].figureupdated=true
+            }else
+            {
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': waiting'
             }
         }
     }
+    if (console_update=='byte')
+        logconsole('byte: '+summary.join(', '),false,true)
+    if (console_update=='kb')
+        logconsole('kb: '+summary.join(', '),false,true)
+    if (console_update=='mb')
+        logconsole('mb: '+summary.join(', '),false,true)
+    if (console_update=='status')
+        logconsole('status: '+summary.join(', '),false,true)
+    if (console_update=='nvars')
+        logconsole('nvars: '+summary.join(', '),false,true)
+    if (console_update=='servertime')
+        logconsole('servertime: '+summary.join(', '),false,true)
+    if (console_update=='receivetime')
+        logconsole('receivetime: '+summary.join(', '),false,true)
+    if (console_update=='drawtime')
+        logconsole('drawtime: '+summary.join(', '),false,true)
+    if (console_update=='rendertime')
+        logconsole('rendertime: '+summary.join(', '),false,true)
+    
     if (RG_fig.length && typeof(RG_fig[0].lastdt)!="undefined")
     {
         dt2=RG_fig[0].lastdt.toFixed(2)
