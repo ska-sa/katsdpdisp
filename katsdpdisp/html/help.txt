@@ -1,17 +1,66 @@
 []
+The signal displays overview
 
-The signal displays 
+To add new figures to the page, refer to the commands below:
+timeseries
+spectrum
+waterfall
+
+To add lines to figures:
+1h1h
+auto - draws percentile plots for a collection of auto correlation signals
+cross - draws percentile plots for a collection of cross correlation signals
+envelope - draws envelope of a collection of signals
+
+flags - specify channels to be flagged for timeseries plot calculation
+onlineflags - hides or shows online flags
+
+ncols - sets the number of columns in the view
+
+console - shows,  hides or clears the console
+loop - displays a list of different profiles in a loop
+load - loads saved user view profile settings
+save - save user view profile settings
+
+Advanced user commands:
+metadata - re-issue metadata
+users - see which profiles are active
+update - display performance information updates to console
+server - display performance of server
 
 [console]
-
 The console shows information such as warnings, exceptions and debugging information to the advanced user. It is also used for displaying help. The following console related commands can be issued:
 
 'console on' shows the console
 'console off' hides the console
 'console clear' clears the contents of the console
 
-[loop]
+[envelope]
+Adds an envelope plot to the current figures for a collection of signals.
 
+Some examples:
+envelopeauto - envelope plot of autohh and autovv signals combined
+envelopeautohh - envelope plot of autohh signals
+envelopeautohv - envelope plot of autohv signals
+envelopeautovv - envelope plot of autovv signals
+envelopecross - envelope plot of crosshh and crossvv signals combined
+envelopecrosshh - envelope plot of crosshh signals
+envelopecrosshv - envelope plot of crosshv signals
+envelopecrossvv - envelope plot of crossvv signals
+
+[load]
+Loads user view profile settings from a persistent store on the server and applies it to the current page. 
+
+'load' - loads the saved view profile settings of the current user logged into the page.
+'load name' - loads the saved view profile settings of name. If the view settings of the specified name is not saved, but does exist in server memory, it will be copied from memory instead, with a warning. 
+
+[save]
+Saves view profile settings of the current page to a persistent store on the server.
+
+'save' - saves the profile settings of the current page under the name of the current user logged into the page
+'save name' - saves the profile settings under a different name. It is possible, but would be inconsiderate to save to another user's name. A single user may save to multiple view profile names so names should be chosen meaningfully by the user.
+
+[loop]
 The loop command can be used to loop the current page through a list of profiles at regular intervals in an ongoing manner. Named profiles should first be created, and should preferably be saved.
 
 'loop name1,name2,name3,name4' loops through named profiles name1, name2, name3, name4 in turn repeatedly
@@ -19,8 +68,7 @@ The loop command can be used to loop the current page through a list of profiles
 'loop off' stops looping
 
 [flags]
-
-The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which affects which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
+The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which specifies which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
 
 A few examples:
 'flags=' clears all flags
@@ -30,8 +78,25 @@ A few examples:
 'flags=300..350' flags channels 300 to 350
 'flags=..200,300..350,500,-200' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
 
-[update]
+'flags on' shows the current flags for all the figures on the page
+'flags off' hides the current flags for all the figures on the page
 
+[metadata]
+This command ensures that the default signal display servers are included in kat-capture's list of spead receivers, and re-issue metadata.
+
+[ncols]
+Change the number of columns, and recalculate figure sizes accordingly.
+
+For example:
+'ncols=1' stacks figures underneath each other in a single column
+'ncols=2' organises figures in 2 columns
+
+[onlineflags]
+The online flags can be shown or hidden using the commands as follows:
+'onlineflags on' shows the online flags for all the figures on the page
+'onlineflags off' hides the online flags for all the figures on the page
+
+[update]
 The update command provides the advanced user with useful debugging information in order to investigate the speed performance of the signal display system. Updates of a few measured quantities can be printed per figure to the console at regular update intervals. 
 
 'update byte' the number of bytes of data received from the server
@@ -46,27 +111,47 @@ The update command provides the advanced user with useful debugging information 
 'update off' stops the printing of the above-mentioned updates to the console
 
 [timeseries]
-
 Adds a new time series figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
 
 [spectrum]
-
 Adds a new spectrum plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel.
 
-[server top]
+[waterfall]
+Adds a new waterfall plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel. A further specification of baseline data product is required. 
 
-Prints out to the console the load and process summary of the server.
+Examples:
+'waterfall1h2h' - waterfall plot of data product 1h2h
 
-[server ps]
+'waterfallauto' - waterfall plot of median of auto correlation products. This is of the combination of HH and VV products.
+'waterfallcross' - waterfall plot of median of cross correlation products. This is of the combination of HH and VV products.
 
-Prints out to the console the process usage of the signal display processes.
+'waterfallautohh' - waterfall plot of median of hh auto correlation products.
+'waterfallautohv' - waterfall plot of median of hv auto correlation products.
+'waterfallautovv' - waterfall plot of median of vv auto correlation products.
+
+'waterfallcrosshh' - waterfall plot of median of hh cross correlation products.
+'waterfallcrosshv' - waterfall plot of median of hv cross correlation products.
+'waterfallcrossvv' - waterfall plot of median of vv cross correlation products.
+
+'waterfallautomin' - waterfall plot of minimum of auto correlation products. This is of the combination of HH and VV products.
+'waterfallautomax' - waterfall plot of minimum of auto correlation products. This is of the combination of HH and VV products.
+'waterfallauto0' - same as waterfalautomin
+'waterfallauto25' - waterfall plot of 25 percentile of auto correlation products. This is of the combination of HH and VV products.
+'waterfallauto75' - waterfall plot of 75 percentile of auto correlation products. This is of the combination of HH and VV products.
+'waterfallauto100' - same as waterfalautomax
+
+'waterfallautohhmin' - waterfall plot of minimum of hh auto correlation products.
+and so forth
+
+[server]
+'server top' - Prints out to the console the load and process summary of the server.
+
+'server ps' - Prints out to the console the process usage of the signal display processes.
 
 [users]
-
 Prints the list of named user profiles that the server is currently maintaining, to the console. A count is also provided next to each user profile showing how many user pages are currently logged into the respective profiles.
 
 [min,max,tmin,tmax,fmin,fmax,pmin,pmax]
-
 Sets the limits for axes used on the page. These commands applies to all figures on the page that contains the implied axis. 
 
 'tmin=-100' sets the lower limit of the time axes for all timeseries plots to -100 s

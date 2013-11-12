@@ -374,6 +374,7 @@ class SignalDisplayStore2(object):
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        self.percflags = np.zeros((self.slots, nperc, self.n_chans),dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.frame_count = 0
         self.roll_point = 0
@@ -421,17 +422,21 @@ class SignalDisplayStore2(object):
     #sorts this collection of data into 0% 100% 25% 75% 50%
     #return shape is [5,nchannels]
     #could improve algorithm by first sorting for one channel then apply ordering to next channel, and then using mergesort; instead of searching from scratch each channel
-    def percsort(self,data):
+    def percsort(self,data,flags=None):
         isort=np.argsort(np.abs(data),axis=0)
         ilev=(data.shape[0]*25)/100;
         colindex=range(data.shape[1])
         # print 'isort[0,:]',np.shape(isort[0,:]),'isort.shape',isort.shape,'np.shape(colindex)',np.shape(colindex)
         # return [np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.median(np.abs(data),axis=0)]
-        return [data.reshape(-1)[isort[0,:]*isort.shape[1]+colindex],
+        if (flags is not None):
+            anyflags=np.any(flags,axis=0)
+            flags=[anyflags,anyflags,anyflags,anyflags,anyflags]
+        return [[data.reshape(-1)[isort[0,:]*isort.shape[1]+colindex],
             data.reshape(-1)[isort[-1,:]*isort.shape[1]+colindex],
             data.reshape(-1)[isort[ilev,:]*isort.shape[1]+colindex],
             data.reshape(-1)[isort[-1-ilev,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[isort.shape[0]/2,:]*isort.shape[1]+colindex]]
+            data.reshape(-1)[isort[isort.shape[0]/2,:]*isort.shape[1]+colindex]],
+            flags]
         
     #collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
     def set_bls(self,bls_ordering):
@@ -538,14 +543,22 @@ class SignalDisplayStore2(object):
             #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
             #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
             percdata=[]
-            for iproducts in self.collectionproducts:
-                percdata.extend(self.percsort(data[iproducts,:]))
-            percdata=np.array(percdata,dtype='complex')
-
+            percflags=[]
+            if (flags is not None):
+                self.flags[self.roll_point] = flags
+                for iproducts in self.collectionproducts:
+                    pdata,pflags=self.percsort(data[iproducts,:],flags[iproducts,:])
+                    percdata.extend(pdata)
+                    percflags.extend(pflags)
+            else:
+                for iproducts in self.collectionproducts:
+                    pdata,pflags=self.percsort(data[iproducts,:],None)
+                    percdata.extend(pdata)
+                    percflags.extend(np.zeros([self.collectionproducts,self.n_chans],dtype=np.uint8))
+            
             self.data[self.roll_point,:,:] = data
-            self.percdata[self.roll_point,:,:]=percdata
-
-            if flags is not None: self.flags[self.roll_point] = flags
+            self.percdata[self.roll_point,:,:]=np.array(percdata,dtype=np.complex64)
+            self.percflags[self.roll_point,:,:]=np.array(percflags,dtype=np.uint8)
             self._last_ts = timestamp_ms
 
 class SignalDisplayStore(object):
@@ -2009,11 +2022,11 @@ class DataHandler(object):
             if (_split_start<_split_end):
                 frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
                 if include_flags:
-                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+                    flags = self.storage.percflags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
             else:
                 frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
                 if include_flags:
-                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+                    flags = np.concatenate((self.storage.percflags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.percflags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
 
             frames = frames.squeeze()
             if include_flags: flags = flags.squeeze()

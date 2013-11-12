@@ -19,11 +19,11 @@ import katsdpdisp
 import re
 import json
 
-#SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
-SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
+SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
+#SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
 
 #To run simulator: 
-#first ./meertime_plot.py k7simulator 
+#first ./time_plot.py k7simulator 
 #then run ./k7_simulator.py --test-addr :7149 --standalone
 #
 #if there is a crash that blocks port - use lsof (ls open files) to determine if there is a  process still running that should be killed
@@ -209,10 +209,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
             #datasd.cpref.inputs=['ant1h','ant1v','ant2h','ant2v','ant3h','ant3v','ant4h','ant4v','ant5h','ant5v','ant6h','ant6v']
             #print antbase
             #ts[0] # [  1.37959922e+09   1.37959922e+09]
-            [theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
+            [thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
 
-            if (theviewsettings=='setflags'):
-                datasd.storage.set_mask(str(','.join(thesignals)))
+            if (thelayoutsettings=='setflags'):
+                datasd.storage.set_mask(str(','.join(theviewsettings)))
                 continue
             if (datasd.storage.frame_count==0):
                 fig={}
@@ -237,17 +237,30 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     for colprod in collectionsignals:
-                        if (colprod in collections):
-                            icolprod=collections.index(colprod)
-                            c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
-                            for iprod in range(5):
-                                product=icolprod*5+iprod
-                                signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
-                                ydata.append(signal.reshape(-1))
-                                legend.append(colprod)
-                                if (iprod==4):
-                                    c=np.array(np.r_[c[:-1],0],dtype='int')
-                                color.append(c)
+                        if (colprod[:8]=='envelope'):
+                            if (colprod[8:] in collections):
+                                icolprod=collections.index(colprod[8:])
+                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                for iprod in range(2):#only min and max
+                                    product=icolprod*5+iprod
+                                    signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                                    ydata.append(signal.reshape(-1))
+                                    legend.append(colprod[8:])
+                                    if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
+                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                    color.append(c)
+                        else:
+                            if (colprod in collections):
+                                icolprod=collections.index(colprod)
+                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                for iprod in range(5):
+                                    product=icolprod*5+iprod
+                                    signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                                    ydata.append(signal.reshape(-1))
+                                    legend.append(colprod)
+                                    if (iprod==4):
+                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                    color.append(c)
                         
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
@@ -295,30 +308,73 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     color=[]
                     legend=[]
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    thech_=np.arange(start_chan,stop_chan,chanincr)
                     np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
+                    flags=np.zeros(len(thech))
                     for colprod in collectionsignals:
-                        if (colprod in collections):
-                            icolprod=collections.index(colprod)
-                            c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
-                            for iprod in range(5):
-                                product=icolprod*5+iprod
-                                signal = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                                ydata.append(signal.reshape(-1))
-                                legend.append(colprod)
-                                if (iprod==4):
-                                    c=np.array(np.r_[c[:-1],0],dtype='int')
-                                color.append(c)
-
+                        if (colprod[:8]=='envelope'):
+                            if (colprod[8:] in collections):
+                                icolprod=collections.index(colprod[8:])
+                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                for iprod in range(2):
+                                    product=icolprod*5+iprod
+                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                    flags=np.logical_or(flags,theflags.reshape(-1))
+                                    ydata.append(signal.reshape(-1))
+                                    legend.append(colprod[8:])
+                                    if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
+                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                    color.append(c)
+                        else:
+                            if (colprod in collections):
+                                icolprod=collections.index(colprod)
+                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                for iprod in range(5):
+                                    product=icolprod*5+iprod
+                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                    flags=np.logical_or(flags,theflags.reshape(-1))
+                                    ydata.append(signal.reshape(-1))
+                                    legend.append(colprod)
+                                    if (iprod==4):
+                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                    color.append(c)
+                                
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
-                            signal = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-1, include_ts=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            signal,theflags = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            flags=np.logical_or(flags,theflags.reshape(-1))
                             signal=np.array(signal).reshape(-1)
                         else:
                             signal=np.nan*np.ones(len(thech))
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(product[0][3:]+product[1][3:])
                         color.append(np.r_[np.random.random(3)*255,0])
+
+                    span=[]
+                    spancolor=[]
+                    if (thelayoutsettings['showonlineflags']=='on'):
+                        onlineflags=[]
+                        chanwidth=len(thech)-1
+                        flagstart=0
+                        flagstop=0
+                        halfchanwidthmhz=-abs(ch[0]-ch[1])/2.0
+                        while (flagstop<chanwidth):
+                            flagstart=flagstop
+                            while (flagstart<chanwidth and flags[flagstart]==0):
+                                flagstart+=1
+                            flagstop=flagstart
+                            while (flagstop<chanwidth and flags[flagstop]!=0):
+                                flagstop+=1
+                            if (theviewsettings['xtype']=='mhz'):
+                                onlineflags.append([thech[flagstart]-halfchanwidthmhz,thech[flagstop]-halfchanwidthmhz])
+                            elif (theviewsettings['xtype']=='ghz'):
+                                onlineflags.append([(thech[flagstart]-halfchanwidthmhz)/1e3,(thech[flagstop]-halfchanwidthmhz)/1e3])
+                            else:
+                                onlineflags.append([thech_[flagstart]-0.5,thech_[flagstop]-0.5])
+                        span.append(onlineflags)
+                        spancolor.append([200,200,0,128])
+
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
@@ -345,27 +401,25 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     fig['showylabel']=theviewsettings['showylabel']
                     fig['showxticklabel']=theviewsettings['showxticklabel']
                     fig['showyticklabel']=theviewsettings['showyticklabel']
-                    spancolor=[]
-                    span=[]
                     if (theviewsettings['xtype']=='mhz'):
                         fig['xdata']=thech
                         fig['xlabel']='Frequency'
                         fig['xunit']='MHz'
-                        if (len(datasd.storage.spectrum_flag0)):
+                        if (thelayoutsettings['showflags']=='on' and len(datasd.storage.spectrum_flag0)):
                             spancolor.append([255,0,0,128])
                             span.append([[ch[datasd.storage.spectrum_flag0[a]],ch[datasd.storage.spectrum_flag1[a]]] for a in range(len(datasd.storage.spectrum_flag0))])
                     elif (theviewsettings['xtype']=='ghz'):
                         fig['xdata']=np.array(thech)/1e3
                         fig['xlabel']='Frequency'
                         fig['xunit']='GHz'
-                        if (len(datasd.storage.spectrum_flag0)):
+                        if (thelayoutsettings['showflags']=='on' and len(datasd.storage.spectrum_flag0)):
                             spancolor.append([255,0,0,128])
                             span.append([[ch[datasd.storage.spectrum_flag0[a]]/1e3,ch[datasd.storage.spectrum_flag1[a]]/1e3] for a in range(len(datasd.storage.spectrum_flag0))])
                     else:
-                        fig['xdata']=np.arange(start_chan,stop_chan,chanincr)
+                        fig['xdata']=thech_
                         fig['xlabel']='Channel number'
                         fig['xunit']=''
-                        if (len(datasd.storage.spectrum_flag0)):
+                        if (thelayoutsettings['showflags']=='on' and len(datasd.storage.spectrum_flag0)):
                             spancolor.append([255,0,0,128])
                             span.append([[datasd.storage.spectrum_flag0[a],datasd.storage.spectrum_flag1[a]] for a in range(len(datasd.storage.spectrum_flag0))])
                         
@@ -377,21 +431,35 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                     productstr=theviewsettings['figtype'][9:]
+                    flags=0
                     if (productstr in collections):
                         product=collections.index(productstr)
                         productstr=collectionsalt[product]
-                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        flags=np.logical_or(flags,rvcdata[2])
                     elif (productstr in collectionsalt):
                         product=collectionsalt.index(productstr)
-                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        flags=np.logical_or(flags,rvcdata[2])
                     else:                        
                         product=decodecustomsignal(productstr)
                         if (list(product) in datasd.cpref.bls_ordering):
-                            rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            flags=np.logical_or(flags,rvcdata[2])
                         else:
-                            rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                                
+                            rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                            
                         
+                    if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                        rvcdata[1]=np.array([rvcdata[1]])
+                        flags=np.array([flags])
+                    
                     cdata=rvcdata[1]
+                    if (thelayoutsettings['showonlineflags']=='on' and len(np.shape(flags))>0):
+                        shp=np.shape(cdata)
+                        tmp=cdata.reshape(-1)
+                        tmp[np.nonzero(flags.reshape(-1))[0]]=np.nan;
+                        cdata=tmp.reshape(shp)
+                    
                     if (theviewsettings['type']=='pow'):
                         cdata=20.0*np.log10(cdata)
                         fig['clabel']='Power'
@@ -453,18 +521,18 @@ html_customsignals= {'default': [],
                      'vv': []
                     }
 html_collectionsignals= {'default': ['auto','cross'],
-                         'test':    ['auto','cross'],
+                         'test':    ['envelopeauto','auto','cross'],
                          'hhnoticklabels':[],
                          'hh': [],
                          'hv': [],
                          'vv': []
                         }
-html_layoutsettings= {'default': {'ncols':2},
-                        'test':  {'ncols':2},
-                        'hhnoticklabels': {'ncols':7},
-                         'hh':    {'ncols':7},
-                         'hv':    {'ncols':7},
-                         'vv':    {'ncols':7}
+html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on'},
+                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on'},
+                        'hhnoticklabels': {'ncols':7,'showonlineflags':'on','showflags':'on'},
+                         'hh':    {'ncols':7,'showonlineflags':'on','showflags':'on'},
+                         'hv':    {'ncols':7,'showonlineflags':'on','showflags':'on'},
+                         'vv':    {'ncols':7,'showonlineflags':'on','showflags':'on'}
                         }
 html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                                 {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
@@ -483,7 +551,7 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                 {'figtype':'waterfallautohv' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                                 {'figtype':'waterfallcross' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
                              ],
-                    'hhnoticklabels':  [  {'figtype':'waterfall1h1h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                    'hh':  [  {'figtype':'waterfall1h1h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h2h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
@@ -539,7 +607,120 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                 {'figtype':'waterfall6h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall7h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0}
                              ],
-                    'hh':  [  {'figtype':'waterfall1h1h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
+                    'vv':  [  {'figtype':'waterfall1v1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v2v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5v5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5v6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6v6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6v7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall7v7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0}
+                             ],                   
+                    'hv':  [  {'figtype':'waterfall1h1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall1h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h2v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h3v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h4v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h5v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h5v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h6v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h6v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+
+                                {'figtype':'waterfall1h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall2h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall3h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall4h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall5h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall6h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
+                                {'figtype':'waterfall7h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0}
+                             ],
+                    
+                    'hhticks':  [  {'figtype':'waterfall1h1h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h2h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h3h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall1h4h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
@@ -595,7 +776,7 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                 {'figtype':'waterfall6h7h' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'off','showtitle':'off','version':0},
                                 {'figtype':'waterfall7h7h' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'off','showtitle':'off','version':0}
                              ],
-                        'hv':  [  {'figtype':'waterfall1h1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
+                        'hvticks':  [  {'figtype':'waterfall1h1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
                                     {'figtype':'waterfall1h2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                     {'figtype':'waterfall1h3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                     {'figtype':'waterfall1h4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
@@ -651,7 +832,7 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                     {'figtype':'waterfall6h7v' ,'type':'arg','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'off','showtitle':'off','version':0},
                                     {'figtype':'waterfall7h7v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'off','showtitle':'off','version':0}
                                  ],
-                        'vv':  [  {'figtype':'waterfall1v1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
+                        'vvticks':  [  {'figtype':'waterfall1v1v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'on','showtitle':'off','version':0},
                                     {'figtype':'waterfall1v2v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                     {'figtype':'waterfall1v3v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
                                     {'figtype':'waterfall1v4v' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0},
@@ -709,6 +890,7 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                                  ]                        
                   }
 
+help_dict={}
 websockrequest_handlers = {}
 websockrequest_type = {}
 websockrequest_time = {}
@@ -749,12 +931,13 @@ def handle_websock_event(handlerkey,*args):
                 view_npixels=64
             theviewsettings=html_viewsettings[username][ifigure]
             thesignals=(html_collectionsignals[username],html_customsignals[username])
+            thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
-                send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
             elif (theviewsettings['figtype']=='spectrum'):
-                send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
         elif (args[0]=='setzoom'):
             print args
             ifigure=int(args[1])
@@ -799,7 +982,7 @@ def handle_websock_event(handlerkey,*args):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')
             html_customsignals[username]=[]
-            standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
+            standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
             for theviewsettings in html_viewsettings[username]:
                 theviewsettings['version']+=1
             for sig in args[1:]:
@@ -827,14 +1010,20 @@ def handle_websock_event(handlerkey,*args):
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)                    
                     
         elif (args[0]=='setflags'):
             print args
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
-            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0])
+            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
+        elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
+            print args
+            html_layoutsettings[username][args[0]]=args[1]
+            for theviewsettings in html_viewsettings[username]:
+                if (theviewsettings['figtype']=='spectrum' or theviewsettings['figtype'][:9]=='waterfall'):
+                    theviewsettings['version']+=1
         elif (args[0]=='getusers'):
             print args
             userstats=[]
@@ -845,13 +1034,18 @@ def handle_websock_event(handlerkey,*args):
                 nviewlist.append(int(sum([thisusrname==usrname for usrname in websockrequest_username.values()])))
             for ind in np.argsort(nviewlist)[::-1]:
                 userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))            
-            send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true)',handlerkey)
+            send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             print args[0],':',cmd
             ret=commands.getoutput(cmd).split('\n')
             for thisret in ret:
-                send_websock_cmd('logconsole("'+thisret+'",true,true)',handlerkey)
+                send_websock_cmd('logconsole("'+thisret+'",true,true,true)',handlerkey)
+        elif (args[0]=='help'):
+            print args            
+            if (len(args)!=1 or args[1] not in helpdict):
+                for line in helpdict[args[1]]:
+                    send_websock_cmd('logconsole("'+line+'",false,true,true)',handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             print args
             if (len(args)==2):
@@ -908,14 +1102,14 @@ def handle_websock_event(handlerkey,*args):
                 html_customsignals[username]=copy.deepcopy(html_customsignals[theusername])
                 html_collectionsignals[username]=copy.deepcopy(html_collectionsignals[theusername])
                 html_layoutsettings[username]=copy.deepcopy(html_layoutsettings[theusername])
-                send_websock_cmd('logconsole("'+theusername+' not found in startup settings file, but copied from active process instead",true,true)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in startup settings file, but copied from active process instead",true,true,true)',handlerkey)
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             else:
-                send_websock_cmd('logconsole("'+theusername+' not found in '+SERVE_PATH+'/usersettings.json'+'",false,false)',handlerkey)
-                send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",false,false)',handlerkey)
-                send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
             
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
@@ -940,15 +1134,15 @@ def decodecustomsignal(signalstr):
         return ();
     return ('ant'+sreg[0]+signalstr[len(sreg[0])].lower(),'ant'+sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
     
-def send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         timeseries_fig=ringbufferresultqueue.get()
         count=0
         if (timeseries_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true)',handlerkey)            
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
         if (lastrecalc<timeseries_fig['version']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
@@ -1009,15 +1203,15 @@ def send_timeseries(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
-def send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         spectrum_fig=ringbufferresultqueue.get()
         count=0
         if (spectrum_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),spectrum_fig['version'],'i'),handlerkey);count+=1;
@@ -1059,15 +1253,15 @@ def send_spectrum(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_n
         logger.warning("User event exception %s" % str(e))
 
 
-def send_waterfall(handlerkey,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
-        ringbufferrequestqueue.put([theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         waterfall_fig=ringbufferresultqueue.get()
         count=0
         if (waterfall_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),waterfall_fig['version'],'i'),handlerkey);count+=1;
@@ -1197,8 +1391,9 @@ def pack_binarydata_msg(varname,val,dtype):
             maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
             wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3            
 
-        if (dtype=='B' and ((not np.isfinite(minval)) or np.isnan(minval)) ):
-            print 'WARNING: sent nan scale, len(finiteind)',len(finiteind),'len(val)',len(val),'varname',varname
+        #note- improvement could be done. It seems lines are sent as channels individually spanning time, should possibly rather send a spectrum for waterfall plot updates
+        # if (dtype=='B' and ((not np.isfinite(minval)) or np.isnan(minval)) ):
+        #     print 'WARNING: sent nan scale, len(finiteind)',len(finiteind),'len(val)',len(val),'varname',varname
 
         if (len(finiteind) != len(wval)):
             wval[np.nonzero(val==-np.inf)[0]]=0
@@ -1490,6 +1685,22 @@ try:
     print ', '.join(usernames)
 except:
     print 'Unable to import saved user settings from '+SERVE_PATH+'/usersettings.json'
+    pass
+    
+helpdict={}
+try:
+    hfile=open(SERVE_PATH+'/help.txt','r')
+    hstr=hfile.read()
+    hfile.close()
+    curkey=''
+    for hline in hstr.split('\n'):
+        if (len(hline) and hline[0]=='[' and hline[-1]==']'):
+            curkey=hline[1:-1]
+            helpdict[curkey]=['help '+curkey,'']
+        else:
+            helpdict[curkey].append(hline)
+except:
+    print 'Unable to load help file '+SERVE_PATH+'/help.txt'
     pass
 
 ##Disable debug warning messages that clutters the terminal, especially when streaming

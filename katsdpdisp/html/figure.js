@@ -97,12 +97,15 @@ function newCookie()
 
 //MESSAGE LOGGING ===================================
 
-function logconsole(msg,doshow,doscroll)
+function logconsole(msg,dotimestamp,doshow,doscroll)
 {    
-    date=(new Date()).toLocaleString();
     consolectl=document.getElementById("consoletext")
-    consolectl.innerHTML+=date+' '+msg+'\n'
-    consolectl.scrollTop = consolectl.scrollHeight;
+    if (dotimestamp)
+    {
+        date=(new Date()).toLocaleString();
+        consolectl.innerHTML+=date+' '+msg+'\n'
+    }else consolectl.innerHTML+=msg+'\n'
+    if (doscroll) consolectl.scrollTop = consolectl.scrollHeight;
     if (doshow && consolectl.style.display=='none')
         consolectl.style.display = 'block'
 }
@@ -538,7 +541,7 @@ function completefigure(ifig)
 	timedrawcomplete=(new Date()).getTime();
 	RG_fig[ifig].renderts=timedrawcomplete/1000.0
 	RG_fig[ifig].figureupdated=true
-	if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),false,true)
+	if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
 }
 
 function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
@@ -1238,6 +1241,19 @@ function setsignals(){
     }else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
+    }else if (signaltext=='flags off')
+    {
+        handle_data_user_event('showflags,off');
+    }
+    else if (signaltext=='flags on')
+    {
+        handle_data_user_event('showflags,on');
+    }else if (signaltext=='onlineflags off')
+    {
+        handle_data_user_event('showonlineflags,off');
+    }else if (signaltext=='onlineflags on')
+    {
+        handle_data_user_event('showonlineflags,on');
     }else if (signaltext=='title off')
     {
         for (ifig=0;ifig<nfigures;ifig++)
@@ -1542,9 +1558,13 @@ function setsignals(){
                 looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,0)
             }else
             {
-                logconsole('Need to specify more than one view to loop through',true,true)
+                logconsole('Need to specify more than one view to loop through',true,true,true)
             }
         }
+    }else if (signaltext.slice(0,4)=='help')
+    {
+        document.getElementById("consoletext").style.display = 'block'
+        handle_data_user_event('help,'+signaltext.slice(5))
     }else if (signaltext=='metadata')
     { //ssh-keygen -t rsa
       //scp .ssh/id_rsa.pub kat@kat-ops.karoo
@@ -1867,10 +1887,6 @@ function unpack_binarydata_msg(arraybuffer,arrivets)
 			else if (val[idata]==2) val[idata]=NaN
 			else val[idata]=convertminmax[0]+(val[idata]-3)*scale
 		}
-		if (dtype=='B' && (!isFinite(val[0]) ||isNaN(val[0])) )
-		{
-		    logconsole('Infinite or NaN received in figure '+sublist[1]+'. scale:'+scale+' val[0]'+val[0]+' val[1]:'+val[1]+' val[2]:'+val[2],false,true)
-		}
 	}else if (dtype=='I')
 	{
 		val=new Float64Array(val)
@@ -2010,7 +2026,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		    aug='ydata'
 		    if (typeof(thisfigure[aug])=="undefined")
 		    {
-		        logconsole('Timeseries figure ydata incorrectly shaped, reloading figure '+sublist[1],false,true)
+		        logconsole('Timeseries figure ydata incorrectly shaped, reloading figure '+sublist[1],true,false,true)
                 thisfigure['version']=-1
                 window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
     		    window['RG_fig'][sublist[1]].figureupdated=true
@@ -2021,7 +2037,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 			{
                 if (thisfigure[aug][itwin].length!=rcvfig[aug][itwin].length)
                 {
-                    logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],false,true)
+                    logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],true,false,true)
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
         		    window['RG_fig'][sublist[1]].figureupdated=true
@@ -2030,9 +2046,9 @@ function assignvariable(varname,val,ntxbytes,arrivets)
     		    misalignment=thisfigure['lastts']-rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1]
                 if (Math.abs(misalignment)>0.1)
                 {
-                    logconsole('Timeseries time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1])+'; reloading figure '+sublist[1],false,true)
+                    logconsole('Timeseries time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1])+'; reloading figure '+sublist[1],true,false,true)
                     for (it=0;it<rcvfig[aug][itwin].length;it++)
-                        logconsole(' t['+(it-rcvfig[aug][itwin].length+1)+']='+rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length+it],false,true)
+                        logconsole(' t['+(it-rcvfig[aug][itwin].length+1)+']='+rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length+it],true,false,true)
 
                     thisfigure['version']=-1
                     window[sublist[0]][sublist[1]]=undefined
@@ -2058,7 +2074,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		    aug='cdata'
 		    if (typeof(thisfigure[aug])=="undefined")
 		    {
-		        logconsole('Waterfall figure cdata incorrectly shaped, reloading figure '+sublist[1],false,true)
+		        logconsole('Waterfall figure cdata incorrectly shaped, reloading figure '+sublist[1],true,false,true)
                 thisfigure['version']=-1
                 window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
     		    window['RG_fig'][sublist[1]].figureupdated=true
@@ -2067,9 +2083,9 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		    misalignment=thisfigure['lastts']-rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1]
             if (Math.abs(misalignment)>0.1)
             {
-                logconsole('Waterfall time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1])+'; reloading figure '+sublist[1],false,true)
+                logconsole('Waterfall time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1])+'; reloading figure '+sublist[1],true,false,true)
                 for (it=0;it<rcvfig[aug].length;it++)
-                    logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],false,true)
+                    logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],true,false,true)
                 thisfigure['version']=-1
                 window[sublist[0]][sublist[1]]=undefined
     		    window['RG_fig'][sublist[1]].figureupdated=true
@@ -2089,7 +2105,7 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		    window['RCV_fig'][sublist[1]]=undefined				
 		}else//unknown action
 		{
-            logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],false,true)
+            logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],true,false,true)
             thisfigure['version']=-1
             window[sublist[0]][sublist[1]]=undefined
 		    window['RG_fig'][sublist[1]].figureupdated=true
@@ -2107,7 +2123,7 @@ function start_data(webdataportnumber)
 	datasocket.binaryType = 'arraybuffer';
 	datasocket.onerror = function(e) 
 	{
-        logconsole('Websocket error occurred',false,true)
+        logconsole('Websocket error occurred',true,false,true)
 	}
 	datasocket.onmessage = function(e) 
 	{
@@ -2138,11 +2154,11 @@ function handle_data_user_event(arg_string)
             datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
         }else if (datasocket.readyState==3)
         {
-            logconsole('Websocket connection closed, trying to reestablish',false,true)
+            logconsole('Websocket connection closed, trying to reestablish',true,false,true)
 		    loadpage()
         }else
         {
-            logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,false,true)
+            logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,true,false,true)
         }
       } catch (err) {}
  } 
@@ -2188,8 +2204,8 @@ function updateFigure()
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': Ok'
 	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
-	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
-	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),false,true)
+	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth,true,false,true)
+	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
             }else 
 	        {
 	            if (console_update=='status')
@@ -2202,14 +2218,14 @@ function updateFigure()
             {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server orig'
-                logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
+                logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
                 RG_fig[ifig].figureupdated=true
             }else
             if (reqts-RG_fig[ifig].receivingts>30 && (time0-time_receive_data_user_cmd)<10000)
             {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server'
-                logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,false,true)
+                logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
                 RG_fig[ifig].figureupdated=true
             }else
             {
@@ -2219,23 +2235,23 @@ function updateFigure()
         }
     }
     if (console_update=='byte')
-        logconsole('byte: '+summary.join(', '),false,true)
+        logconsole('byte: '+summary.join(', '),true,false,true)
     if (console_update=='kb')
-        logconsole('kb: '+summary.join(', '),false,true)
+        logconsole('kb: '+summary.join(', '),true,false,true)
     if (console_update=='mb')
-        logconsole('mb: '+summary.join(', '),false,true)
+        logconsole('mb: '+summary.join(', '),true,false,true)
     if (console_update=='status')
-        logconsole('status: '+summary.join(', '),false,true)
+        logconsole('status: '+summary.join(', '),true,false,true)
     if (console_update=='nvars')
-        logconsole('nvars: '+summary.join(', '),false,true)
+        logconsole('nvars: '+summary.join(', '),true,false,true)
     if (console_update=='servertime')
-        logconsole('servertime: '+summary.join(', '),false,true)
+        logconsole('servertime: '+summary.join(', '),true,false,true)
     if (console_update=='receivetime')
-        logconsole('receivetime: '+summary.join(', '),false,true)
+        logconsole('receivetime: '+summary.join(', '),true,false,true)
     if (console_update=='drawtime')
-        logconsole('drawtime: '+summary.join(', '),false,true)
+        logconsole('drawtime: '+summary.join(', '),true,false,true)
     if (console_update=='rendertime')
-        logconsole('rendertime: '+summary.join(', '),false,true)
+        logconsole('rendertime: '+summary.join(', '),true,false,true)
     
     if (RG_fig.length && typeof(RG_fig[0].lastdt)!="undefined")
     {
