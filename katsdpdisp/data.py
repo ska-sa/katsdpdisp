@@ -2722,14 +2722,16 @@ class KATData(object):
             print "Proxy detection only works for IPython sessions."
             return
 
+        # Set IPython shell reference
         try:
-            ip_api = IPython.ipapi.get()
-        except AttributeError:
-            # newer versions of ipython moved the location of ipapi
-            ip_api = IPython.core.ipapi.get()
+            # IPython 0.11 and above
+            ip_shell = get_ipython()
+        except NameError:
+            # IPython 0.10 and lower
+            ip_shell = __builtins__.get('__IPYTHON__')
         
         try:
-            active_hosts = dict([(k, v) for k, v in ip_api.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
+            active_hosts = dict([(k, v) for k, v in ip_shell.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
             if len(active_hosts) > 0:
                 k = active_hosts[max(active_hosts)]
                 try:
