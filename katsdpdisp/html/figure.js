@@ -1478,7 +1478,10 @@ function setsignals(){
     }else if (signaltext=='users')
     {   
         handle_data_user_event('getusers');
-    }else if (signaltext=='timing on')
+    }else if (signaltext=='inputs')
+	{
+		handle_data_user_event('inputs');
+	}else if (signaltext=='timing on')
     {
         document.getElementById("consoletext").style.display = 'block'
         console_timing='on'

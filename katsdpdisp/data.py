@@ -547,14 +547,23 @@ class SignalDisplayStore2(object):
             if (flags is not None):
                 self.flags[self.roll_point] = flags
                 for iproducts in self.collectionproducts:
-                    pdata,pflags=self.percsort(data[iproducts,:],flags[iproducts,:])
-                    percdata.extend(pdata)
-                    percflags.extend(pflags)
+                    if (len(iproducts)>0):
+                        pdata,pflags=self.percsort(data[iproducts,:],flags[iproducts,:])
+                        percdata.extend(pdata)
+                        percflags.extend(pflags)
+                    else:
+                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
+                        
             else:
                 for iproducts in self.collectionproducts:
-                    pdata,pflags=self.percsort(data[iproducts,:],None)
-                    percdata.extend(pdata)
-                    percflags.extend(np.zeros([self.collectionproducts,self.n_chans],dtype=np.uint8))
+                    if (len(iproducts)>0):
+                        pdata,pflags=self.percsort(data[iproducts,:],None)
+                        percdata.extend(pdata)
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
+                    else:    
+                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
             
             self.data[self.roll_point,:,:] = data
             self.percdata[self.roll_point,:,:]=np.array(percdata,dtype=np.complex64)

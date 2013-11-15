@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import optparse
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
@@ -33,7 +33,7 @@ SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
 ##If running on a MAC and when streaming over the network (ie not read from local file,
 ## ie datafile='stream') then you may need to increase your buffer size using the command:
 #
-#sudo sysctl -w net.inet.udp.recvspace=6000000
+#sudo sysctl -w net.inet.udp.recvspace=5000000
 #
 ##Note you need to be plugged into the network with a ethernet cable as the wireless is too slow.
 ##
@@ -214,10 +214,15 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
             if (thelayoutsettings=='setflags'):
                 datasd.storage.set_mask(str(','.join(theviewsettings)))
                 continue
-            if (datasd.storage.frame_count==0):
-                fig={}
+            if (thelayoutsettings=='inputs'):                
+                fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (datasd.storage.frame_count==0):
+                fig={'logconsole':'empty signal buffer'}
+                ringbufferresultqueue.put(fig)
+                continue
+            fig={}
             try:
                 thetype=typelookup[theviewsettings['type']]
                 #hfeeds=datasd.cpref.inputs
@@ -1035,6 +1040,14 @@ def handle_websock_event(handlerkey,*args):
             for ind in np.argsort(nviewlist)[::-1]:
                 userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))            
             send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
+        elif (args[0]=='inputs'):
+            print args
+            ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             print args[0],':',cmd
@@ -1143,6 +1156,12 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            return
+        elif ('logconsole' in timeseries_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,true,true)',handlerkey)
+            return
         if (lastrecalc<timeseries_fig['version']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
@@ -1212,6 +1231,12 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            return
+        elif ('logconsole' in spectrum_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,true,true)',handlerkey)
+            return
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),spectrum_fig['version'],'i'),handlerkey);count+=1;
@@ -1262,6 +1287,12 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            return
+        elif ('logconsole' in waterfall_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,true,true)',handlerkey)
+            return
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),waterfall_fig['version'],'i'),handlerkey);count+=1;
