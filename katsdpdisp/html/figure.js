@@ -503,31 +503,17 @@ function redrawfigure(ifig)
     
     RG_fig[ifig].drawstartts=(new Date()).getTime()/1000.0
 	setaxiscanvasrect(ifig)
-	if (RG_fig[ifig].overridelimit!=undefined && RG_fig[ifig].overridelimit)
-	{
-	    if (typeof(RG_fig[ifig].overridexmin)!="number")RG_fig[ifig].overridexmin=NaN
-	    if (typeof(RG_fig[ifig].overridexmax)!="number")RG_fig[ifig].overridexmax=NaN
-	    if (typeof(RG_fig[ifig].overrideymin)!="number")RG_fig[ifig].overrideymin=NaN
-	    if (typeof(RG_fig[ifig].overrideymax)!="number")RG_fig[ifig].overrideymax=NaN
-	    if (typeof(RG_fig[ifig].overridecmin)!="number")RG_fig[ifig].overridecmin=NaN
-	    if (typeof(RG_fig[ifig].overridecmax)!="number")RG_fig[ifig].overridecmax=NaN
-		if (RG_fig[ifig].cdata==undefined)
-		    drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].overridexmin,RG_fig[ifig].overridexmax,RG_fig[ifig].overrideymin,RG_fig[ifig].overrideymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-		else
-		    drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].overridexmin,RG_fig[ifig].overridexmax,RG_fig[ifig].overrideymin,RG_fig[ifig].overrideymax,RG_fig[ifig].overridecmin,RG_fig[ifig].overridecmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-	}else
-	{
-	    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
-	    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
-	    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
-	    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
-	    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
-	    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
-		if (RG_fig[ifig].cdata==undefined)
-	        drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-	    else
-	        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-    }
+    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
+    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
+    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
+    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
+    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
+    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
+	if (RG_fig[ifig].cdata==undefined)
+        drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+    else
+        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+
 	RG_fig[ifig].drawstoptts=(new Date()).getTime()/1000.0
 	setTimeout(completefigure,1,ifig)
 }
@@ -1187,16 +1173,13 @@ function onFigureMouseUp(event){
 
 		if (Math.abs(figx0-figx1)>0 && Math.abs(figy0-figy1)>0)
 		{
-			RG_fig[ifigure].overridexmin=Math.min(figx0,figx1)
-			RG_fig[ifigure].overridexmax=Math.max(figx0,figx1)
-			RG_fig[ifigure].overrideymin=Math.min(figy0,figy1)
-			RG_fig[ifigure].overrideymax=Math.max(figy0,figy1)
-			RG_fig[ifigure].overridecmin=RG_fig[ifigure].cmin
-			RG_fig[ifigure].overridecmax=RG_fig[ifigure].cmax
+			RG_fig[ifigure].xmin=Math.min(figx0,figx1)
+			RG_fig[ifigure].xmax=Math.max(figx0,figx1)
+			RG_fig[ifigure].ymin=Math.min(figy0,figy1)
+			RG_fig[ifigure].ymax=Math.max(figy0,figy1)
 			RG_fig[ifigure].overridelimit=1;
 		    redrawfigure(ifigure)
-		    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].overridexmin+','+RG_fig[ifigure].overridexmax+','+RG_fig[ifigure].overrideymin+','+RG_fig[ifigure].overrideymax+','+RG_fig[ifigure].overridecmin+','+RG_fig[ifigure].overridecmax)
-            // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
+		    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
 		    mouseclick=0;
 		}else
 		{
@@ -1340,20 +1323,12 @@ function setsignals(){
             if (RG_fig[ifig].figtype=='timeseries')
             {
                 if (signaltext.slice(0,5)=='tmin=')
-        		    RG_fig[ifig].overridexmin=parseFloat(signaltext.slice(5))
-        		else
-        		    RG_fig[ifig].overridexmin=RG_fig[ifig].xmin
+        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
         		if (signaltext.slice(0,5)=='tmax=')
-            	    RG_fig[ifig].overridexmax=parseFloat(signaltext.slice(5))
-            	else
-            	    RG_fig[ifig].overridexmax=RG_fig[ifig].xmax
-        		RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
-        		RG_fig[ifig].overrideymax=RG_fig[ifig].ymax                
-        		RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-        		RG_fig[ifig].overridecmax=RG_fig[ifig].cmax
+            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
         		RG_fig[ifig].overridelimit=1;
         	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].overridexmin+','+RG_fig[ifig].overridexmax+','+RG_fig[ifig].overrideymin+','+RG_fig[ifig].overrideymax+','+RG_fig[ifig].overridecmin+','+RG_fig[ifig].overridecmax)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
     else if (signaltext.slice(0,5)=='cmin=' || signaltext.slice(0,5)=='cmax=')
@@ -1362,20 +1337,12 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='ch' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='cmin=')
-        		    RG_fig[ifig].overridexmin=parseFloat(signaltext.slice(5))
-        		else
-        		    RG_fig[ifig].overridexmin=RG_fig[ifig].xmin
+        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
         		if (signaltext.slice(0,5)=='cmax=')
-            	    RG_fig[ifig].overridexmax=parseFloat(signaltext.slice(5))
-            	else
-            	    RG_fig[ifig].overridexmax=RG_fig[ifig].xmax
-        		RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
-        		RG_fig[ifig].overrideymax=RG_fig[ifig].ymax                
-        		RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-        		RG_fig[ifig].overridecmax=RG_fig[ifig].cmax
+            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
         		RG_fig[ifig].overridelimit=1;
         	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].overridexmin+','+RG_fig[ifig].overridexmax+','+RG_fig[ifig].overrideymin+','+RG_fig[ifig].overrideymax+','+RG_fig[ifig].overridecmin+','+RG_fig[ifig].overridecmax)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
     else if (signaltext.slice(0,5)=='fmin=' || signaltext.slice(0,5)=='fmax=')
@@ -1384,20 +1351,12 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='mhz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='fmin=')
-        		    RG_fig[ifig].overridexmin=parseFloat(signaltext.slice(5))
-        		else
-        		    RG_fig[ifig].overridexmin=RG_fig[ifig].xmin
+        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
         		if (signaltext.slice(0,5)=='fmax=')
-            	    RG_fig[ifig].overridexmax=parseFloat(signaltext.slice(5))
-            	else
-            	    RG_fig[ifig].overridexmax=RG_fig[ifig].xmax
-        		RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
-        		RG_fig[ifig].overrideymax=RG_fig[ifig].ymax                
-        		RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-        		RG_fig[ifig].overridecmax=RG_fig[ifig].cmax
+            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
         		RG_fig[ifig].overridelimit=1;
         	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].overridexmin+','+RG_fig[ifig].overridexmax+','+RG_fig[ifig].overrideymin+','+RG_fig[ifig].overrideymax+','+RG_fig[ifig].overridecmin+','+RG_fig[ifig].overridecmax)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
     else if (signaltext.slice(0,5)=='Fmin=' || signaltext.slice(0,5)=='Fmax=')
@@ -1406,20 +1365,12 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='ghz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='Fmin=')
-        		    RG_fig[ifig].overridexmin=parseFloat(signaltext.slice(5))
-        		else
-        		    RG_fig[ifig].overridexmin=RG_fig[ifig].xmin
+        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
         		if (signaltext.slice(0,5)=='Fmax=')
-            	    RG_fig[ifig].overridexmax=parseFloat(signaltext.slice(5))
-            	else
-            	    RG_fig[ifig].overridexmax=RG_fig[ifig].xmax
-        		RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
-        		RG_fig[ifig].overrideymax=RG_fig[ifig].ymax                
-        		RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-        		RG_fig[ifig].overridecmax=RG_fig[ifig].cmax
+            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
         		RG_fig[ifig].overridelimit=1;
         	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].overridexmin+','+RG_fig[ifig].overridexmax+','+RG_fig[ifig].overrideymin+','+RG_fig[ifig].overrideymax+','+RG_fig[ifig].overridecmin+','+RG_fig[ifig].overridecmax)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
     else if (signaltext.slice(0,5)=='pmin=' || signaltext.slice(0,5)=='pmax=')
@@ -1427,38 +1378,26 @@ function setsignals(){
         for (ifig=0;ifig<nfigures;ifig++)
             if (RG_fig[ifig].type=='pow')
             {
-        		RG_fig[ifig].overridexmin=RG_fig[ifig].xmin
-        		RG_fig[ifig].overridexmax=RG_fig[ifig].xmax
         		if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype=='spectrum')
         		{
                     if (signaltext.slice(0,5)=='pmin=')
-            		    RG_fig[ifig].overrideymin=parseFloat(signaltext.slice(5))
-            		else
-            		    RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
+            		    RG_fig[ifig].ymin=parseFloat(signaltext.slice(5))
             		if (signaltext.slice(0,5)=='pmax=')
-                	    RG_fig[ifig].overrideymax=parseFloat(signaltext.slice(5))
-                	else
-                	    RG_fig[ifig].overrideymax=RG_fig[ifig].ymax
-            		RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-            		RG_fig[ifig].overridecmax=RG_fig[ifig].cmin
+                	    RG_fig[ifig].ymax=parseFloat(signaltext.slice(5))
     		    }else
     		    {
-            		RG_fig[ifig].overrideymin=RG_fig[ifig].ymin
-            		RG_fig[ifig].overrideymax=RG_fig[ifig].ymax
             		if (signaltext.slice(0,5)=='pmin=')
             		{
-            		    RG_fig[ifig].overridecmin=parseFloat(signaltext.slice(5))
-            		    RG_fig[ifig].overridecmax=RG_fig[ifig].cmax
+            		    RG_fig[ifig].cmin=parseFloat(signaltext.slice(5))
             		}
             		else
             		{
-            		    RG_fig[ifig].overridecmin=RG_fig[ifig].cmin
-            		    RG_fig[ifig].overridecmax=parseFloat(signaltext.slice(5))
+            		    RG_fig[ifig].cmax=parseFloat(signaltext.slice(5))
         		    }
     		    }
         		RG_fig[ifig].overridelimit=1;
         	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].overridexmin+','+RG_fig[ifig].overridexmax+','+RG_fig[ifig].overrideymin+','+RG_fig[ifig].overrideymax+','+RG_fig[ifig].overridecmin+','+RG_fig[ifig].overridecmax)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
     else if (signaltext=='console on')
@@ -1588,39 +1527,29 @@ function onFigureDblclick(event){
 	var axiscanvas = document.getElementById("myaxiscanvas"+ifigure);
 	if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
 	{//double click in central plot area - unzoom all	
-		RG_fig[ifigure].overridexmin=NaN
-		RG_fig[ifigure].overridexmax=NaN
-		RG_fig[ifigure].overrideymin=NaN
-		RG_fig[ifigure].overrideymax=NaN
-		RG_fig[ifigure].overridecmin=RG_fig[ifigure].cmin
-		RG_fig[ifigure].overridecmax=RG_fig[ifigure].cmax
+		RG_fig[ifigure].xmin=NaN
+		RG_fig[ifigure].xmax=NaN
+		RG_fig[ifigure].ymin=NaN
+		RG_fig[ifigure].ymax=NaN
 		RG_fig[ifigure].overridelimit=1;
 	    redrawfigure(ifigure)
-	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].overridexmin+','+RG_fig[ifigure].overridexmax+','+RG_fig[ifigure].overrideymin+','+RG_fig[ifigure].overrideymax+','+RG_fig[ifigure].overridecmin+','+RG_fig[ifigure].overridecmax)
+	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
         // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 	}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop+axiscanvas.height && event.offsetY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight+tickfont2Height+tickfont2Heightspace)
 	{
-		RG_fig[ifigure].overridexmin=NaN
-		RG_fig[ifigure].overridexmax=NaN
-		RG_fig[ifigure].overrideymin=RG_fig[ifigure].ymin
-		RG_fig[ifigure].overrideymax=RG_fig[ifigure].ymax
-		RG_fig[ifigure].overridecmin=RG_fig[ifigure].cmin
-		RG_fig[ifigure].overridecmax=RG_fig[ifigure].cmax
+		RG_fig[ifigure].xmin=NaN
+		RG_fig[ifigure].xmax=NaN
 		RG_fig[ifigure].overridelimit=1;
 	    redrawfigure(ifigure)
-	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].overridexmin+','+RG_fig[ifigure].overridexmax+','+RG_fig[ifigure].overrideymin+','+RG_fig[ifigure].overrideymax+','+RG_fig[ifigure].overridecmin+','+RG_fig[ifigure].overridecmax)
+	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
         // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 	}	else if (event.offsetX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.offsetX<axiscanvas.offsetLeft && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
 		{
-			RG_fig[ifigure].overridexmin=RG_fig[ifigure].xmin
-			RG_fig[ifigure].overridexmax=RG_fig[ifigure].xmax
-			RG_fig[ifigure].overrideymin=NaN
-			RG_fig[ifigure].overrideymax=NaN
-    		RG_fig[ifigure].overridecmin=RG_fig[ifigure].cmin
-    		RG_fig[ifigure].overridecmax=RG_fig[ifigure].cmax
+			RG_fig[ifigure].ymin=NaN
+			RG_fig[ifigure].ymax=NaN
 			RG_fig[ifigure].overridelimit=1;
 		    redrawfigure(ifigure)
-		    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].overridexmin+','+RG_fig[ifigure].overridexmax+','+RG_fig[ifigure].overrideymin+','+RG_fig[ifigure].overrideymax+','+RG_fig[ifigure].overridecmin+','+RG_fig[ifigure].overridecmax)
+		    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
             // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 		}
          event.preventDefault();
@@ -1998,9 +1927,11 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
 	{
 		if (window['RCV_fig'][sublist[1]].version>window['RG_fig'][sublist[1]].version)
-		{
 			window['RG_fig'][sublist[1]].overridelimit=0
-		}
+		if (typeof(window['RG_fig'][sublist[1]].overridelimit)!="undefined" && window['RG_fig'][sublist[1]].overridelimit==1)
+			overridevars={'xmin':0,'xmax':0,'ymin':0,'ymax':0,'cmin':0,'cmax':0}//just use as a list of variable names
+		else overridevars={}
+		
 		rcvfig['receivedts']=Date.now()/1000;
 	    if (rcvfig.action=='none')
 	    {
@@ -2012,29 +1943,31 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		    lastts=window['RG_fig'][sublist[1]].lastts//this might be a bug - why not [sublist[1]]
 		    viewwidth=window['RG_fig'][sublist[1]].viewwidth
 			overridelimit=window['RG_fig'][sublist[1]].overridelimit
-			overridexmin=window['RG_fig'][sublist[1]].overridexmin
-			overridexmax=window['RG_fig'][sublist[1]].overridexmax
-			overrideymin=window['RG_fig'][sublist[1]].overrideymin
-			overrideymax=window['RG_fig'][sublist[1]].overrideymax
-			overridecmin=window['RG_fig'][sublist[1]].overridecmin
-			overridecmax=window['RG_fig'][sublist[1]].overridecmax
+			xmin=window['RG_fig'][sublist[1]].xmin
+			xmax=window['RG_fig'][sublist[1]].xmax
+			ymin=window['RG_fig'][sublist[1]].ymin
+			ymax=window['RG_fig'][sublist[1]].ymax
+			cmin=window['RG_fig'][sublist[1]].cmin
+			cmax=window['RG_fig'][sublist[1]].cmax
 		    window['RG_fig'][sublist[1]]=[]
 		    window['RG_fig'][sublist[1]].viewwidth=viewwidth
 		    window['RG_fig'][sublist[1]].lastts=lastts
 			window['RG_fig'][sublist[1]].overridelimit=overridelimit
-			window['RG_fig'][sublist[1]].overridexmin=overridexmin
-			window['RG_fig'][sublist[1]].overridexmax=overridexmax
-			window['RG_fig'][sublist[1]].overrideymin=overrideymin
-			window['RG_fig'][sublist[1]].overrideymax=overrideymax
-			window['RG_fig'][sublist[1]].overridecmin=overridecmin
-			window['RG_fig'][sublist[1]].overridecmax=overridecmax
+			window['RG_fig'][sublist[1]].xmin=xmin
+			window['RG_fig'][sublist[1]].xmax=xmax
+			window['RG_fig'][sublist[1]].ymin=ymin
+			window['RG_fig'][sublist[1]].ymax=ymax
+			window['RG_fig'][sublist[1]].cmin=cmin
+			window['RG_fig'][sublist[1]].cmax=cmax
 		    for (var thevar in window['RCV_fig'][sublist[1]])
-		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+				if (!(thevar in overridevars))
+					window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined
 		}else if (rcvfig.action=='set')
 		{
 		    for (var thevar in window['RCV_fig'][sublist[1]])
-		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+				if (!(thevar in overridevars))
+		        	window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined
 		}else if (rcvfig.action=='augmentydata')
 		{
@@ -2082,7 +2015,8 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 				}
 			}
 			for (var thevar in window['RCV_fig'][sublist[1]])
-		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+				if (!(thevar in overridevars))
+					window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined		    
 		}else if (rcvfig.action=='augmentcdata')
 		{
@@ -2116,7 +2050,8 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 					rcvfig[aug][rcvfig['ydata'].length-newvals.length+iv]=newvals[iv];
 			}
 			for (var thevar in window['RCV_fig'][sublist[1]])
-		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
+				if (!(thevar in overridevars))
+		        	window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined				
 		}else//unknown action
 		{
