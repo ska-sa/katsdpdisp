@@ -425,6 +425,28 @@ class SignalDisplayStore2(object):
     def percsort(self,data,flags=None):
         isort=np.argsort(np.abs(data),axis=0)
         ilev=(data.shape[0]*25)/100;
+        #ideas for outlier detection:
+        #which baseline falls outside the innerenvelope (25-75%) the most number of times over the spectrum?
+        #which baseline falls the furthest away from the median
+        #how far away from median, is each baseline; if >
+
+        #define outlier threshold percentile level eg 90%
+        #define outlier period eg 20s
+        #if signal falls outside threshold, within its collection, for outlier period or longer (in past from now backwards), then outlier
+        
+        #outlier calculation based not on spectrum at all, only on timeseries for given number of samples, therefore only look at channel[0]
+        #for this (out of 8) collection product, the list of signals that is >threshold now is [....]
+        #for 8 collections *[all signals in collection] store percentile score for each signal in collection at each time
+        #000000000888
+        #(8+3*0)/4=2
+        #(8+3*2)/4=3.5
+        #(8+3*3.5)/4=4.625
+        #(8+3*4.625)/4=5.47
+        #(8+3*5.47)=6.1
+        #()
+        #to study to find best algorithm coefficients to determine
+        #is it possible to reliably estimate running mean of length m, by having fixed length running mean of 2, and 4 only.
+        #compare to exact fir calculation of means, without using iir filter, for ground truth
         colindex=range(data.shape[1])
         # print 'isort[0,:]',np.shape(isort[0,:]),'isort.shape',isort.shape,'np.shape(colindex)',np.shape(colindex)
         # return [np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.median(np.abs(data),axis=0)]

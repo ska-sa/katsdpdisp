@@ -505,28 +505,24 @@ function redrawfigure(ifig)
 	setaxiscanvasrect(ifig)
 	if (RG_fig[ifig].overridelimit!=undefined && RG_fig[ifig].overridelimit)
 	{
-	    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
-	    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
-	    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
-	    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
-	    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
-	    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
 	    if (typeof(RG_fig[ifig].overridexmin)!="number")RG_fig[ifig].overridexmin=NaN
 	    if (typeof(RG_fig[ifig].overridexmax)!="number")RG_fig[ifig].overridexmax=NaN
 	    if (typeof(RG_fig[ifig].overrideymin)!="number")RG_fig[ifig].overrideymin=NaN
 	    if (typeof(RG_fig[ifig].overrideymax)!="number")RG_fig[ifig].overrideymax=NaN
 	    if (typeof(RG_fig[ifig].overridecmin)!="number")RG_fig[ifig].overridecmin=NaN
 	    if (typeof(RG_fig[ifig].overridecmax)!="number")RG_fig[ifig].overridecmax=NaN
-		if ((RG_fig[ifig].xmin.toFixed(6)==RG_fig[ifig].overridexmin.toFixed(6)) && (RG_fig[ifig].xmax.toFixed(6)==RG_fig[ifig].overridexmax.toFixed(6)) && (RG_fig[ifig].ymin.toFixed(6)==RG_fig[ifig].overrideymin.toFixed(6)) && (RG_fig[ifig].ymax.toFixed(6)==RG_fig[ifig].overrideymax.toFixed(6)) && (RG_fig[ifig].cmin.toFixed(6)==RG_fig[ifig].overridecmin.toFixed(6)) && (RG_fig[ifig].cmax.toFixed(6)==RG_fig[ifig].overridecmax.toFixed(6)))
-		{
-			RG_fig[ifig].overridelimit=0
-		}
 		if (RG_fig[ifig].cdata==undefined)
 		    drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].overridexmin,RG_fig[ifig].overridexmax,RG_fig[ifig].overrideymin,RG_fig[ifig].overrideymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
 		else
 		    drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].overridexmin,RG_fig[ifig].overridexmax,RG_fig[ifig].overrideymin,RG_fig[ifig].overrideymax,RG_fig[ifig].overridecmin,RG_fig[ifig].overridecmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
 	}else
 	{
+	    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
+	    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
+	    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
+	    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
+	    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
+	    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
 		if (RG_fig[ifig].cdata==undefined)
 	        drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
 	    else
@@ -1526,12 +1522,11 @@ function setsignals(){
     }else if (signaltext=='server top')
     {
         document.getElementById("consoletext").style.display = 'block'
-        //handle_data_user_event('server,'+'ps -eo pcpu,pmem,pid,user,args | sort -k 1 -r | head -10');
         handle_data_user_event('server,'+'top -bn 1 | head -20');
     }else if (signaltext=='server ps')
     {
         document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bd1n 2 | grep time_plot.py | tail -n 2');
+        handle_data_user_event('server,'+'top -bd1n2 | grep time_plot.py | tail -n 2');
     }else if (signaltext.slice(0,4)=='save')
     {
         if (signaltext.length>4)
@@ -1544,7 +1539,10 @@ function setsignals(){
             handle_data_user_event('load,'+signaltext.slice(5));
         else
             handle_data_user_event('load');
-    }else if (signaltext.slice(0,4)=='loop')
+    }else if (signaltext.slice(0,7)=='delete ')
+	{
+		handle_data_user_event('delete,'+signaltext.slice(7));
+	}else if (signaltext.slice(0,4)=='loop')
     {
         if (signaltext=='loop off')
         {
@@ -1973,10 +1971,6 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 			lastnamedobjlev=ilev
 		}
 	}
-	if (sublist[ilev]=='version' && val>theobj.version)
-	{
-	    theobj.overridelimit=0
-	}
 	if (sublist[ilev]=='lastts' && Math.abs(the_lastts-val)>0.1)
 	{//the most recent local time that a change in data timestamp is detected
 	    the_lastts=val;
@@ -2003,6 +1997,10 @@ function assignvariable(varname,val,ntxbytes,arrivets)
     }
 	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
 	{
+		if (window['RCV_fig'][sublist[1]].version>window['RG_fig'][sublist[1]].version)
+		{
+			window['RG_fig'][sublist[1]].overridelimit=0
+		}
 		rcvfig['receivedts']=Date.now()/1000;
 	    if (rcvfig.action=='none')
 	    {
@@ -2013,9 +2011,23 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		{
 		    lastts=window['RG_fig'][sublist[1]].lastts//this might be a bug - why not [sublist[1]]
 		    viewwidth=window['RG_fig'][sublist[1]].viewwidth
+			overridelimit=window['RG_fig'][sublist[1]].overridelimit
+			overridexmin=window['RG_fig'][sublist[1]].overridexmin
+			overridexmax=window['RG_fig'][sublist[1]].overridexmax
+			overrideymin=window['RG_fig'][sublist[1]].overrideymin
+			overrideymax=window['RG_fig'][sublist[1]].overrideymax
+			overridecmin=window['RG_fig'][sublist[1]].overridecmin
+			overridecmax=window['RG_fig'][sublist[1]].overridecmax
 		    window['RG_fig'][sublist[1]]=[]
 		    window['RG_fig'][sublist[1]].viewwidth=viewwidth
 		    window['RG_fig'][sublist[1]].lastts=lastts
+			window['RG_fig'][sublist[1]].overridelimit=overridelimit
+			window['RG_fig'][sublist[1]].overridexmin=overridexmin
+			window['RG_fig'][sublist[1]].overridexmax=overridexmax
+			window['RG_fig'][sublist[1]].overrideymin=overrideymin
+			window['RG_fig'][sublist[1]].overrideymax=overrideymax
+			window['RG_fig'][sublist[1]].overridecmin=overridecmin
+			window['RG_fig'][sublist[1]].overridecmax=overridecmax
 		    for (var thevar in window['RCV_fig'][sublist[1]])
 		        window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
 		    window['RCV_fig'][sublist[1]]=undefined
@@ -2224,8 +2236,8 @@ function updateFigure()
                 logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
                 RG_fig[ifig].figureupdated=true
             }else
-            if (reqts-RG_fig[ifig].receivingts>30 && (time0-time_receive_data_user_cmd)<10000)
-            {
+            if (reqts-RG_fig[ifig].receivingts>120 && (time0-time_receive_data_user_cmd)<10000)
+            {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server'
                 logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
@@ -2261,7 +2273,7 @@ function updateFigure()
         dt2=RG_fig[0].lastdt.toFixed(2)
         
     	if ((reqts-local_last_lastts_change)>(dt2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
-    	{//checks that longer than dump local delay occurr for change in last timestamp while still having received updates within this time
+    	{//checks that longer than dump local delay occur for change in last timestamp while still having received updates within this time
     	    document.getElementById("healthtext").innerHTML='halted stream'
     	}else
     	{

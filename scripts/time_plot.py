@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+
+####!/usr/bin/env python
 import optparse
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
@@ -19,8 +21,14 @@ import katsdpdisp
 import re
 import json
 
-SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
-#SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
+#ANTNAMEPREFIX='m%03d' #meerkat
+ANTNAMEPREFIX='ant%d'#kat7
+
+#SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
+SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
+
+#To run RTS ingestor simulator (in git/katsdpingest/scripts/):
+#python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
 
 #To run simulator: 
 #first ./time_plot.py k7simulator 
@@ -274,7 +282,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         else:
                             signal=np.nan*np.ones(len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(product[0][3:]+product[1][3:])
+                        legend.append(printablesignal(product))
                         color.append(np.r_[np.random.random(3)*255,0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
@@ -353,7 +361,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         else:
                             signal=np.nan*np.ones(len(thech))
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(product[0][3:]+product[1][3:])
+                        legend.append(printablesignal(product))
                         color.append(np.r_[np.random.random(3)*255,0])
 
                     span=[]
@@ -479,7 +487,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     fig['yunit']='s'
                     fig['cdata']=cdata
                     fig['ydata']=np.array(rvcdata[0])
+                    fig['legend']=[]
                     fig['color']=[]
+                    fig['span']=[]
+                    fig['spancolor']=[]
                     fig['title']='Waterfall '+productstr
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
@@ -1059,6 +1070,42 @@ def handle_websock_event(handlerkey,*args):
             if (len(args)!=1 or args[1] not in helpdict):
                 for line in helpdict[args[1]]:
                     send_websock_cmd('logconsole("'+line+'",false,true,true)',handlerkey)
+        elif (args[0]=='delete' and len(args)==2):#deletes specified user's settings from startup settings file as well as from server memory
+            print args
+            theusername=str(args[1])#load another user's settings
+            try:
+                startupfile=open(SERVE_PATH+'/usersettings.json','r+')
+                startupdictstr=startupfile.read()
+            except:
+                startupfile=open(SERVE_PATH+'/usersettings.json','w+')
+                startupdictstr=''
+                pass
+            if (len(startupdictstr)>0):
+                startupdict=convertunicode(json.loads(startupdictstr))
+            else:
+                startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
+            if (theusername in startupdict['html_viewsettings']):
+                startupdict['html_viewsettings'].pop(theusername)
+                startupdict['html_customsignals'].pop(theusername)
+                startupdict['html_collectionsignals'].pop(theusername)
+                startupdict['html_layoutsettings'].pop(theusername)
+                startupdictstr=json.dumps(startupdict)
+                startupfile.seek(0)
+                startupfile.truncate(0)
+                startupfile.write(startupdictstr)
+                startupfile.close()        
+                send_websock_cmd('logconsole("Deleted '+theusername+' from '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+            else:
+                startupfile.close()        
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+            if (theusername in html_viewsettings):
+                html_viewsettings.pop(theusername)
+                html_customsignals.pop(theusername)
+                html_collectionsignals.pop(theusername)
+                html_layoutsettings.pop(theusername)
+                send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,false,false)',handlerkey)
+            send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+            send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             print args
             if (len(args)==2):
@@ -1145,8 +1192,23 @@ def decodecustomsignal(signalstr):
     sreg=re.compile('[h|v|H|V]').split(signalstr)    
     if (len(sreg)!=3 or len(sreg[2])!=0 or (not sreg[0].isdigit()) or (not sreg[1].isdigit())):
         return ();
-    return ('ant'+sreg[0]+signalstr[len(sreg[0])].lower(),'ant'+sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
+    # return ('ant'+sreg[0]+signalstr[len(sreg[0])].lower(),'ant'+sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
+    return (ANTNAMEPREFIX%(int(sreg[0]))+signalstr[len(sreg[0])].lower(),ANTNAMEPREFIX%(int(sreg[1]))+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
     
+#converts eg ('ant1h','ant2h') into '1h2h'
+#            ('m000h','m001h') into '0h1h'
+def printablesignal(product):
+    if (product[0][:3]=='ant'):
+        rv=product[0][3:]
+    else:
+        rv=str(int(product[0][1:-1]))+product[0][-1]
+    if (product[1][:3]=='ant'):
+        rv+=product[1][3:]
+    else:
+        rv+=str(int(product[1][1:-1]))+product[1][-1]
+    return rv
+    
+
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
     try:
         ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])

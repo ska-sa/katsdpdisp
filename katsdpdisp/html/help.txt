@@ -21,19 +21,21 @@ console - shows,  hides or clears the console
 loop - displays a list of different profiles in a loop
 load - loads saved user view profile settings
 save - save user view profile settings
+delete - delete a user's view profile settings
 
 Advanced user commands:
 metadata - re-issue metadata
 users - see which profiles are active
+inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
 
 [console]
 The console shows information such as warnings, exceptions and debugging information to the advanced user. It is also used for displaying help. The following console related commands can be issued:
 
-'console on' shows the console
-'console off' hides the console
-'console clear' clears the contents of the console
+'console on' - shows the console
+'console off' - hides the console - same as pressing ESC in command window
+'console clear' - clears the contents of the console
 
 [envelope]
 Adds an envelope plot to the current figures for a collection of signals.
@@ -47,6 +49,10 @@ envelopecross - envelope plot of crosshh and crossvv signals combined
 envelopecrosshh - envelope plot of crosshh signals
 envelopecrosshv - envelope plot of crosshv signals
 envelopecrossvv - envelope plot of crossvv signals
+
+[delete]
+
+'delete name' - deletes the view profile settings saved under the name 'name' from persistent storage and also removes it from the server's current memory. Any user currently logged in under 'name' will not receive communication from the server until such time that the user reloads the page, in which case default profile view settings will be assigned to the user.
 
 [load]
 Loads user view profile settings from a persistent store on the server and applies it to the current page. 
@@ -80,6 +86,9 @@ A few examples:
 
 'flags on' shows the current flags for all the figures on the page
 'flags off' hides the current flags for all the figures on the page
+
+[inputs]
+Displays a list of inputs available in current spead stream.
 
 [metadata]
 This command ensures that the default signal display servers are included in kat-capture's list of spead receivers, and re-issue metadata.

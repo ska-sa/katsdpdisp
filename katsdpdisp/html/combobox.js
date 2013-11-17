@@ -145,8 +145,14 @@ ComboBox = function (object_name) {
 		}
 		else if (e.keyCode == 27)
 		{
-			parobject.dropdownlist.style.display = 'none';
-			e.cancelBubble = true;
+			if (parobject.dropdownlist.style.display!='none')
+			{
+				parobject.dropdownlist.style.display = 'none';
+			}else//if escape pressed when there is no combobox list window, then hide console
+			{
+				document.getElementById("consoletext").style.display = 'none'
+			}
+			e.cancelBubble = true;				
 			return false;
 		}
 		else {
@@ -182,6 +188,19 @@ ComboBox = function (object_name) {
 						parobject.listitems[i].style.display = 'none';
 					}
 				}
+			}
+			if (parobject.visiblecount==0)
+			{
+				parobject.dropdownlist.style.display = 'none';
+				parobject.dropdownlist.style.height="200px"
+			}
+			else if (parobject.visiblecount<14)//assumes 14 entries per 200px
+			{
+				reducedheight=parseInt(200*parobject.visiblecount/14)
+				parobject.dropdownlist.style.height=""+(reducedheight)+"px"
+			}else
+			{
+				parobject.dropdownlist.style.height="200px"
 			}
 		}
 	}
