@@ -372,7 +372,9 @@ class SignalDisplayStore2(object):
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        self.outliertime=2
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
+        self.percrunavg = []
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
         self.percflags = np.zeros((self.slots, nperc, self.n_chans),dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
@@ -422,32 +424,24 @@ class SignalDisplayStore2(object):
     #sorts this collection of data into 0% 100% 25% 75% 50%
     #return shape is [5,nchannels]
     #could improve algorithm by first sorting for one channel then apply ordering to next channel, and then using mergesort; instead of searching from scratch each channel
-    def percsort(self,data,flags=None):
+    def percsort(self,data,percrunavg,flags=None):
+        nsignals=data.shape[0]
+        colindex=range(data.shape[1])
         isort=np.argsort(np.abs(data),axis=0)
-        ilev=(data.shape[0]*25)/100;
-        #ideas for outlier detection:
-        #which baseline falls outside the innerenvelope (25-75%) the most number of times over the spectrum?
-        #which baseline falls the furthest away from the median
-        #how far away from median, is each baseline; if >
-
+        ilev=(nsignals*25)/100;
         #define outlier threshold percentile level eg 90%
-        #define outlier period eg 20s
+        #define outlier halflife eg 20s
         #if signal falls outside threshold, within its collection, for outlier period or longer (in past from now backwards), then outlier
         
-        #outlier calculation based not on spectrum at all, only on timeseries for given number of samples, therefore only look at channel[0]
+        #outlier calculation based not on spectrum, only on timeseries for given halflife period; look at channel[0]
         #for this (out of 8) collection product, the list of signals that is >threshold now is [....]
-        #for 8 collections *[all signals in collection] store percentile score for each signal in collection at each time
-        #000000000888
-        #(8+3*0)/4=2
-        #(8+3*2)/4=3.5
-        #(8+3*3.5)/4=4.625
-        #(8+3*4.625)/4=5.47
-        #(8+3*5.47)=6.1
-        #()
-        #to study to find best algorithm coefficients to determine
-        #is it possible to reliably estimate running mean of length m, by having fixed length running mean of 2, and 4 only.
-        #compare to exact fir calculation of means, without using iir filter, for ground truth
-        colindex=range(data.shape[1])
+        #for all 8 collections *[all signals in collection] store running average percentile score for each signal in collection at each time
+        iisort=np.argsort(isort[:,0])#uses timeseries
+        curoutlierlevel=np.abs(iisort-(nsignals-1)/2.0)/(nsignals-1)+0.5
+        #nsamplesdelay=outlierdelay/dumptime
+        nsamplesdelay=self.outliertime        
+        percrunavg=(curoutlierlevel+percrunavg*(nsamplesdelay-1.0))/nsamplesdelay
+        
         # print 'isort[0,:]',np.shape(isort[0,:]),'isort.shape',isort.shape,'np.shape(colindex)',np.shape(colindex)
         # return [np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.median(np.abs(data),axis=0)]
         if (flags is not None):
@@ -457,7 +451,7 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[-1,:]*isort.shape[1]+colindex],
             data.reshape(-1)[isort[ilev,:]*isort.shape[1]+colindex],
             data.reshape(-1)[isort[-1-ilev,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[isort.shape[0]/2,:]*isort.shape[1]+colindex]],
+            data.reshape(-1)[isort[nsignals/2,:]*isort.shape[1]+colindex]],percrunavg,
             flags]
         
     #collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
@@ -491,6 +485,7 @@ class SignalDisplayStore2(object):
                     crosshv.append(ibls)
                 
         self.collectionproducts=[auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+        self.percrunavg=[np.zeros(len(bls),dtype='float') for bls in self.collectionproducts]
         
         
     def set_mask(self,maskstr=''):
@@ -568,9 +563,9 @@ class SignalDisplayStore2(object):
             percflags=[]
             if (flags is not None):
                 self.flags[self.roll_point] = flags
-                for iproducts in self.collectionproducts:
+                for ip,iproducts in enumerate(self.collectionproducts):
                     if (len(iproducts)>0):
-                        pdata,pflags=self.percsort(data[iproducts,:],flags[iproducts,:])
+                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],flags[iproducts,:])
                         percdata.extend(pdata)
                         percflags.extend(pflags)
                     else:
@@ -578,9 +573,9 @@ class SignalDisplayStore2(object):
                         percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
                         
             else:
-                for iproducts in self.collectionproducts:
+                for ip,iproducts in enumerate(self.collectionproducts):
                     if (len(iproducts)>0):
-                        pdata,pflags=self.percsort(data[iproducts,:],None)
+                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],None)
                         percdata.extend(pdata)
                         percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
                     else:    
@@ -2024,7 +2019,24 @@ class DataHandler(object):
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
             return frames
 
-
+    #icollection is index to [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+    def get_data_outlier_products(self, icollection, threshold):
+        outlierproducts=[]
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return outlierproducts
+            
+        with datalock:
+            iproducts=self.storage.collectionproducts[icollection]
+            if (len(iproducts)>0):
+                ind=np.nonzero(self.storage.percrunavg[icollection]>threshold)[0]
+                sind=np.argsort(self.storage.percrunavg[icollection][ind])[::-1]
+                #outlierproducts=iproducts[ind[sind]]# but not np.array
+                outlierproducts=[iproducts[ip] for ip in ind[sind]]
+                #self.percrunavg[ip][ind[sind]]
+            
+            return outlierproducts
+            
     #product is index to [0,100,25,75,50] for each of [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
     def select_data_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:

@@ -95,6 +95,8 @@ function onMouseOut(event)
 				<a>ncols=1</a>
 				<a>onlineflags on</a>
 				<a>onlineflags off</a>
+				<a>outlierthreshold=0.9</a>
+				<a>outliertime=2</a>
 				<a>pmin=</a>
 				<a>pmax=</a>
 				<a>save</a>
@@ -161,8 +163,7 @@ function onMouseOut(event)
 </div>
 <div id="overalldiv">
 <div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>
-<ELEMENT style="position: relative;z-index: 0; width: 0; height: 0" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event)">
-<div id="listoffigures">
+<div id="listoffigures" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event)">
 </div>
 </div>
 <div id="timingsignalsdiv" style="display:none">

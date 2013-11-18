@@ -12,6 +12,8 @@ auto - draws percentile plots for a collection of auto correlation signals
 cross - draws percentile plots for a collection of cross correlation signals
 envelope - draws envelope of a collection of signals
 
+outlier - specify which outliers to detect and display
+
 flags - specify channels to be flagged for timeseries plot calculation
 onlineflags - hides or shows online flags
 
@@ -104,6 +106,11 @@ For example:
 The online flags can be shown or hidden using the commands as follows:
 'onlineflags on' shows the online flags for all the figures on the page
 'onlineflags off' hides the online flags for all the figures on the page
+
+[outlier]
+
+'outlierthreshold=0.9' sets the outlier threshold to 90 percentile (over the outliertime period)
+'outliertime=1' sets the time period over which the signal must on average exceed the outlierthreshold
 
 [update]
 The update command provides the advanced user with useful debugging information in order to investigate the speed performance of the signal display system. Updates of a few measured quantities can be printed per figure to the console at regular update intervals. 

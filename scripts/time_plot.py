@@ -222,6 +222,9 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
             if (thelayoutsettings=='setflags'):
                 datasd.storage.set_mask(str(','.join(theviewsettings)))
                 continue
+            if (thelayoutsettings=='setoutliertime'):
+                datasd.storage.outliertime=theviewsettings
+                continue
             if (thelayoutsettings=='inputs'):                
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
@@ -249,10 +252,15 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     legend=[]
                     np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
+                    outlierproducts=[]
                     for colprod in collectionsignals:
                         if (colprod[:8]=='envelope'):
                             if (colprod[8:] in collections):
                                 icolprod=collections.index(colprod[8:])
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
                                 c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
                                 for iprod in range(2):#only min and max
                                     product=icolprod*5+iprod
@@ -265,6 +273,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         else:
                             if (colprod in collections):
                                 icolprod=collections.index(colprod)
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
                                 c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
@@ -283,6 +295,12 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                             signal=np.nan*np.ones(len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
+                        color.append(np.r_[np.random.random(3)*255,0])
+                    for product in outlierproducts:
+                        signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                        signal=np.array(signal).reshape(-1)
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
                         color.append(np.r_[np.random.random(3)*255,0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
@@ -324,11 +342,16 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     thech_=np.arange(start_chan,stop_chan,chanincr)
                     np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
+                    outlierproducts=[]
                     flags=np.zeros(len(thech))
                     for colprod in collectionsignals:
                         if (colprod[:8]=='envelope'):
                             if (colprod[8:] in collections):
                                 icolprod=collections.index(colprod[8:])
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
                                 c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
                                 for iprod in range(2):
                                     product=icolprod*5+iprod
@@ -342,6 +365,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         else:
                             if (colprod in collections):
                                 icolprod=collections.index(colprod)
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
                                 c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
@@ -363,7 +390,13 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
                         color.append(np.r_[np.random.random(3)*255,0])
-
+                    for product in outlierproducts:
+                        signal,theflags = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        flags=np.logical_or(flags,theflags.reshape(-1))
+                        signal=np.array(signal).reshape(-1)
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
+                        color.append(np.r_[np.random.random(3)*255,0])                    
                     span=[]
                     spancolor=[]
                     if (thelayoutsettings['showonlineflags']=='on'):
@@ -543,12 +576,12 @@ html_collectionsignals= {'default': ['auto','cross'],
                          'hv': [],
                          'vv': []
                         }
-html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on'},
-                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on'},
-                        'hhnoticklabels': {'ncols':7,'showonlineflags':'on','showflags':'on'},
-                         'hh':    {'ncols':7,'showonlineflags':'on','showflags':'on'},
-                         'hv':    {'ncols':7,'showonlineflags':'on','showflags':'on'},
-                         'vv':    {'ncols':7,'showonlineflags':'on','showflags':'on'}
+html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
+                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
+                        'hhnoticklabels': {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
+                         'hh':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
+                         'hv':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
+                         'vv':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0}
                         }
 html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                                 {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
@@ -994,6 +1027,12 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='outlierthreshold'):
+            print args
+            html_layoutsettings[username]['outlierthreshold']=float(args[1])
+        elif (args[0]=='outliertime'):
+            print args
+            ringbufferrequestqueue.put(['setoutliertime',float(args[1:]),0,0,0,0])
         elif (args[0]=='setsignals'):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')

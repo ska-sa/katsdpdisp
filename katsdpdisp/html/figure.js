@@ -615,7 +615,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 					if (ixend-ixstart<=1024)
 					{
 						context.lineWidth=corrlinewidth[clrlist[iline][3]]
-						context.setLineDash(corrlinedash[clrlist[iline][3]])
+						//context.setLineDash(corrlinedash[clrlist[iline][3]])
 					}
 					// context.strokeStyle = "rgb("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+")";
 					if (corrlinepoly[clrlist[iline][3]])
@@ -647,7 +647,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			}
 		}
 			context.lineWidth=oldlinewidth;
-			context.setLineDash([0])
+			//context.setLineDash([0])
 			for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
 			{
 				context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
@@ -732,7 +732,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
     					if (ixend-ixstart<=1024)
     					{
     						figcontext.lineWidth=corrlinewidth[clrlist[iline][3]]
-    						figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
+    						//figcontext.setLineDash(corrlinedash[clrlist[iline][3]])
     					}
     					figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
     			    	figcontext.moveTo(x,y-legendfontHeight/2.0+legendfontHeight/5.0);
@@ -743,7 +743,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
     					figcontext.fillText(legend[iline],x+legendfontHeight*0.75+2,y)
     				}
     				figcontext.lineWidth=1;
-    				figcontext.setLineDash([0])
+    				//figcontext.setLineDash([0])
     			}
 		    }
 			figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
@@ -1019,7 +1019,7 @@ function onFigureMouseDown(event){
 	var figurediv = document.getElementById("myfigurediv"+ifigure);
 	var canvas = document.getElementById("myfigurecanvas"+ifigure);
 	var axiscanvas = document.getElementById("myaxiscanvas"+ifigure);
-	if ((Math.abs(event.offsetX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.offsetY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
+	if ((Math.abs(event.layerX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.layerY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
 	{
 		figdragmode=1;
 		figdragstart=[event.clientX+document.body.scrollLeft,event.clientY+document.body.scrollTop]
@@ -1036,9 +1036,9 @@ function onFigureMouseDown(event){
                 figurediv.setCapture ();
             }
         }					
-	}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+	}else if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
 	{					
-		if (mouseclick!=0 && mouseclick[0]==event.offsetX-axiscanvas.offsetLeft && mouseclick[1]==event.offsetY-axiscanvas.offsetTop)
+		if (mouseclick!=0 && mouseclick[0]==event.layerX-axiscanvas.offsetLeft && mouseclick[1]==event.layerY-axiscanvas.offsetTop)
 		{//detect own double click - at some point doubleclick did not fire
 			//onFigureDblclick(event);
 		}else
@@ -1163,8 +1163,8 @@ function onFigureMouseUp(event){
 	{	
 		pixx0=event.clientX+document.body.scrollLeft-axiscanvas.offsetLeft-figurediv.offsetLeft
 		pixy0=axiscanvas.height-(event.clientY+document.body.scrollTop-axiscanvas.offsetTop-figurediv.offsetTop)
-		pixx1=figdragstartevent.offsetX-axiscanvas.offsetLeft
-		pixy1=axiscanvas.height-(figdragstartevent.offsetY-axiscanvas.offsetTop)
+		pixx1=figdragstartevent.layerX-axiscanvas.offsetLeft
+		pixy1=axiscanvas.height-(figdragstartevent.layerY-axiscanvas.offsetTop)
 	
     	figx0=(pixx0)/axiscanvas.width*(RG_fig[ifigure].xmax_eval-RG_fig[ifigure].xmin_eval)+RG_fig[ifigure].xmin_eval;
     	figy0=(pixy0)/axiscanvas.height*(RG_fig[ifigure].ymax_eval-RG_fig[ifigure].ymin_eval)+RG_fig[ifigure].ymin_eval;
@@ -1217,7 +1217,29 @@ function setsignals(){
         {
             handle_data_user_event('setncols,'+signaltext.slice(6));
         }
-    }else if (signaltext.slice(0,6)=='flags=')
+    }else if (signaltext.slice(0,17)=='outlierthreshold=')
+	{
+		outlierthreshold=parseFloat(signaltext.slice(17))
+        if (outlierthreshold<=0.75 || outlierthreshold>1.0)
+        {
+            alert('Value for outlierthreshold must be between 0.75 and 1');
+        }
+        else
+        {
+            handle_data_user_event('outlierthreshold,'+outlierthreshold);
+        }		
+	}else if (signaltext.slice(0,12)=='outliertime=')
+	{
+		outliertime=parseFloat(signaltext.slice(12))
+        if (outliertime<1 || outliertime>10.0)
+        {
+            alert('Value for outliertime must be between 1 and 10');
+        }
+        else
+        {
+            handle_data_user_event('outliertime,'+outliertime);
+        }		
+	}else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
     }else if (signaltext=='flags off')
@@ -1525,7 +1547,7 @@ function loopfunction(usernames,iusername)
 
 function onFigureDblclick(event){
 	var axiscanvas = document.getElementById("myaxiscanvas"+ifigure);
-	if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+	if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
 	{//double click in central plot area - unzoom all	
 		RG_fig[ifigure].xmin=NaN
 		RG_fig[ifigure].xmax=NaN
@@ -1535,7 +1557,7 @@ function onFigureDblclick(event){
 	    redrawfigure(ifigure)
 	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
         // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
-	}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop+axiscanvas.height && event.offsetY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight+tickfont2Height+tickfont2Heightspace)
+	}else if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop+axiscanvas.height && event.layerY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight+tickfont2Height+tickfont2Heightspace)
 	{
 		RG_fig[ifigure].xmin=NaN
 		RG_fig[ifigure].xmax=NaN
@@ -1543,7 +1565,7 @@ function onFigureDblclick(event){
 	    redrawfigure(ifigure)
 	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
         // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
-	}	else if (event.offsetX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.offsetX<axiscanvas.offsetLeft && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+	}	else if (event.layerX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.layerX<axiscanvas.offsetLeft && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
 		{
 			RG_fig[ifigure].ymin=NaN
 			RG_fig[ifigure].ymax=NaN
@@ -1607,10 +1629,10 @@ function onFigureMouseMove(event){
     		redrawfigure(ifigure)
     	}
 		document.body.style.cursor = 'se-resize';
-	}else if ((Math.abs(event.offsetX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.offsetY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
+	}else if ((Math.abs(event.layerX-(axiscanvas.offsetLeft+axiscanvas.width))<tickfontHeight && Math.abs(event.layerY-(axiscanvas.offsetTop+axiscanvas.height))<tickfontHeight))
 	{
 		document.body.style.cursor = 'se-resize';
-	}else if (event.offsetX>axiscanvas.offsetLeft && event.offsetX<axiscanvas.offsetLeft+axiscanvas.width && event.offsetY>axiscanvas.offsetTop && event.offsetY<axiscanvas.offsetTop+axiscanvas.height)
+	}else if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
 	{ 
 	    document.body.style.cursor = 'crosshair';
 	}else
