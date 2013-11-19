@@ -83,16 +83,16 @@ The loop command can be used to loop the current page through a list of profiles
 
 'loop' prints current list of named profiles in the loop
 'loop name1,name2,name3,name4' loops through named profiles name1, name2, name3, name4 in turn repeatedly
-'loopdelay=5' sets the delay between each change in profile view to 5 seconds
+'looptime=5' sets the delay between each change in profile view to 5 seconds
 'loop off' stops looping
 
-See also loopdelay.
+See also looptime.
 
-[loopdelay]
+[looptime]
 Sets the loop delay time.
 
-'loopdelay' prints the current loopdelay time to the console
-'loopdelay=5' sets the delay between each change in profile view to 5 seconds when using the loop feature
+'looptime' prints the current looptime to the console
+'looptime=5' sets the delay between each change in profile view to 5 seconds when using the loop feature
 
 See also loop.
 

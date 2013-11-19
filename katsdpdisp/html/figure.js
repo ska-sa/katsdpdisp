@@ -16,7 +16,7 @@ var console_sendfigure='off'
 var console_update='off'
 
 var looptimer= null
-var loopdelay=5
+var looptime=5
 var loopusernames=[]
 var RG_fig=[[]]
 RG_fig[0].xdata=[]
@@ -1514,12 +1514,12 @@ function setsignals(){
 		handle_data_user_event('delete,'+signaltext.slice(7));
 	}else if (signaltext.slice(0,4)=='loop')
     {
-		if (signaltext=='loopdelay')
+		if (signaltext=='looptime')
 		{
-			logconsole('loopdelay='+loopdelay,true,true,true)
-		}else if (signaltext.slice(0,10)=='loopdelay=')
+			logconsole('looptime='+looptime,true,true,true)
+		}else if (signaltext.slice(0,10)=='looptime=')
         {
-			loopdelay=parseFloat(signaltext.slice(10))
+			looptime=parseFloat(signaltext.slice(10))
         }else if (signaltext=='loop off')
         {
             clearTimeout(looptimer)
@@ -1530,7 +1530,7 @@ function setsignals(){
             {
 	            clearTimeout(looptimer)
 				loopusernames=newusernames
-                looptimer=setTimeout(loopfunction,loopdelay*1000.0,loopusernames,0)
+                looptimer=setTimeout(loopfunction,looptime*1000.0,loopusernames,0)
             }else
             {
                 logconsole('Current loop view profiles: '+loopusernames.join(', '),true,true,true)
@@ -1555,7 +1555,7 @@ function loopfunction(usernames,iusername)
 {
     iusername=iusername%usernames.length
     handle_data_user_event('load,'+usernames[iusername]);
-    looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,iusername+1)
+    looptimer=setTimeout(loopfunction,looptime*1000.0,usernames,iusername+1)
 }
 
 function onFigureKeyUp(event){
