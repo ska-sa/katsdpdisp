@@ -128,7 +128,7 @@ ComboBox = function (object_name) {
 		e = e || window.event;
 		if (e.keyCode == 13) {
 			// enter
-			if (parobject.visiblecount != 0 && parobject.currentitem!=null) {
+			if (parobject.visiblecount != 0 && parobject.currentitem!=null && parobject.listitems[parobject.currentitemindex].style.display != 'none') {
 				var upv = parobject.currentitem.innerHTML;
 				upv = upv .replace(/\<b\>/ig, '');
 				upv = upv .replace(/\<\/b\>/ig, '');
