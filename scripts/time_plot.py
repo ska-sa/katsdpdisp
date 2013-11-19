@@ -1073,12 +1073,12 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Server exception occurred evaluating getflags",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
-        elif (args[0]=='outlierthreshold'):
+        elif (args[0]=='setoutlierthreshold'):
             print args
             html_layoutsettings[username]['outlierthreshold']=float(args[1])
-        elif (args[0]=='outliertime'):
+        elif (args[0]=='setoutliertime'):
             print args
-            ringbufferrequestqueue.put(['setoutliertime',float(args[1:]),0,0,0,0])
+            ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
         elif (args[0]=='setsignals'):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')

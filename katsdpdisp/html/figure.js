@@ -1229,7 +1229,7 @@ function setsignals(){
         }
         else
         {
-            handle_data_user_event('outlierthreshold,'+outlierthreshold);
+            handle_data_user_event('setoutlierthreshold,'+outlierthreshold);
         }		
 	}else if (signaltext=='outliertime')
     {
@@ -1243,7 +1243,7 @@ function setsignals(){
         }
         else
         {
-            handle_data_user_event('outliertime,'+outliertime);
+            handle_data_user_event('setoutliertime,'+outliertime);
         }		
 	}else if (signaltext=='flags')
     {
@@ -1517,9 +1517,9 @@ function setsignals(){
 		if (signaltext=='looptime')
 		{
 			logconsole('looptime='+looptime,true,true,true)
-		}else if (signaltext.slice(0,10)=='looptime=')
+		}else if (signaltext.slice(0,9)=='looptime=')
         {
-			looptime=parseFloat(signaltext.slice(10))
+			looptime=parseFloat(signaltext.slice(9))
         }else if (signaltext=='loop off')
         {
             clearTimeout(looptimer)
