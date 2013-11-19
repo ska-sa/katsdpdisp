@@ -2188,12 +2188,13 @@ function updateFigure()
         
 	    if (RG_fig[ifig].figureupdated)
 	    {
-	        var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
+	        //var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
+		    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
 	        RG_fig[ifig].figureupdated=false
 	        RG_fig[ifig].reqts=reqts
             oldwidth=RG_fig[ifig].viewwidth
-            if (axiscanvas.width!=0)
-	            RG_fig[ifig].viewwidth=axiscanvas.width//else already has value from applyviewlayout
+            //if (axiscanvas.width!=0)RG_fig[ifig].viewwidth=axiscanvas.width//else already has value from applyviewlayout
+			if (figcanvas.width!=0)RG_fig[ifig].viewwidth=figcanvas.width//else already has value from applyviewlayout
 	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
 	        {
 	            if (console_update=='status')
