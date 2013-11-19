@@ -437,7 +437,7 @@ class SignalDisplayStore2(object):
         #for this (out of 8) collection product, the list of signals that is >threshold now is [....]
         #for all 8 collections *[all signals in collection] store running average percentile score for each signal in collection at each time
         iisort=np.argsort(isort[:,0])#uses timeseries
-        curoutlierlevel=np.abs(iisort-(nsignals-1)/2.0)/(nsignals-1)+0.5
+        curoutlierlevel=100.0*(np.abs(iisort-(nsignals-1)/2.0)/(nsignals-1)+0.5)#percent, not fraction
         #nsamplesdelay=outlierdelay/dumptime
         nsamplesdelay=self.outliertime        
         percrunavg=(curoutlierlevel+percrunavg*(nsamplesdelay-1.0))/nsamplesdelay

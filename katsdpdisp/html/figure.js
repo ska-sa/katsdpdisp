@@ -17,7 +17,7 @@ var console_update='off'
 
 var looptimer= null
 var loopdelay=5
-
+var loopusernames=[]
 var RG_fig=[[]]
 RG_fig[0].xdata=[]
 RG_fig[0].version=-1
@@ -1217,18 +1217,24 @@ function setsignals(){
         {
             handle_data_user_event('setncols,'+signaltext.slice(6));
         }
+    }else if (signaltext=='outlierthreshold')
+    {
+        handle_data_user_event('getoutlierthreshold');
     }else if (signaltext.slice(0,17)=='outlierthreshold=')
 	{
 		outlierthreshold=parseFloat(signaltext.slice(17))
-        if (outlierthreshold<=0.75 || outlierthreshold>1.0)
+        if (outlierthreshold<50 || outlierthreshold>100)
         {
-            alert('Value for outlierthreshold must be between 0.75 and 1');
+            alert('Value for outlierthreshold must be between 50 and 100');
         }
         else
         {
             handle_data_user_event('outlierthreshold,'+outlierthreshold);
         }		
-	}else if (signaltext.slice(0,12)=='outliertime=')
+	}else if (signaltext=='outliertime')
+    {
+        handle_data_user_event('getoutliertime');
+    }else if (signaltext.slice(0,12)=='outliertime=')
 	{
 		outliertime=parseFloat(signaltext.slice(12))
         if (outliertime<1 || outliertime>10.0)
@@ -1239,7 +1245,10 @@ function setsignals(){
         {
             handle_data_user_event('outliertime,'+outliertime);
         }		
-	}else if (signaltext.slice(0,6)=='flags=')
+	}else if (signaltext=='flags')
+    {
+        handle_data_user_event('getflags');
+    }else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
     }else if (signaltext=='flags off')
@@ -1505,22 +1514,26 @@ function setsignals(){
 		handle_data_user_event('delete,'+signaltext.slice(7));
 	}else if (signaltext.slice(0,4)=='loop')
     {
-        if (signaltext=='loop off')
+		if (signaltext=='loopdelay')
+		{
+			logconsole('loopdelay='+loopdelay,true,true,true)
+		}else if (signaltext.slice(0,10)=='loopdelay=')
+        {
+			loopdelay=parseFloat(signaltext.slice(10))
+        }else if (signaltext=='loop off')
         {
             clearTimeout(looptimer)
-        }else if (signaltext.slice(0,10)=='loopdelay=')
-        {
-            loopdelay=parseFloat(signaltext.slice(10))
         }else
         {
-            clearTimeout(looptimer)
-            usernames=signaltext.slice(5).split(',')
-            if (usernames.length>1)
+            newusernames=signaltext.slice(5).split(',')
+            if (newusernames.length>1)
             {
-                looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,0)
+	            clearTimeout(looptimer)
+				loopusernames=newusernames
+                looptimer=setTimeout(loopfunction,loopdelay*1000.0,loopusernames,0)
             }else
             {
-                logconsole('Need to specify more than one view to loop through',true,true,true)
+                logconsole('Current loop view profiles: '+loopusernames.join(', '),true,true,true)
             }
         }
     }else if (signaltext.slice(0,4)=='help')
@@ -1543,6 +1556,16 @@ function loopfunction(usernames,iusername)
     iusername=iusername%usernames.length
     handle_data_user_event('load,'+usernames[iusername]);
     looptimer=setTimeout(loopfunction,loopdelay*1000.0,usernames,iusername+1)
+}
+
+function onFigureKeyUp(event){
+	event = event || window.event
+	if (event.keyCode == 27)
+	{
+		document.getElementById("consoletext").style.display = 'none'
+		event.cancelBubble = true;				
+		return false;
+	}
 }
 
 function onFigureDblclick(event){

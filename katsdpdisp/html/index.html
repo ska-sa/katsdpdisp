@@ -76,6 +76,7 @@ function onMouseOut(event)
 				<a>envelopecrosshh</a>
 				<a>envelopecrosshv</a>
 				<a>envelopecrossvv</a>
+				<a>flags</a>
 				<a>flags=..200,-200..</a>
 				<a>flags on</a>
 				<a>flags off</a>
@@ -86,8 +87,10 @@ function onMouseOut(event)
 				<a>labels off</a>
 				<a>labels on</a>
 				<a>load</a>
+				<a>loop</a>
 				<a>loop off</a>
 				<a>loop name1,name2,name3</a>
+				<a>loopdelay</a>
 				<a>loopdelay=5</a>
 				<a>legend off</a>
 				<a>legend on</a>
@@ -95,7 +98,9 @@ function onMouseOut(event)
 				<a>ncols=1</a>
 				<a>onlineflags on</a>
 				<a>onlineflags off</a>
-				<a>outlierthreshold=0.9</a>
+				<a>outlierthreshold</a>
+				<a>outlierthreshold=95</a>
+				<a>outliertime</a>
 				<a>outliertime=2</a>
 				<a>pmin=</a>
 				<a>pmax=</a>
@@ -163,28 +168,13 @@ function onMouseOut(event)
 </div>
 <div id="overalldiv">
 <div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>
-<div id="listoffigures" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event)">
+<div id="listoffigures" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event);">
 </div>
 </div>
-<div id="timingsignalsdiv" style="display:none">
-<element id="timeserveroverview"> </element><br>
-<element id="timeserverreqinterval"> </element><br>
-<element id="timeinterval"> </element><br>
-<element id="linesnotdrawn"> </element><br>
-<element id="mb_received"> </element><br>
-<element id="timeservertotal"> </element><br>
-<element id="timeserverinit"> </element><br>
-<element id="timeserverselectdata"> </element><br>
-<element id="timeserverflaglogavg"> </element><br>
-<element id="timeserverprepmsg"> </element><br>
-<element id="timeserversend"> </element><br>
-<element id="timeclientinit"> </element><br>
-<element id="timeclientdraw"> </element><br>
-<element id="timeclientusereventroundtrip"> </element><br>
-</div>
-
 </body>
 </html>
 <script>
+document.onkeyup=onFigureKeyUp;
+
 var thecombobox = new ComboBox('signaltext');
 </script>

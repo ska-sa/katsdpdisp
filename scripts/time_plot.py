@@ -225,6 +225,14 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings
                 continue
+            if (thelayoutsettings=='getflags'):
+                fig={'logconsole':'flags='+(datasd.storage.timeseriesmaskstr)}
+                ringbufferresultqueue.put(fig)
+                continue
+            if (thelayoutsettings=='getoutliertime'):
+                fig={'logconsole':'outliertime=%g'%(datasd.storage.outliertime)}
+                ringbufferresultqueue.put(fig)
+                continue
             if (thelayoutsettings=='inputs'):                
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
@@ -477,34 +485,53 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                     productstr=theviewsettings['figtype'][9:]
-                    flags=0
-                    if (productstr in collections):
-                        product=collections.index(productstr)
-                        productstr=collectionsalt[product]
-                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                        flags=np.logical_or(flags,rvcdata[2])
-                    elif (productstr in collectionsalt):
-                        product=collectionsalt.index(productstr)
-                        rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                        flags=np.logical_or(flags,rvcdata[2])
-                    else:                        
-                        product=decodecustomsignal(productstr)
-                        if (list(product) in datasd.cpref.bls_ordering):
-                            rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                    if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
+                        flags=0
+                        if (productstr in collections):
+                            product=collections.index(productstr)
+                            productstr=collectionsalt[product]
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                             flags=np.logical_or(flags,rvcdata[2])
-                        else:
-                            rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                            
+                        elif (productstr in collectionsalt):
+                            product=collectionsalt.index(productstr)
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            flags=np.logical_or(flags,rvcdata[2])
+                        else:                        
+                            product=decodecustomsignal(productstr)
+                            if (list(product) in datasd.cpref.bls_ordering):
+                                rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                flags=np.logical_or(flags,rvcdata[2])
+                            else:
+                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                            
                         
-                    if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
-                        rvcdata[1]=np.array([rvcdata[1]])
-                        flags=np.array([flags])
+                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                            rvcdata[1]=np.array([rvcdata[1]])
+                            flags=np.array([flags])
                     
-                    cdata=rvcdata[1]
-                    if (thelayoutsettings['showonlineflags']=='on' and len(np.shape(flags))>0):
-                        shp=np.shape(cdata)
-                        tmp=cdata.reshape(-1)
-                        tmp[np.nonzero(flags.reshape(-1))[0]]=np.nan;
-                        cdata=tmp.reshape(shp)
+                        cdata=rvcdata[1]
+                        if (len(np.shape(flags))>0):
+                            shp=np.shape(cdata)
+                            tmp=cdata.reshape(-1)
+                            tmp[np.nonzero(flags.reshape(-1))[0]]=np.nan;
+                            cdata=tmp.reshape(shp)
+                    else:
+                        if (productstr in collections):
+                            product=collections.index(productstr)
+                            productstr=collectionsalt[product]
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        elif (productstr in collectionsalt):
+                            product=collectionsalt.index(productstr)
+                            rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        else:                        
+                            product=decodecustomsignal(productstr)
+                            if (list(product) in datasd.cpref.bls_ordering):
+                                rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            else:
+                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]
+                        
+                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                            rvcdata[1]=np.array([rvcdata[1]])                    
+                        cdata=rvcdata[1]
                     
                     if (theviewsettings['type']=='pow'):
                         cdata=20.0*np.log10(cdata)
@@ -576,12 +603,12 @@ html_collectionsignals= {'default': ['auto','cross'],
                          'hv': [],
                          'vv': []
                         }
-html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
-                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
-                        'hhnoticklabels': {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
-                         'hh':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
-                         'hv':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0},
-                         'vv':    {'ncols':7,'showonlineflags':'on','showflags':'on','outlierthreshold':1.0}
+html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
+                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
+                        'hhnoticklabels': {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
+                         'hh':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
+                         'hv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
+                         'vv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
                         }
 html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                                 {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
@@ -1027,6 +1054,25 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='getoutlierthreshold'):
+            print args
+            send_websock_cmd('logconsole("outlierthreshold=%g'%(html_layoutsettings[username]['outlierthreshold'])+'",true,true,true)',handlerkey)
+        elif (args[0]=='getoutliertime'):
+            print args
+            ringbufferrequestqueue.put(['getoutliertime',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating getoutliertime",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
+        elif (args[0]=='getflags'):
+            print args
+            ringbufferrequestqueue.put(['getflags',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating getflags",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
         elif (args[0]=='outlierthreshold'):
             print args
             html_layoutsettings[username]['outlierthreshold']=float(args[1])
@@ -1088,7 +1134,20 @@ def handle_websock_event(handlerkey,*args):
                 usrnamelist.append(thisusrname)
                 nviewlist.append(int(sum([thisusrname==usrname for usrname in websockrequest_username.values()])))
             for ind in np.argsort(nviewlist)[::-1]:
-                userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))            
+                userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))
+            try:
+                startupfile=open(SERVE_PATH+'/usersettings.json','r')
+                startupdictstr=startupfile.read()
+                startupfile.close()
+            except:
+                startupdictstr=''
+                pass
+            if (len(startupdictstr)>0):
+                startupdict=convertunicode(json.loads(startupdictstr))
+                send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+            else:
+                startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
+                send_websock_cmd('logconsole("No profiles saved",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
             print args
