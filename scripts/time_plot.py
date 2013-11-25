@@ -22,10 +22,10 @@ import re
 import json
 
 #ANTNAMEPREFIX='m%03d' #meerkat
-ANTNAMEPREFIX='ant%d'#kat7
+ANTNAMEPREFIX='ant%d' #kat7
 
-#SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
 SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
+#SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
 #SERVE_PATH='/home/mattieu/git/katsdpdisp/katsdpdisp/html'
 
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
@@ -80,19 +80,17 @@ SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
 ##or if crashed then just type debug
 #####################################################################################
 
-
-HOST_HTML="localhost"
-HOST_WEBSOCKET='localhost'
-HOST_WATERFALL="localhost"
-HOST_TIMESERIES="localhost"
-HOST_COLLECTOR="localhost"
 PORT_HTML = 8080            #port on which html pages are served
 PORT_WEBSOCKET = 8081       #port on which html pages are served
-PORT_WATERFALL = 9000       #port on which waterfall data is served to data collector processes
-PORT_TIMESERIES = 9001      #port on which timeseries data is served to data collector processes
-PORTBASE_HTML2COLLECTOR=50000  #base port on which data is served to html clients from their respective data collector processes
 
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
+
+colour_dict={}
+
+def registeredcolour(signalname):
+    if (signalname not in colour_dict):
+        colour_dict[signalname]=np.random.random(3)*255
+    return colour_dict[signalname];
 
 #returns minimum and maximum channel numbers, and channel increment, and channels
 def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
@@ -144,9 +142,7 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
         if (channelincr<1):
             channelincr=1
     return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
-    
-        
-    
+
 #idea is to store the averaged time series profile in channel 0
 def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
@@ -216,7 +212,6 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     ydata=[]
                     color=[]
                     legend=[]
-                    np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
                     for colprod in collectionsignals:
@@ -226,15 +221,16 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
-                                        outlierproducts.append(ip)
-                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                        outlierproducts.append(ip)                                
+                                cbase=registeredcolour(colprod[8:])
+                                c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(2):#only min and max
                                     product=icolprod*5+iprod
                                     signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod[8:])
                                     if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
-                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                        c=np.array(np.r_[cbase,0],dtype='int')
                                     color.append(c)
                         else:
                             if (colprod in collections):
@@ -243,14 +239,15 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
                                         outlierproducts.append(ip)
-                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                cbase=registeredcolour(colprod)
+                                c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
                                     signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod)
                                     if (iprod==4):
-                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                        c=np.array(np.r_[cbase,0],dtype='int')
                                     color.append(c)
                         
                     for product in customsignals:
@@ -261,7 +258,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                             signal=np.nan*np.ones(len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
-                        color.append(np.r_[np.random.random(3)*255,0])
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
@@ -269,7 +266,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
-                        color.append(np.r_[np.random.random(3)*255,0])
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
@@ -309,7 +306,6 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     legend=[]
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     thech_=np.arange(start_chan,stop_chan,chanincr)
-                    np.random.seed(0)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
                     flags=np.zeros(len(thech))
@@ -321,7 +317,8 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
                                         outlierproducts.append(ip)
-                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                cbase=registeredcolour(colprod[8:])
+                                c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(2):
                                     product=icolprod*5+iprod
                                     signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -329,7 +326,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod[8:])
                                     if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
-                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                        c=np.array(np.r_[cbase,0],dtype='int')
                                     color.append(c)
                         else:
                             if (colprod in collections):
@@ -338,7 +335,8 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
                                         outlierproducts.append(ip)
-                                c=np.array(np.r_[np.random.random(3)*255,1],dtype='int')
+                                cbase=registeredcolour(colprod)
+                                c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
                                     signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -346,7 +344,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod)
                                     if (iprod==4):
-                                        c=np.array(np.r_[c[:-1],0],dtype='int')
+                                        c=np.array(np.r_[cbase,0],dtype='int')
                                     color.append(c)
                                 
                     for product in customsignals:
@@ -358,14 +356,14 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                             signal=np.nan*np.ones(len(thech))
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
-                        color.append(np.r_[np.random.random(3)*255,0])
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
                     for product in outlierproducts:
                         signal,theflags = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                         flags=np.logical_or(flags,theflags.reshape(-1))
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
-                        color.append(np.r_[np.random.random(3)*255,0])                    
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
                     span=[]
                     spancolor=[]
                     if (thelayoutsettings['showonlineflags']=='on'):
@@ -1639,45 +1637,6 @@ def websock_transfer_data(request):
             print "Caught exception (%s). Removing registered handler" % str(e)
             deregister_websockrequest_handler(request)
             return
-        
-             
-#This class will handle any incoming request from the browser 
-def WebSocketProcess(requesthandler,webid,host,ringbufferwaterfallport):
-    """Transfers data from ring buffer servers and client html pages, as needed. 
-       Terminates if client connection closes or time out occurs"""
-       
-    
-    # Create a socket (SOCK_STREAM means a TCP socket)
-    for cnt in range(3):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            sock.connect((HOST_WATERFALL, ringbufferwaterfallport))
-            sock.sendall("request to ringbuffer %d "%(cnt))
-            received = sock.recv(1024)
-            print 'Websocket process received from ringbuffer:',received
-        finally:
-            sock.close()
-    
-    #note requesthandler contains 
-    # print 'requesthandler.request',requesthandler.request
-    # print 'requesthandler.client_address',requesthandler.client_address
-    # print 'requesthandler.server',requesthandler.server
-    #time.sleep(10)
-    #client_conn.send([requesthandler,'quit'])
-    #print 'current_process',current_process()
-    time.sleep(10)
-
-    #informs html server that client is closed
-    data = "/*cmd*/close websocket,"+str(webid)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect((HOST_HTML, PORT_HTML))
-        sock.sendall(data + "\n")
-        received = sock.recv(1024)
-        print 'Collector process received:',received
-    finally:
-        sock.close()
-    return    
     
 class htmlHandler(BaseHTTPRequestHandler):
             
@@ -1774,11 +1733,6 @@ class htmlHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 filetext=f.read()
                 if (self.path=="/index.html"):
-                    #webid=register_htmlrequest_handler(self)
-                    #parent_conn, child_conn = Pipe()
-                    #p=Process(target=WebSocketProcess, args=(self,webid,HOST_WATERFALL,PORT_WATERFALL))
-                    #p.start()
-                    #print 'Current client processes',htmlrequest_handlers
                     filetext=filetext.replace('<!--data_port-->',str(PORT_WEBSOCKET))
                 
                 self.wfile.write(filetext)

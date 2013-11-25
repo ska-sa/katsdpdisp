@@ -42,6 +42,36 @@ inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
 
+[auto]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh as well as vv auto correlation products. This collection excludes hv auto correlation products.
+
+See also:
+autohh,autovv,autohv,cross
+
+[autohh]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh auto correlation products.
+
+[autovv]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes vv auto correlation products.
+
+[autohv]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hv auto correlation products.
+
+[cross]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh as well as vv cross products. This collection excludes hv cross correlation products.
+
+See also:
+auto,crosshh,crossvv,crosshv
+
+[crosshh]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh cross products.
+
+[crossvv]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes vv cross products.
+
+[crosshv]
+Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hv cross products.
+
 [console]
 The console shows information such as warnings, exceptions and debugging information to the advanced user. It is also used for displaying help. The following console related commands can be issued:
 
