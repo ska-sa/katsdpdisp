@@ -26,6 +26,7 @@ ANTNAMEPREFIX='ant%d'#kat7
 
 #SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
 SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
+#SERVE_PATH='/home/mattieu/git/katsdpdisp/katsdpdisp/html'
 
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
@@ -92,49 +93,6 @@ PORT_TIMESERIES = 9001      #port on which timeseries data is served to data col
 PORTBASE_HTML2COLLECTOR=50000  #base port on which data is served to html clients from their respective data collector processes
 
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
-
-class RingBufferWaterfallHandler(SocketServer.BaseRequestHandler):
-    """
-    The RequestHandler class for our server.
-
-    It is instantiated once per connection to the server, and must
-    override the handle() method to implement communication to the
-    client.
-    """
-    def handle(self):
-        #handles requests that reads from katsdpdisp object
-        # self.request is the TCP socket connected to the client
-        self.data = self.request.recv(1024).strip()
-        print "{} wrote:".format(self.client_address[0])
-        print self.data
-        # just send back the same data, but upper-cased
-        self.request.sendall(self.data.upper())
-
-def StartRingBufferWaterfallServer(host, port, memusage, datafilename):
-    dh=katsdpdisp.KATData()
-    if (datafilename=='stream'):
-        dh.start_spead_receiver(capacity=memusage/100.0,store2=True)
-        datasd=dh.sd
-    elif (datafilename=='k7simulator'):
-        dh.start_direct_spead_receiver(capacity=memusage/100.0,store2=True)
-        datasd=dh.sd
-    else:
-        try:
-            dh.load_k7_data(datafilename,rows=rows,startrow=startrow)
-        except Exception,e:
-            print time.asctime()+" Failed to load file using k7 loader (%s)" % e
-            dh.load_ff_data(datafilename)
-        datasd=dh.sd_hist    
-    
-    try:
-        #first construct katsdpdisp object
-        server = SocketServer.TCPServer((host, port), RingBufferWaterfallHandler)
-        print 'Started ring RingBufferWaterfallServer on port ' , port
-        server.serve_forever()
-
-    except KeyboardInterrupt:
-        print '^C received, shutting down the web server'
-        server.socket.close()
 
 #returns minimum and maximum channel numbers, and channel increment, and channels
 def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
@@ -304,7 +262,9 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
                         color.append(np.r_[np.random.random(3)*255,0])
-                    for product in outlierproducts:
+                    outlierhash=0
+                    for ipr,product in enumerate(outlierproducts):
+                        outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
                         signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
@@ -327,7 +287,8 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     fig['xdata']=ts
                     fig['ydata']=[ydata]
                     fig['color']=np.array(color)
-                    fig['legend']=legend
+                    fig['legend']=legend                    
+                    fig['outlierhash']=outlierhash
                     fig['title']='Timeseries'
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
@@ -445,6 +406,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     fig['ydata']=[ydata]
                     fig['color']=np.array(color)
                     fig['legend']=legend
+                    fig['outlierhash']=0
                     fig['title']='Spectrum at '+time.asctime(time.localtime(ts[-1]))
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
@@ -548,6 +510,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                     fig['cdata']=cdata
                     fig['ydata']=np.array(rvcdata[0])
                     fig['legend']=[]
+                    fig['outlierhash']=0
                     fig['color']=[]
                     fig['span']=[]
                     fig['spancolor']=[]
@@ -1000,6 +963,7 @@ def handle_websock_event(handlerkey,*args):
             lastts=np.round(float(args[3])*1000.0)/1000.0
             lastrecalc=float(args[4])
             view_npixels=int(args[5])
+            outlierhash=int(args[6])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
                 print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
                 return
@@ -1009,11 +973,11 @@ def handle_websock_event(handlerkey,*args):
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
-                send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype']=='spectrum'):
-                send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure)
+                send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
         elif (args[0]=='setzoom'):
             print args
             ifigure=int(args[1])
@@ -1307,7 +1271,7 @@ def printablesignal(product):
     return rv
     
 
-def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
         ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         timeseries_fig=ringbufferresultqueue.get()
@@ -1322,7 +1286,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,true,true)',handlerkey)
             return
-        if (lastrecalc<timeseries_fig['version']):
+        if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),timeseries_fig['lastts'],'d'),handlerkey);count+=1;
@@ -1339,6 +1303,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),timeseries_fig['xunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),timeseries_fig['yunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),timeseries_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),timeseries_fig['outlierhash'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),timeseries_fig['xdata'],'I'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),timeseries_fig['color'],'b'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
@@ -1382,7 +1347,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
 
-def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
         ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         spectrum_fig=ringbufferresultqueue.get()
@@ -1414,6 +1379,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),spectrum_fig['xunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),spectrum_fig['yunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),spectrum_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),spectrum_fig['outlierhash'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),spectrum_fig['xdata'],'m'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),spectrum_fig['color'],'b'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
@@ -1438,7 +1404,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         logger.warning("User event exception %s" % str(e))
 
 
-def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,ifigure):
+def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
         ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
         waterfall_fig=ringbufferresultqueue.get()
@@ -1472,6 +1438,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),waterfall_fig['yunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].cunit'%(ifigure),waterfall_fig['cunit'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),waterfall_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),waterfall_fig['outlierhash'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),waterfall_fig['xdata'],'m'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ydata'%(ifigure),waterfall_fig['ydata'],'I'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),waterfall_fig['color'],'b'),handlerkey);count+=1;
@@ -1842,7 +1809,6 @@ def register_htmlrequest_handler(requesthandler):
 def deregister_htmlrequest_handler(webid):
     htmlrequest_handlers.pop(webid)#del rv?
 
-#
 # Parse command-line opts and arguments
 parser = optparse.OptionParser(usage="%prog [opts] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. "
@@ -1906,7 +1872,6 @@ else:
 
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
-#Process(target=StartRingBufferWaterfallServer, args=(HOST_WATERFALL,PORT_WATERFALL,opts.memusage,args[0],ringbufferrequestqueue,ringbufferresultqueue)).start()
 Process(target=RingBufferProcess,args=(opts.memusage, args[0], ringbufferrequestqueue, ringbufferresultqueue)).start()
 htmlrequest_handlers={}
 

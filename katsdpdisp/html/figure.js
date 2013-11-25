@@ -1544,7 +1544,9 @@ function setsignals(){
     { //ssh-keygen -t rsa
       //scp .ssh/id_rsa.pub kat@kat-ops.karoo
       //ssh kat@kat-ops.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'
-      handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
+      //handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
+	  
+      handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
       //'ssh kat@kat-ops.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
     }
     else
@@ -1639,8 +1641,8 @@ function onFigureMouseMove(event){
 		{
     		newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
     		newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
-    		if (newsizex<300)newsizex=300;
-    		if (newsizey<300)newsizey=300;
+    		if (newsizex<200)newsizex=200;
+    		if (newsizey<200)newsizey=200;
             figurediv.style.width = newsizex + 'px';
             figurediv.style.height = newsizey + 'px';
     		figurediv.offsetWidth=newsizex
@@ -2199,14 +2201,14 @@ function updateFigure()
 	        {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': Ok'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth)
-	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth,true,false,true)
+	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash)
+	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash,true,false,true)
 	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
             }else 
 	        {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': reloading'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth)
+	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth+",0")
             }
         }else
         {
