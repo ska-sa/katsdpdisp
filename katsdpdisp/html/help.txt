@@ -104,7 +104,7 @@ envelopecrossvv - envelope plot of crossvv signals
 Loads user view profile settings from a persistent store on the server and applies it to the current page. 
 
 'load' - loads the saved view profile settings of the current user logged into the page.
-'load name' - loads the saved view profile settings of name. If the view settings of the specified name is not saved, but does exist in server memory, it will be copied from memory instead, with a warning. 
+'load name' - loads the saved view profile settings of name. If the view settings of the specified name is not saved, but does exist in server memory, it will be copied from memory instead, with a warning logged. 
 
 [save]
 Saves view profile settings of the current page to a persistent store on the server.

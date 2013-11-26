@@ -550,7 +550,10 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
         
 
 html_customsignals= {'default': [],
-#                     'test':    [('ant1h','ant1h'),('ant2h','ant2h'),('ant3h','ant3h'),('ant4h','ant4h'),('ant5h','ant5h'),('ant6h','ant6h'),('ant7h','ant7h'),('ant1v','ant1v'),('ant2v','ant2v'),('ant3v','ant3v'),('ant4v','ant4v'),('ant5v','ant5v'),('ant6v','ant6v'),('ant7v','ant7v'),('ant1h','ant2h'),('ant2h','ant3h'),('ant3h','ant4h'),('ant4h','ant5h'),('ant5h','ant6h'),('ant6h','ant7h')],
+                    'inspectauto': [],
+                    'inspectcross': [],
+                    'envelopeauto': [],
+                    'envelopes': [],
                      'hh': [],
                      'hv': [],
                      'vv': []
@@ -559,7 +562,10 @@ html_customsignals= {'default': [],
                      'vvticks': []
                     }
 html_collectionsignals= {'default': ['auto'],
-#                         'test':    ['envelopeauto','auto','cross'],
+                        'inspectauto': ['auto'],
+                        'inspectcross': ['cross'],
+                        'envelopeauto': ['envelopeautohh','envelopeautovv'],
+                        'envelopes': ['envelopeauto','envelopeautohv','envelopecross','envelopecrosshv'],
                          'hh': [],
                          'hv': [],
                          'vv': []
@@ -567,8 +573,11 @@ html_collectionsignals= {'default': ['auto'],
                          'hvticks': [],
                          'vvticks': []
                         }
-html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
-#                        'test':  {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
+html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':95.0},
+                      'inspectauto': {'ncols':3,'showonlineflags':'on','showflags':'on','outlierthreshold':95.0},
+                      'inspectcross': {'ncols':3,'showonlineflags':'on','showflags':'on','outlierthreshold':95.0},
+                      'envelopeauto': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
+                      'envelopes': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
                          'hh':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'hv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'vv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
@@ -577,9 +586,22 @@ html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'
                          'vvticks':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
                         }
 html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
-                                {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
-                                {'figtype':'waterfallauto' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
+                                {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
                              ],
+                    'inspectauto':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                     {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                     {'figtype':'waterfallauto' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
+                                  ],
+                    'inspectcross':[ {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                     {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                     {'figtype':'waterfallcross' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
+                                  ],
+                    'envelopeauto':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                      {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
+                                   ],
+                    'envelopes':[  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
+                                   {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0}
+                                ],
                     # 'test':  [  {'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                     #             {'figtype':'spectrum'  ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
                     #             {'figtype':'spectrum'  ,'type':'arg','xtype':'ghz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0},
@@ -1228,7 +1250,7 @@ def handle_websock_event(handlerkey,*args):
                 html_customsignals[username]=copy.deepcopy(html_customsignals[theusername])
                 html_collectionsignals[username]=copy.deepcopy(html_collectionsignals[theusername])
                 html_layoutsettings[username]=copy.deepcopy(html_layoutsettings[theusername])
-                send_websock_cmd('logconsole("'+theusername+' not found in startup settings file, but copied from active process instead",true,true,true)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in startup settings file, but copied from active process instead",true,false,true)',handlerkey)
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
