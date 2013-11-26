@@ -372,7 +372,7 @@ class SignalDisplayStore2(object):
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
-        self.outliertime=2
+        self.outliertime=5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
         self.percrunavg = []
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)

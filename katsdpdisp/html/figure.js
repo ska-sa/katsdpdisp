@@ -1240,9 +1240,9 @@ function setsignals(){
     }else if (signaltext.slice(0,12)=='outliertime=')
 	{
 		outliertime=parseFloat(signaltext.slice(12))
-        if (outliertime<1 || outliertime>10.0)
+        if (outliertime<1 || outliertime>50.0)
         {
-            alert('Value for outliertime must be between 1 and 10');
+            alert('Value for outliertime must be between 1 and 50');
         }
         else
         {
@@ -2277,7 +2277,7 @@ function updateFigure()
     {
         dt2=RG_fig[0].lastdt.toFixed(2)
         
-    	if ((reqts-local_last_lastts_change)>(dt2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
+    	if ((reqts-local_last_lastts_change)>(dt2*2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
     	{//checks that longer than dump local delay occur for change in last timestamp while still having received updates within this time
     	    document.getElementById("healthtext").innerHTML='halted stream'
     	}else
