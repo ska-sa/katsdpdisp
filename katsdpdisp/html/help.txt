@@ -178,6 +178,7 @@ See also outlierthreshold
 [update]
 The update command provides the advanced user with useful debugging information in order to investigate the speed performance of the signal display system. Updates of a few measured quantities can be printed per figure to the console at regular update intervals. 
 
+'update action' the action performed when receiving the figure data from the server
 'update byte' the number of bytes of data received from the server
 'update kb' the number of kilobytes of data received from the server
 'update mb' number of megabytes of data received from the server

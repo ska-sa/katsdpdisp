@@ -5,7 +5,7 @@ import optparse
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 import mplh5canvas.simple_server as simple_server
-from os import curdir, sep
+import os
 import traceback
 import commands
 import time
@@ -21,12 +21,14 @@ import katsdpdisp
 import re
 import json
 
+
+PORT_HTML = 8080            #port on which html pages are served
+PORT_WEBSOCKET = 8081       #port on which html pages are served
+
 #ANTNAMEPREFIX='m%03d' #meerkat
 ANTNAMEPREFIX='ant%d' #kat7
 
-SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
-#SERVE_PATH='/Users/mattieu/git/katsdpdisp/katsdpdisp/html'
-#SERVE_PATH='/home/mattieu/git/katsdpdisp/katsdpdisp/html'
+SERVE_PATH='~/git/katsdpdisp/katsdpdisp/html'
 
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
@@ -79,9 +81,6 @@ SERVE_PATH='/home/kat/git/katsdpdisp/katsdpdisp/html'
 ##to debug somewhere in code, run this command: from IPython.Shell import IPShellEmbed; IPShellEmbed()()
 ##or if crashed then just type debug
 #####################################################################################
-
-PORT_HTML = 8080            #port on which html pages are served
-PORT_WEBSOCKET = 8081       #port on which html pages are served
 
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
 
@@ -1726,7 +1725,6 @@ class htmlHandler(BaseHTTPRequestHandler):
 
             if sendReply == True:
                 #Open the static file requested and send it
-                # f = open(curdir + sep + self.path) 
                 f = open(SERVE_PATH + self.path)
                 self.send_response(200)
                 self.send_header('Content-type',mimetype)
@@ -1773,6 +1771,8 @@ parser.add_option("-m", "--memusage", dest="memusage", default=10.0, type='float
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer. (default=10)")
 
 (opts, args) = parser.parse_args()
+SERVE_PATH=os.path.expanduser(SERVE_PATH)
+np.random.seed(0)
 
 if (len(args)==0):
     args=['stream']

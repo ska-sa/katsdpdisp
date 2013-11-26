@@ -521,9 +521,12 @@ function redrawfigure(ifig)
 function completefigure(ifig)
 {    
 	timedrawcomplete=(new Date()).getTime();
-	RG_fig[ifig].renderts=timedrawcomplete/1000.0
-	RG_fig[ifig].figureupdated=true
-	if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
+	if (typeof(RG_fig[ifig])!="undefined")
+	{
+		RG_fig[ifig].renderts=timedrawcomplete/1000.0
+		RG_fig[ifig].figureupdated=true
+		if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
+	}
 }
 
 function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
@@ -1456,7 +1459,7 @@ function setsignals(){
         console_timing='off'
     }else if (signaltext.slice(0,7)=='update ')//note space# nvars, byte
     {
-        valid=['off','nvars','byte','mb','kb','status','servertime','receivetime','drawtime','rendertime'];
+        valid=['off','nvars','byte','mb','kb','status','servertime','receivetime','drawtime','rendertime','action'];
         if (valid.indexOf(signaltext.slice(7)) >= 0)
         {
             document.getElementById("consoletext").style.display = 'block'
@@ -1982,20 +1985,28 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 		rcvfig['receivedts']=Date.now()/1000;
 	    if (rcvfig.action=='none')
 	    {
-		    window['RCV_fig'][sublist[1]]=undefined
-		    window['RG_fig'][sublist[1]].figureupdated=true
+		    thisfigure.figureupdated=true
+			thisfigure.action='none'
+			thisfigure.receivingts=rcvfig.receivingts
+			thisfigure.receivedts=rcvfig.receivedts
+			thisfigure.ntxbytes=rcvfig.ntxbytes
+			thisfigure.recvcount=rcvfig.recvcount
+			thisfigure.drawstartts=(new Date()).getTime()/1000.0
+			thisfigure.drawstoptts=thisfigure.drawstartts
+		    window['RCV_fig'][sublist[1]]=undefined			
+			completefigure(sublist[1])//RG_fig[sublist[1]].figureupdated=true;set RG_fig[sublist[1]].renderts
 		    return
 	    }else if (rcvfig.action=='reset')
 		{
-		    lastts=window['RG_fig'][sublist[1]].lastts//this might be a bug - why not [sublist[1]]
-		    viewwidth=window['RG_fig'][sublist[1]].viewwidth
-			overridelimit=window['RG_fig'][sublist[1]].overridelimit
-			xmin=window['RG_fig'][sublist[1]].xmin
-			xmax=window['RG_fig'][sublist[1]].xmax
-			ymin=window['RG_fig'][sublist[1]].ymin
-			ymax=window['RG_fig'][sublist[1]].ymax
-			cmin=window['RG_fig'][sublist[1]].cmin
-			cmax=window['RG_fig'][sublist[1]].cmax
+		    lastts=thisfigure.lastts//this might be a bug - why not [sublist[1]]
+		    viewwidth=thisfigure.viewwidth
+			overridelimit=thisfigure.overridelimit
+			xmin=thisfigure.xmin
+			xmax=thisfigure.xmax
+			ymin=thisfigure.ymin
+			ymax=thisfigure.ymax
+			cmin=thisfigure.cmin
+			cmax=thisfigure.cmax
 		    window['RG_fig'][sublist[1]]=[]
 		    window['RG_fig'][sublist[1]].viewwidth=viewwidth
 		    window['RG_fig'][sublist[1]].lastts=lastts
@@ -2153,6 +2164,9 @@ function handle_data_user_event(arg_string)
         {
             logconsole('Websocket connection closed, trying to reestablish',true,false,true)
 		    loadpage()
+			for (ifig=0;ifig<nfigures;ifig++)
+	        	RG_fig[ifig].figureupdated=true
+			
         }else
         {
             logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,true,false,true)
@@ -2187,6 +2201,8 @@ function updateFigure()
             summary[ifig]=''+ifig+': '+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)
         else if (console_update=='rendertime')
             summary[ifig]=''+ifig+': '+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3)
+        else if (console_update=='action')
+            summary[ifig]=''+ifig+': '+RG_fig[ifig].action
         
 	    if (RG_fig[ifig].figureupdated)
 	    {
@@ -2216,8 +2232,12 @@ function updateFigure()
             {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server orig'
-                logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
-                RG_fig[ifig].figureupdated=true
+                //logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
+                //RG_fig[ifig].figureupdated=true
+				logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig+' reloading page',true,false,true)
+				loadpage()
+				for (ifig=0;ifig<nfigures;ifig++)
+		        	RG_fig[ifig].figureupdated=true
             }else
             if (reqts-RG_fig[ifig].receivingts>120 && (time0-time_receive_data_user_cmd)<10000)
             {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew
@@ -2250,6 +2270,8 @@ function updateFigure()
         logconsole('drawtime: '+summary.join(', '),true,false,true)
     if (console_update=='rendertime')
         logconsole('rendertime: '+summary.join(', '),true,false,true)
+    if (console_update=='action')
+        logconsole('action: '+summary.join(', '),true,false,true)
     
     if (RG_fig.length && typeof(RG_fig[0].lastdt)!="undefined")
     {
