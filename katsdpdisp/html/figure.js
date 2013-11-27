@@ -2167,7 +2167,10 @@ function restore_data()
 	{
 		checkCookie()
 		for (ifig=0;ifig<nfigures;ifig++)
+		{
 	    	RG_fig[ifig].figureupdated=true
+			window['RCV_fig'][ifig]=undefined
+		}
 		timerid=setInterval(updateFigure,1000)
 		logconsole('Connection restored',true,false,true)
 	}else
