@@ -70,7 +70,7 @@ function checkCookie()
 	if (username!=null && username!="") 
 	{
 		document.getElementById("usrname").innerHTML=username
-		setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+		setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
 	}else 
 	{
 	  	username=prompt("Please enter your name:","");
@@ -78,7 +78,7 @@ function checkCookie()
 	    {
 	    	createCookie("username",username,365);
 			document.getElementById("usrname").innerHTML=username
-			setTimeout(function(){handle_data_user_event("setusername,"+username)},1000)
+			setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
 	    }
 	}
 }
@@ -2124,7 +2124,14 @@ function assignvariable(varname,val,ntxbytes,arrivets)
 	}
 }
 			
-function start_data(webdataportnumber) 
+
+function loadpage()
+{
+	start_data();
+	checkCookie()	
+}
+
+function start_data() 
 {
     datasocket = new WebSocket('ws://'+document.domain+':'+webdataportnumber);	
 	var supports_binary = (datasocket.binaryType != undefined);
@@ -2151,7 +2158,24 @@ function stop_data()
 {
     datasocket.onmessage = function(e) {};
 	datasocket.close();
-	datasocket=0;
+}
+
+function restore_data()
+{
+ 	clearInterval(timerid)
+	if (datasocket.readyState==1)
+	{
+		checkCookie()
+		for (ifig=0;ifig<nfigures;ifig++)
+	    	RG_fig[ifig].figureupdated=true
+		timerid=setInterval(updateFigure,1000)
+		logconsole('Connection restored',true,false,true)
+	}else
+	{
+		start_data();
+		timerid=setTimeout(restore_data,5000)
+		logconsole('Attempting to restore connection',true,false,true)
+	}
 }
 
 function handle_data_user_event(arg_string) 
@@ -2163,10 +2187,7 @@ function handle_data_user_event(arg_string)
         }else if (datasocket.readyState==3)
         {
             logconsole('Websocket connection closed, trying to reestablish',true,false,true)
-		    loadpage()
-			for (ifig=0;ifig<nfigures;ifig++)
-	        	RG_fig[ifig].figureupdated=true
-			
+			restore_data()
         }else
         {
             logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,true,false,true)
@@ -2232,12 +2253,10 @@ function updateFigure()
             {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server orig'
-                //logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
-                //RG_fig[ifig].figureupdated=true
 				logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig+' reloading page',true,false,true)
-				loadpage()
-				for (ifig=0;ifig<nfigures;ifig++)
-		        	RG_fig[ifig].figureupdated=true
+				stop_data()
+				restore_data()
+				return
             }else
             if (reqts-RG_fig[ifig].receivingts>120 && (time0-time_receive_data_user_cmd)<10000)
             {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew

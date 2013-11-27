@@ -12,6 +12,9 @@
 	div.combobox	.dropdownlist, input {font-family: Tahoma;font-size: 12px;}
 	div.combobox	input {float: left;width: 500px;
 		border: solid 1px #ccc;}
+    body {font-family: verdana, arial, helvetica;
+		  font-size:12px;
+	      font-weight:normal;}
 </style>
 <html>
 <head>
@@ -20,31 +23,6 @@
 <script type="text/javascript" src="rightcontext.js"></script>
 <script type="text/javascript" src="combobox.js"></script>
 <title>MeerKAT signal displays</title>
-<style type="text/css">
-    body {
-    font-family: verdana, arial, helvetica;
-    font-size:12px;
-    font-weight:normal;
-    }
-</style>
-<script>
-function loadpage()
-{
-	start_data(<!--data_port-->);
-	checkCookie()
-	makejet()
-}
-function onMouseMove(event)
-{
-	document.body.style.cursor = 'default';
-	return;
-}
-function onMouseOut(event)
-{
-	document.body.style.cursor = 'default';
-	return;
-}
-</script>
 </head>
 <body onload='loadpage()' bgcolor="#FFFFFF">
 <div align="left" style="position: relative; left:5px; top:0px;"> 
@@ -176,6 +154,7 @@ function onMouseOut(event)
 </html>
 <script>
 document.onkeyup=onFigureKeyUp;
-
+var webdataportnumber=<!--data_port-->
 var thecombobox = new ComboBox('signaltext');
+makejet()
 </script>

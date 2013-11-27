@@ -461,7 +461,8 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                                 flags=np.logical_or(flags,rvcdata[2])
                             else:
-                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]                            
+                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])
@@ -486,7 +487,8 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                             if (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                             else:
-                                rvcdata=[ts[-120:],np.nan*np.ones([120,len(thech)])]
+                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])                    
@@ -556,7 +558,7 @@ html_customsignals= {'default': [],
                     'envelopes': [],
                      'hh': [],
                      'hv': [],
-                     'vv': []
+                     'vv': [],
                      'hhticks': [],
                      'hvticks': [],
                      'vvticks': []
@@ -568,7 +570,7 @@ html_collectionsignals= {'default': ['auto'],
                         'envelopes': ['envelopeauto','envelopeautohv','envelopecross','envelopecrosshv'],
                          'hh': [],
                          'hv': [],
-                         'vv': []
+                         'vv': [],
                          'hhticks': [],
                          'hvticks': [],
                          'vvticks': []
@@ -580,7 +582,7 @@ html_layoutsettings= {'default': {'ncols':2,'showonlineflags':'on','showflags':'
                       'envelopes': {'ncols':2,'showonlineflags':'on','showflags':'on','outlierthreshold':100.0},
                          'hh':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'hv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
-                         'vv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
+                         'vv':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'hhticks':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'hvticks':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0},
                          'vvticks':    {'ncols':7,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
