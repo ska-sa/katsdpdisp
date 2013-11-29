@@ -1307,7 +1307,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
         if (timeseries_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
             return
         elif ('logconsole' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
@@ -1383,7 +1383,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         if (spectrum_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
             return
         elif ('logconsole' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
@@ -1440,7 +1440,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
         if (waterfall_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
             return
         elif ('logconsole' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
