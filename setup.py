@@ -2,10 +2,10 @@
 from setuptools import setup, find_packages
 
 setup (
-    name = "katsdisp",
+    name = "katsdpdisp",
     version = "trunk",
     description = "Karoo Array Telescope Online Signal Displays",
-    author = "Simon Ratcliffe",
+    author = "Mattieu de Villiers",
     packages = find_packages(),
     package_data={'': ['html/*']},
     include_package_data = True,

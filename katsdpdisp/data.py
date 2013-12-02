@@ -13,11 +13,13 @@ from struct import unpack
 
 from quitter import Quitter
 
+datalock = threading.RLock()
+
 quitter = Quitter("exit")
  # create a quitter to handle exit conditions
 
 logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger("katsdisp.data")
+logger = logging.getLogger("katsdpdisp.data")
 
 try:
     import matplotlib.pyplot as pl
@@ -361,19 +363,26 @@ class SignalDisplayStore2(object):
         self.frame_count = 0
         self.ts = None
         self.first_pass = True
+        self.timeseriesmaskstr=''
 
     def init_storage(self, n_chans=512, n_bls=0):
         self.n_chans = n_chans
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
-        self.slots = self.mem_cap / (self._frame_size_bytes * self.n_bls)
+        nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+        self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        self.outliertime=5
+        self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
+        self.percrunavg = []
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        self.percflags = np.zeros((self.slots, nperc, self.n_chans),dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.frame_count = 0
         self.roll_point = 0
         self._last_ts = 0
         self.first_pass = True
+        self.timeseriesmaskstr=''
 
     """Add some data to the store.
     In general this a fragment of a signal display frame and hence
@@ -402,7 +411,7 @@ class SignalDisplayStore2(object):
             self.flags[self.roll_point][corr_prod_id][offset:offset+len(data)] = flags
         self._last_ts = timestamp_ms
 
-    def add_data2(self, timestamp_ms, data, flags=None):
+    def add_data2old(self, timestamp_ms, data, flags=None):
         if timestamp_ms != self._last_ts: self.frame_count += 1
         if self.first_pass and self.frame_count > self.slots: self.first_pass = False
         self.roll_point = (self.frame_count-1) % self.slots
@@ -411,6 +420,172 @@ class SignalDisplayStore2(object):
         if flags is not None: self.flags[self.roll_point] = flags
         self._last_ts = timestamp_ms
 
+    #data is one timestamps worth of [bls,spectrum] complex data
+    #sorts this collection of data into 0% 100% 25% 75% 50%
+    #return shape is [5,nchannels]
+    #could improve algorithm by first sorting for one channel then apply ordering to next channel, and then using mergesort; instead of searching from scratch each channel
+    def percsort(self,data,percrunavg,flags=None):
+        nsignals=data.shape[0]
+        colindex=range(data.shape[1])
+        isort=np.argsort(np.abs(data),axis=0)
+        ilev=(nsignals*25)/100;
+        #define outlier threshold percentile level eg 90%
+        #define outlier halflife eg 20s
+        #if signal falls outside threshold, within its collection, for outlier period or longer (in past from now backwards), then outlier
+        
+        #outlier calculation based not on spectrum, only on timeseries for given halflife period; look at channel[0]
+        #for this (out of 8) collection product, the list of signals that is >threshold now is [....]
+        #for all 8 collections *[all signals in collection] store running average percentile score for each signal in collection at each time
+        iisort=np.argsort(isort[:,0])#uses timeseries
+        curoutlierlevel=100.0*(np.abs(iisort-(nsignals-1)/2.0)/(nsignals-1)+0.5)#percent, not fraction
+        #nsamplesdelay=outlierdelay/dumptime
+        nsamplesdelay=self.outliertime        
+        percrunavg=(curoutlierlevel+percrunavg*(nsamplesdelay-1.0))/nsamplesdelay
+        
+        # print 'isort[0,:]',np.shape(isort[0,:]),'isort.shape',isort.shape,'np.shape(colindex)',np.shape(colindex)
+        # return [np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.median(np.abs(data),axis=0)]
+        if (flags is not None):
+            anyflags=np.any(flags,axis=0)
+            flags=[anyflags,anyflags,anyflags,anyflags,anyflags]
+        return [[data.reshape(-1)[isort[0,:]*isort.shape[1]+colindex],
+            data.reshape(-1)[isort[-1,:]*isort.shape[1]+colindex],
+            data.reshape(-1)[isort[ilev,:]*isort.shape[1]+colindex],
+            data.reshape(-1)[isort[-1-ilev,:]*isort.shape[1]+colindex],
+            data.reshape(-1)[isort[nsignals/2,:]*isort.shape[1]+colindex]],percrunavg,
+            flags]
+        
+    #collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
+    def set_bls(self,bls_ordering):
+        auto=[]
+        autohh=[]
+        autovv=[]
+        autohv=[]
+        cross=[]
+        crosshh=[]
+        crossvv=[]
+        crosshv=[]
+        for ibls,bls in enumerate(bls_ordering):
+            if (bls[0][:-1]==bls[1][:-1]):#auto
+                if (bls[0][-1]==bls[1][-1]):#autohh or autovv
+                    auto.append(ibls)
+                    if (bls[0][-1]=='h'):
+                        autohh.append(ibls)
+                    else:
+                        autovv.append(ibls)                        
+                else:#autohv or vh 
+                    autohv.append(ibls)
+            else:#cross
+                if (bls[0][-1]==bls[1][-1]):#crosshh or crossvv
+                    cross.append(ibls)
+                    if (bls[0][-1]=='h'):
+                        crosshh.append(ibls)
+                    else:
+                        crossvv.append(ibls)                        
+                else:#crosshv or vh 
+                    crosshv.append(ibls)
+                
+        self.collectionproducts=[auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+        self.percrunavg=[np.zeros(len(bls),dtype='float') for bls in self.collectionproducts]
+        
+        
+    def set_mask(self,maskstr=''):
+        self.timeseriesmaskstr=maskstr
+        if (self.n_chans<1):
+            self.timeseriesmaskind=[]
+            return
+        spectrum_width=self.n_chans
+        spectrum_flagstr=''
+        self.spectrum_flag0=[]
+        self.spectrum_flag1=[]
+        spectrum_flagmask=np.ones([spectrum_width])
+        args=maskstr.split(',')
+        for c in range(len(args)):
+            spectrum_flagstr+=args[c]
+            if (c<len(args)-1):
+                spectrum_flagstr+=","
+            rng=args[c].split('..');
+            if (len(rng)==1):
+                if (args[c]!=''):
+                    chan=int(args[c])
+                    self.spectrum_flag0.append(chan)
+                    self.spectrum_flag1.append(chan+1)
+                    spectrum_flagmask[chan]=0
+            elif (len(rng)==2):
+                if (rng[0]==''):
+                    chan0=0
+                else:
+                    chan0=int(rng[0])
+                if (rng[1]==''):
+                    chan1=spectrum_width-1
+                else:
+                    chan1=int(rng[1])
+                if (chan0<0):
+                    chan0=spectrum_width+chan0
+                    if (chan0<0):
+                        chan0=0;
+                elif (chan0>=spectrum_width):
+                    chan0=spectrum_width-1
+                if (chan1<0):
+                    chan1=spectrum_width+chan1
+                    if (chan1<0):
+                        chan1=0;
+                elif (chan1>=spectrum_width):
+                    chan1=spectrum_width-1;
+                if (chan0>chan1):
+                    tmp=chan0
+                    chan0=chan1
+                    chan1=tmp
+                self.spectrum_flag0.append(chan0)
+                self.spectrum_flag1.append(chan1)
+                spectrum_flagmask[chan0:(chan1+1)]=0
+        self.timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1
+        self.spectrum_flagstr=spectrum_flagstr
+        
+    #calculate percentile statistics
+    #calculates masked average for this single timestamp for each data product (incl for percentiles)
+    #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
+    def add_data2(self, timestamp_ms, data, flags=None):
+        with datalock:
+            if timestamp_ms != self._last_ts: self.frame_count += 1
+            if self.first_pass and self.frame_count > self.slots: self.first_pass = False
+            self.roll_point = (self.frame_count-1) % self.slots
+            self.ts[self.roll_point] = timestamp_ms
+
+            #calculate timeseries masked average for all signals and overwrite it into channel 0
+            if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
+                data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
+            else:
+                data[:,0] = 0.0;
+
+            #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
+            #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
+            percdata=[]
+            percflags=[]
+            if (flags is not None):
+                self.flags[self.roll_point] = flags
+                for ip,iproducts in enumerate(self.collectionproducts):
+                    if (len(iproducts)>0):
+                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],flags[iproducts,:])
+                        percdata.extend(pdata)
+                        percflags.extend(pflags)
+                    else:
+                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
+                        
+            else:
+                for ip,iproducts in enumerate(self.collectionproducts):
+                    if (len(iproducts)>0):
+                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],None)
+                        percdata.extend(pdata)
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
+                    else:    
+                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
+                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
+            
+            self.data[self.roll_point,:,:] = data
+            self.percdata[self.roll_point,:,:]=np.array(percdata,dtype=np.complex64)
+            self.percflags[self.roll_point,:,:]=np.array(percflags,dtype=np.uint8)
+            self._last_ts = timestamp_ms
 
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
@@ -739,6 +914,8 @@ class SpeadSDReceiver(threading.Thread):
                         if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                         else:
                             self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                            self.storage.set_bls(self.cpref.bls_ordering)
+                            self.storage.set_mask(self.storage.timeseriesmaskstr)
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -751,6 +928,8 @@ class SpeadSDReceiver(threading.Thread):
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.set_bls(self.cpref.bls_ordering)
+                                self.storage.set_mask(self.storage.timeseriesmaskstr)
                     if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
@@ -763,6 +942,8 @@ class SpeadSDReceiver(threading.Thread):
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.set_bls(self.cpref.bls_ordering)
+                                self.storage.set_mask(self.storage.timeseriesmaskstr)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         ts = self.ig['sd_timestamp'] * 10.0
@@ -1702,7 +1883,7 @@ class DataHandler(object):
         pl.draw()
 
 
-    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
+    def select_data(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         """Used to select a particular window of data from the store for use in the signal displays...
         Once the window has been chosen then the particular plot will subsample and reformat the data window
         to suit it's requirements.
@@ -1776,66 +1957,143 @@ class DataHandler(object):
             frames = [ts_ms,frames[0],frames[1]] if include_flags else [ts_ms,frames]
         return frames
 
-    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=-1, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False):
+    def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
-        if product is None: product = self.default_product
-        orig_product = product
-        product = self.cpref.user_to_id(product)
+            
+        with datalock:
+            if product is None: product = self.default_product
+            orig_product = product
+            product = self.cpref.user_to_id(product)
 
-        ts = []
-        roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
-         # temp value in case of change during search...
-        rolled_ts = np.roll(self.storage.ts,-roll_point)
-        if end_time >= 0:
-            split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-            validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
-            split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
-        else:
-            if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
-             # ensure we do not ask for more data than is available
-            split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
-            split_start = max(split_end + end_time,0)
-        split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
+            ts = []
+            roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
-#        frames = np.take(self.storage.data[:,product,start_channel:stop_channel], range(split_start,split_end),mode='wrap', axis=0)
-#       The following block of code replaces the take command above, which appears to be about 10 times slower.
-        arraylen=self.storage.data.shape[0];
-        _split_start=split_start%arraylen;
-        _split_end=split_end%arraylen;
-        if (_split_start<_split_end):
-            frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel]
+            arraylen=self.storage.data.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+                    
+            if (_split_start<_split_end):
+                frames=self.storage.data[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+                if include_flags:
+                    flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+            else:
+                frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.data[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+                if include_flags:
+                    flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+
+            frames = frames.squeeze()
+            if include_flags: flags = flags.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if avg_axis is not None:
+                frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+            if sum_axis is not None:
+                frames = np.sum(frames, sum_axis)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
             if include_flags:
-                flags = self.storage.flags[_split_start:_split_end,product,start_channel:stop_channel]
-        else:
-            frames=np.concatenate((self.storage.data[_split_start:,product,start_channel:stop_channel], self.storage.data[:_split_end,product,start_channel:stop_channel]),axis=0)
+                frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
+            return frames
+
+    #icollection is index to [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+    def get_data_outlier_products(self, icollection, threshold):
+        outlierproducts=[]
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return outlierproducts
+            
+        with datalock:
+            iproducts=self.storage.collectionproducts[icollection]
+            if (len(iproducts)>0):
+                ind=np.nonzero(self.storage.percrunavg[icollection]>threshold)[0]
+                sind=np.argsort(self.storage.percrunavg[icollection][ind])[::-1]
+                #outlierproducts=iproducts[ind[sind]]# but not np.array
+                outlierproducts=[iproducts[ip] for ip in ind[sind]]
+                #self.percrunavg[ip][ind[sind]]
+            
+            return outlierproducts
+            
+    #product is index to [0,100,25,75,50] for each of [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+    def select_data_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return
+        with datalock:
+            ts = []
+            roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
+
+            arraylen=self.storage.percdata.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+                    
+            if (_split_start<_split_end):
+                frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+                if include_flags:
+                    flags = self.storage.percflags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+            else:
+                frames=np.concatenate((self.storage.percdata[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.percdata[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+                if include_flags:
+                    flags = np.concatenate((self.storage.percflags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.percflags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+
+            frames = frames.squeeze()
+            if include_flags: flags = flags.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if avg_axis is not None:
+                frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+            if sum_axis is not None:
+                frames = np.sum(frames, sum_axis)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
             if include_flags:
-                flags = np.concatenate((self.storage.flags[_split_start:,product,start_channel:stop_channel], self.storage.flags[:_split_end,product,start_channel:stop_channel]),axis=0)
-
-        frames = frames.squeeze()
-        if include_flags: flags = flags.squeeze()
-
-        if dtype == 'mag':
-            frames = np.abs(frames)
-        if dtype == 're':
-            frames = np.real(frames)
-        if dtype == 'imag':
-            frames = np.imag(frames)
-        if dtype == 'phase':
-            frames = np.angle(frames)
-        if avg_axis is not None:
-            frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
-        if sum_axis is not None:
-            frames = np.sum(frames, sum_axis)
-        if reverse_order:
-            frames = frames[::-1,...]
-        if include_ts:
-            frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
-            if reverse_order: frames[0] = frames[0][::-1]
-        if include_flags:
-            frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
-        return frames
+                frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
+            return frames
 
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
         map = np.array([[0, 0],
@@ -2498,14 +2756,16 @@ class KATData(object):
             print "Proxy detection only works for IPython sessions."
             return
 
+        # Set IPython shell reference
         try:
-            ip_api = IPython.ipapi.get()
-        except AttributeError:
-            # newer versions of ipython moved the location of ipapi
-            ip_api = IPython.core.ipapi.get()
+            # IPython 0.11 and above
+            ip_shell = get_ipython()
+        except NameError:
+            # IPython 0.10 and lower
+            ip_shell = __builtins__.get('__IPYTHON__')
         
         try:
-            active_hosts = dict([(k, v) for k, v in ip_api.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
+            active_hosts = dict([(k, v) for k, v in ip_shell.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
             if len(active_hosts) > 0:
                 k = active_hosts[max(active_hosts)]
                 try:

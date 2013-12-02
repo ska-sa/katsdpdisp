@@ -10,7 +10,7 @@ class _NullHandler(logging.Handler):
     def emit(self, record):
         pass
 
-logger = logging.getLogger("katsdisp")
+logger = logging.getLogger("katsdpdisp")
 logger.addHandler(_NullHandler())
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format="%(levelname)s: %(message)s")
 
