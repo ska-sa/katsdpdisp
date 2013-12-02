@@ -264,7 +264,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
@@ -361,7 +361,7 @@ def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbuffer
                         flags=np.logical_or(flags,theflags.reshape(-1))
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     span=[]
                     spancolor=[]
