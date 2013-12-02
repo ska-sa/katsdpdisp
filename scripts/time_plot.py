@@ -4,6 +4,7 @@
 import optparse
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+from pkg_resources import resource_filename
 import mplh5canvas.simple_server as simple_server
 import os
 import traceback
@@ -21,14 +22,8 @@ import katsdpdisp
 import re
 import json
 
-
-PORT_HTML = 8080            #port on which html pages are served
-PORT_WEBSOCKET = 8081       #port on which html pages are served
-
-#ANTNAMEPREFIX='m%03d' #meerkat
-ANTNAMEPREFIX='ant%d' #kat7
-
-SERVE_PATH='~/git/katsdpdisp/katsdpdisp/html'
+SETTINGS_PATH='~/.katsdpdisp'
+SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
@@ -143,12 +138,12 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
     return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
 
 #idea is to store the averaged time series profile in channel 0
-def RingBufferProcess(memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
+def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
-        dh.start_spead_receiver(capacity=memusage/100.0,store2=True)
+        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
         datasd=dh.sd
     elif (datafilename=='k7simulator'):
         dh.start_direct_spead_receiver(capacity=memusage/100.0,store2=True)
@@ -1128,7 +1123,7 @@ def handle_websock_event(handlerkey,*args):
             for ind in np.argsort(nviewlist)[::-1]:
                 userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))
             try:
-                startupfile=open(SERVE_PATH+'/usersettings.json','r')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
                 startupdictstr=startupfile.read()
                 startupfile.close()
             except:
@@ -1164,10 +1159,10 @@ def handle_websock_event(handlerkey,*args):
             print args
             theusername=str(args[1])#load another user's settings
             try:
-                startupfile=open(SERVE_PATH+'/usersettings.json','r+')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','r+')
                 startupdictstr=startupfile.read()
             except:
-                startupfile=open(SERVE_PATH+'/usersettings.json','w+')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','w+')
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
@@ -1184,10 +1179,10 @@ def handle_websock_event(handlerkey,*args):
                 startupfile.truncate(0)
                 startupfile.write(startupdictstr)
                 startupfile.close()        
-                send_websock_cmd('logconsole("Deleted '+theusername+' from '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("Deleted '+theusername+' from '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
             else:
                 startupfile.close()        
-                send_websock_cmd('logconsole("'+theusername+' not found in '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
             if (theusername in html_viewsettings):
                 html_viewsettings.pop(theusername)
                 html_customsignals.pop(theusername)
@@ -1203,10 +1198,10 @@ def handle_websock_event(handlerkey,*args):
             else:
                 theusername=username
             try:
-                startupfile=open(SERVE_PATH+'/usersettings.json','r+')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','r+')
                 startupdictstr=startupfile.read()
             except:
-                startupfile=open(SERVE_PATH+'/usersettings.json','w+')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','w+')
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
@@ -1229,7 +1224,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 theusername=username
             try:
-                startupfile=open(SERVE_PATH+'/usersettings.json','r')
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
                 startupdictstr=startupfile.read()
                 startupfile.close()
             except:
@@ -1257,7 +1252,7 @@ def handle_websock_event(handlerkey,*args):
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             else:
-                send_websock_cmd('logconsole("'+theusername+' not found in '+SERVE_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
             
@@ -1762,7 +1757,7 @@ class htmlHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 filetext=f.read()
                 if (self.path=="/index.html"):
-                    filetext=filetext.replace('<!--data_port-->',str(PORT_WEBSOCKET))
+                    filetext=filetext.replace('<!--data_port-->',str(opts.data_port))
                 
                 self.wfile.write(filetext)
                 f.close()
@@ -1799,25 +1794,40 @@ parser = optparse.OptionParser(usage="%prog [opts] <file or 'stream' or 'k7simul
 parser.add_option("-d", "--debug", dest="debug", action="store_true",default=False,
                   help="Display debug messages.")
 parser.add_option("-m", "--memusage", dest="memusage", default=10.0, type='float',
-                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer. (default=10)")
+                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%default)")
+parser.add_option("--rts", dest="rts_antenna_labels", action="store_true",default=False,
+                  help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
+parser.add_option("--html_port", dest="html_port", default=8080, type='int',
+                  help="Port number used to serve html pages for signal displays (default=%default)")
+parser.add_option("--data_port", dest="data_port", default=8081, type='int',
+                  help="Port number used to serve data for signal displays (default=%default)")
+parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
+                  help="Port number used to connect to spead stream (default=%default)")
+                
 
 (opts, args) = parser.parse_args()
+SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
 
 if (len(args)==0):
     args=['stream']
-elif (args[0]=='file'):
-    args=[SERVE_PATH+'/vira1822sep5_10.h5']
+
+if (opts.rts_antenna_labels):
+    ANTNAMEPREFIX='m%03d' #meerkat
+else:
+    ANTNAMEPREFIX='ant%d' #kat7    
     
 # loads usersettings
 try:
-    startupfile=open(SERVE_PATH+'/usersettings.json','r')
+    if not os.path.exists(SETTINGS_PATH):
+        os.makedirs(SETTINGS_PATH)
+    startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
     startupdictstr=startupfile.read()
     startupfile.close()
     startupdict=convertunicode(json.loads(startupdictstr))
     usernames=[]
-    print 'Importing saved user settings from '+SERVE_PATH+'/usersettings.json'
+    print 'Importing saved user settings from '+SETTINGS_PATH+'/usersettings.json'
     for username in startupdict['html_viewsettings']:
         html_viewsettings[username]=copy.deepcopy(startupdict['html_viewsettings'][username])
         html_customsignals[username]=copy.deepcopy(startupdict['html_customsignals'][username])
@@ -1826,7 +1836,7 @@ try:
         usernames.append(username)
     print ', '.join(usernames)
 except:
-    print 'Unable to import saved user settings from '+SERVE_PATH+'/usersettings.json'
+    print 'Unable to import saved user settings from '+SETTINGS_PATH+'/usersettings.json'
     pass
     
 helpdict={}
@@ -1857,12 +1867,12 @@ else:
 
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
-Process(target=RingBufferProcess,args=(opts.memusage, args[0], ringbufferrequestqueue, ringbufferresultqueue)).start()
+Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, args[0], ringbufferrequestqueue, ringbufferresultqueue)).start()
 htmlrequest_handlers={}
 
 try:
-    websockserver=simple_server.WebSocketServer(('', PORT_WEBSOCKET), websock_transfer_data, simple_server.WebSocketRequestHandler)
-    print 'Started data websocket server on port ' , PORT_WEBSOCKET
+    websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
+    print 'Started data websocket server on port ' , opts.data_port
     thread.start_new_thread(websockserver.serve_forever, ())
     
 except Exception, e:
@@ -1870,8 +1880,8 @@ except Exception, e:
     sys.exit(1)
 
 try:
-    server = HTTPServer(("", PORT_HTML), htmlHandler)
-    print 'Started httpserver on port ' , PORT_HTML
+    server = HTTPServer(("", opts.html_port), htmlHandler)
+    print 'Started httpserver on port ' , opts.html_port
     server.serve_forever()
 
 except KeyboardInterrupt:
