@@ -1307,7 +1307,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
         elif ('logconsole' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,false,true)',handlerkey)
             return
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
@@ -1383,7 +1383,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         elif ('logconsole' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,false,true)',handlerkey)
             return
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
@@ -1440,7 +1440,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
         elif ('logconsole' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,false,true)',handlerkey)
             return
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
@@ -1597,6 +1597,7 @@ def pack_binarydata_msg(varname,val,dtype):
         
     return buff
 
+#Caught exception (local variable 'action' referenced before assignment). Removing registered handler
 def parse_websock_cmd(s, request):
     try:
         # print 'PARSING s=',s,'thread=',thread.get_ident()

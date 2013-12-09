@@ -1970,10 +1970,14 @@ function assignvariable(varname,val,ntxbytes,arrivets)
         rcvfig.recvcount++;
         rcvfig['ntxbytes']+=ntxbytes
     }
-    if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount<rcvfig.recvcount)
-    {
-        var err=1;
-    }
+	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount<rcvfig.recvcount)
+	{//note that server could possibly still be busy sending an old figure update so future received data may become misaligned even if fresh update requested!
+        logconsole('More than expected variables received, reloading figure '+sublist[1],true,false,true)
+        thisfigure['version']=-1
+        window[sublist[0]][sublist[1]]=undefined
+	    window['RG_fig'][sublist[1]].figureupdated=true
+        return;
+	}
 	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
 	{
 		if (window['RCV_fig'][sublist[1]].version>window['RG_fig'][sublist[1]].version)
@@ -2261,13 +2265,20 @@ function updateFigure()
 				restore_data()
 				return
             }else
-            if (reqts-RG_fig[ifig].receivingts>120 && (time0-time_receive_data_user_cmd)<10000)
+            if ((reqts-RG_fig[ifig].receivingts>120) && (time0-time_receive_data_user_cmd)<10000)
             {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting for server'
                 logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
                 RG_fig[ifig].figureupdated=true
-            }else
+            }else if (typeof(RG_fig[ifig].receivingts)=="undefined" && RG_fig[ifig].version>0)//something wrong with the figure, probably due to broken network connection
+			{//BEWARE this might never happen!
+	            if (console_update=='status')
+	                summary[ifig]=''+ifig+': undefined error'
+                logconsole('Undefined variables in figure '+ifig+' attempting to restore figure'+ifig,true,false,true)
+				//RG_fig[ifig].version=-1//should perhaps try this
+                RG_fig[ifig].figureupdated=true
+			}else
             {
 	            if (console_update=='status')
 	                summary[ifig]=''+ifig+': waiting'
