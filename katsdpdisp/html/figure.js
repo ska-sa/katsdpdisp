@@ -1450,6 +1450,10 @@ function setsignals(){
     }else if (signaltext=='inputs')
 	{
 		handle_data_user_event('inputs');
+	}else if (signaltext=='restartspead')
+	{
+		handle_data_user_event('restartspead');
+		setTimeout(function(){handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"')},1000)
 	}else if (signaltext=='timing on')
     {
         document.getElementById("consoletext").style.display = 'block'
@@ -1543,7 +1547,7 @@ function setsignals(){
     {
         document.getElementById("consoletext").style.display = 'block'
         handle_data_user_event('help,'+signaltext.slice(5))
-    }else if (signaltext=='metadata')
+    }else if (signaltext=='metadata')//see also restartspead
     { //ssh-keygen -t rsa
       //scp .ssh/id_rsa.pub kat@kat-ops.karoo
       //ssh kat@kat-ops.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'

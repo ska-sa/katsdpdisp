@@ -185,6 +185,14 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='restartspead'):
+                dh.sd.stop()
+                del dh
+                del datasd
+                dh=katsdpdisp.KATData()
+                dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
+                datasd=dh.sd                
+                continue
             if (datasd.storage.frame_count==0):
                 fig={'logconsole':'empty signal buffer'}
                 ringbufferresultqueue.put(fig)
@@ -1144,6 +1152,10 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+        elif (args[0]=='restartspead'):
+            print args
+            ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
+            send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             print args[0],':',cmd
