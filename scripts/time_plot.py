@@ -137,6 +137,9 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
             channelincr=1
     return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
 
+
+#import objgraph
+
 #idea is to store the averaged time series profile in channel 0
 def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
@@ -186,12 +189,23 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='restartspead'):
-                dh.sd.stop()
-                del dh
-                del datasd
-                dh=katsdpdisp.KATData()
-                dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
-                datasd=dh.sd                
+                # objgraph.show_refs([dh],filename='objgraph_refs.png')
+                # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
+                # print 'show_most_common_types()'
+                # objgraph.show_most_common_types()
+                # print 'objgraph.show_growth(limit=3)'
+                # objgraph.show_growth(limit=3)
+                # print 'objgraph.get_leaking_objects()'
+                # roots = objgraph.get_leaking_objects()
+                # print 'objgraph.show_most_common_types(objects=roots)'
+                # objgraph.show_most_common_types(objects=roots)
+                # objgraph.show_refs(roots[:3], refcounts=True, filename='roots.png')
+                # dh.sd.stop()
+                # del dh
+                # del datasd
+                # dh=katsdpdisp.KATData()
+                # dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
+                # datasd=dh.sd                
                 continue
             if (datasd.storage.frame_count==0):
                 fig={'logconsole':'empty signal buffer'}
@@ -1273,7 +1287,7 @@ def handle_websock_event(handlerkey,*args):
         
 def convertunicode(input):
     if isinstance(input, dict):
-        return {convertunicode(key): convertunicode(value) for key, value in input.iteritems()}
+        return dict((convertunicode(key), convertunicode(value)) for key, value in input.iteritems())
     # elif isinstance(input,tuple):#JSON HAS NO TUPLES!!!
     #     return tuple(convertunicode(element) for element in input)
     elif isinstance(input, list):
