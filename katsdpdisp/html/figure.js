@@ -1450,6 +1450,9 @@ function setsignals(){
     }else if (signaltext=='inputs')
 	{
 		handle_data_user_event('inputs');
+	}else if (signaltext=='memoryleak')
+	{
+		handle_data_user_event('memoryleak');
 	}else if (signaltext=='restartspead')
 	{
 		handle_data_user_event('restartspead');

@@ -21,6 +21,9 @@ import copy
 import katsdpdisp
 import re
 import json
+import resource
+import gc
+from guppy import hpy
 
 SETTINGS_PATH='~/.katsdpdisp'
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
@@ -144,6 +147,8 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
 def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
+    hp = hpy()
+    hpbefore = hp.heap()
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
         dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
@@ -188,7 +193,21 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='memoryleak'):
+                gc.collect()
+                hpafter = hp.heap()
+                hpleftover=hpafter-hpbefore
+                print 'Memory usage %s (kb)'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                print hpleftover
+                fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
+                ringbufferresultqueue.put(fig)
+                continue
             if (thelayoutsettings=='restartspead'):
+                print datasd.ig._new_names.keys()
+                fig={'logconsole':'datasd.ig._new_names.keys()= '+str(datasd.ig._new_names.keys())}
+                ringbufferresultqueue.put(fig)
+                datasd.ig._new_names={}
+                
                 # objgraph.show_refs([dh],filename='objgraph_refs.png')
                 # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
                 # print 'show_most_common_types()'
@@ -1166,9 +1185,23 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+        elif (args[0]=='memoryleak'):
+            print args
+            ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating memoryleak",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                for printline in ((fig['logconsole']).split('\n')):
+                    send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
         elif (args[0]=='restartspead'):
             print args
             ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
             send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])

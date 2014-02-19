@@ -40,6 +40,7 @@ Advanced user commands:
 console - shows,  hides or clears the console
 metadata - re-issue metadata, may be useful when starting up timeplot server while an observation is running
 restartspead - stop, delete and restart the spead receiver
+memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
@@ -151,6 +152,9 @@ Displays a list of inputs available in current spead stream.
 
 [metadata]
 This command ensures that the default signal display servers are included in kat-capture's list of spead receivers, and re-issue metadata.
+
+[memoryleak]
+Prints out counts of new objects stored in memory.
 
 [restartspead]
 This command stops, deletes and restarts the spead receiver. Note that historic data is deleted. The metadata command is also executed afterwards.
