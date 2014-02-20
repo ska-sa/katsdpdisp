@@ -1194,6 +1194,13 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+                send_websock_cmd('logconsole("'+'nthreads:'+str(len(websockrequest_time))+'",true,true,true)',handlerkey)
+                for key in websockrequest_username.keys():
+                    printline=websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key])
+                    send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+                #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
+                #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
+                    
         elif (args[0]=='restartspead'):
             print args
             ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
