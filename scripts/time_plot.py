@@ -1825,6 +1825,8 @@ class htmlHandler(BaseHTTPRequestHandler):
                 filetext=f.read()
                 if (self.path=="/index.html"):
                     filetext=filetext.replace('<!--data_port-->',str(opts.data_port))
+                if (self.path=="/figure.js"):
+                    filetext=filetext.replace('<!--capture_server-->',opts.capture_server)
                 
                 self.wfile.write(filetext)
                 f.close()
@@ -1870,6 +1872,8 @@ parser.add_option("--data_port", dest="data_port", default=8081, type='int',
                   help="Port number used to serve data for signal displays (default=%default)")
 parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
                   help="Port number used to connect to spead stream (default=%default)")
+parser.add_option("--capture_server", dest="capture_server", default="obs.kat7.karoo", type='string',
+                  help="Server that runs kat_capture (default=%default)")       
                 
 
 (opts, args) = parser.parse_args()
