@@ -1456,7 +1456,7 @@ function setsignals(){
 	}else if (signaltext=='restartspead')
 	{
 		handle_data_user_event('restartspead');
-		setTimeout(function(){handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"')},1000)
+		setTimeout(function(){handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"')},1000)
 	}else if (signaltext=='timing on')
     {
         document.getElementById("consoletext").style.display = 'block'
@@ -1552,12 +1552,12 @@ function setsignals(){
         handle_data_user_event('help,'+signaltext.slice(5))
     }else if (signaltext=='metadata')//see also restartspead
     { //ssh-keygen -t rsa
-      //scp .ssh/id_rsa.pub kat@kat-ops.karoo
-      //ssh kat@kat-ops.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'
-      //handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
+      //scp .ssh/id_rsa.pub kat@obs.kat7.karoo
+      //ssh kat@obs.kat7.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'
+      //handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
 	  
-      handle_data_user_event('server,'+'ssh kat@kat-ops.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
-      //'ssh kat@kat-ops.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
+      handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
+      //'ssh kat@obs.kat7.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
     }
     else
     handle_data_user_event('setsignals,'+signaltext);
