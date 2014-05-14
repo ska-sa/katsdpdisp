@@ -66,9 +66,15 @@ function readCookie(name)
 
 function checkCookie()
 {
+    var sessionusername=sessionStorage.getItem('username');    
 	var username=readCookie("username");
+    if (sessionusername!=null)//this tab is probably reloaded - reuse username for this page which may be different from official username
+    {
+		document.getElementById("usrname").innerHTML=sessionusername
+		setTimeout(function(){handle_data_user_event("setusername,"+sessionusername)},500)        
+    }else
 	if (username!=null && username!="") 
-	{
+	{        
 		document.getElementById("usrname").innerHTML=username
 		setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
 	}else 
@@ -76,6 +82,7 @@ function checkCookie()
 	  	username=prompt("Please enter your name:","");
 	  	if (username!=null && username!="")
 	    {
+            sessionStorage.setItem('username',username);
 	    	createCookie("username",username,365);
 			document.getElementById("usrname").innerHTML=username
 			setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
