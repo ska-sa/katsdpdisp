@@ -75,6 +75,7 @@ function checkCookie()
     }else
 	if (username!=null && username!="") 
 	{        
+        sessionStorage.setItem('username',username);
 		document.getElementById("usrname").innerHTML=username
 		setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
 	}else 
@@ -96,6 +97,7 @@ function newCookie()
 	  	username=prompt("Please enter your name:",username);
 	  	if (username!=null && username!="")
 	    {
+            sessionStorage.setItem('username',username);
 	    	createCookie("username",username,365);
 			document.getElementById("usrname").innerHTML=username
 			handle_data_user_event("setusername,"+username)
