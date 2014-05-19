@@ -231,7 +231,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 if (warnOnce):
                     fig={'logconsole':'empty signal buffer'}
                 else:
-                    fig={}
+                    fig={'logignore':'empty signal buffer'}
                 ringbufferresultqueue.put(fig)
                 warnOnce=False
                 continue            
