@@ -1195,9 +1195,15 @@ def handle_websock_event(handlerkey,*args):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
                 send_websock_cmd('logconsole("'+'nthreads:'+str(len(websockrequest_time))+'",true,true,true)',handlerkey)
-                for key in websockrequest_username.keys():
-                    printline=websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key])
+                deregisterhandlers=[]
+                for thishandler in websockrequest_username.keys():
+                    timedelay=(time.time()-websockrequest_time[thishandler])
+                    printline=websockrequest_username[thishandler]+': %.1fs'%(timedelay)                        
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+                    if (timedelay>60):# connection been inactive for 1 minute
+                        deregisterhandlers.append(thishandler)                    
+                for thishandler in deregisterhandlers:
+                    deregister_websockrequest_handler(thishandler)
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
                     
