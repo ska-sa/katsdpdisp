@@ -230,9 +230,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (datasd.storage.frame_count==0):
                 if (warnOnce):
                     fig={'logconsole':'empty signal buffer'}
-                    ringbufferresultqueue.put(fig)
-                    warnOnce=False
-                continue
+                else:
+                    fig={}
+                ringbufferresultqueue.put(fig)
+                warnOnce=False
+                continue            
             else:
                 warnOnce=True
                 
