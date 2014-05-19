@@ -164,6 +164,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             dh.load_ff_data(datafilename)
         datasd=dh.sd_hist
     print 'Started ring buffer process'
+    warnOnce=True
     try:
         while(True):
             #datasd.storage.set_mask('..170,220..')
@@ -227,9 +228,14 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 # datasd=dh.sd                
                 continue
             if (datasd.storage.frame_count==0):
-                fig={'logconsole':'empty signal buffer'}
-                ringbufferresultqueue.put(fig)
+                if (warnOnce):
+                    fig={'logconsole':'empty signal buffer'}
+                    ringbufferresultqueue.put(fig)
+                    warnOnce=False
                 continue
+            else:
+                warnOnce=True
+                
             fig={}
             try:
                 thetype=typelookup[theviewsettings['type']]
