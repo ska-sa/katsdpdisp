@@ -1320,7 +1320,35 @@ function setaxiscanvasrect(ifig)
     if (ifig==-1)
     {
         _left=50;_top=55;_width=figcanvas.width-130;_height=figcanvas.height-130;
-    }else
+    }else 
+    if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
+    {
+        if (RG_fig[ifig].showxticklabel=='on')
+            _left=30
+        else
+            _left=0
+        if (RG_fig[ifig].showxlabel=='on')
+            _left+=20
+        else
+            _left+=3
+        if (RG_fig[ifig].showtitle=='on')
+            _top=50
+        else
+            _top=7
+        if (RG_fig[ifig].showlegend=='on')
+        	_width=figcanvas.width-80-_left
+        else
+        	_width=figcanvas.width-7-_left
+        if (RG_fig[ifig].showylabel=='on')
+        	_height=figcanvas.height-55-_top;
+        else
+        	_height=figcanvas.height-33-_top
+        if (RG_fig[ifig].showyticklabel=='on')
+            _height-=0
+        else
+            _height+=30
+    }
+    else
     {
         if (RG_fig[ifig].showyticklabel=='on')
             _left=30
