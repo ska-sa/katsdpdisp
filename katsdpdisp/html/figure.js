@@ -11,6 +11,7 @@ var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
 
 var nfigures=0
+var nfigcolumns=1
 var console_timing='off'
 var console_sendfigure='off'
 var console_update='off'
@@ -23,6 +24,7 @@ RG_fig[0].xdata=[]
 RG_fig[0].version=-1
 
 var swapaxes=false
+var figureaspect=0.5
 var timedrawcomplete=0
 var datasocket = 0;
 var the_lastts = 0;
@@ -1463,7 +1465,15 @@ function setsignals(){
         {
             handle_data_user_event('setncols,'+signaltext.slice(6));
         }
-    }else if (signaltext=='outlierthreshold')
+    }else if (signaltext=='figureaspect')
+    {
+        logconsole('figureaspect='+figureaspect,true,true,true)
+    }else if (signaltext.slice(0,13)=='figureaspect=')
+    {
+        figureaspect=parseFloat(signaltext.slice(13))
+        ApplyViewLayout(nfigures,nfigcolumns)
+    }
+    else if (signaltext=='outlierthreshold')
     {
         handle_data_user_event('getoutlierthreshold');
     }else if (signaltext.slice(0,17)=='outlierthreshold=')
@@ -1960,6 +1970,7 @@ function saveFigure(ifig){
 function ApplyViewLayout(nfig,nfigcols)
 {        
     nfigures=nfig
+    nfigcolumns=nfigcols
     var listoffigures = document.getElementById("listoffigures")
     var consolectl=document.getElementById("consoletext")
     innerHTML='<table width="100%">'
@@ -1973,7 +1984,7 @@ function ApplyViewLayout(nfig,nfigcols)
         figheight=200
     }else
     {
-        figheight=figwidth/2
+        figheight=figwidth*figureaspect
     }
     for (ifig=0;ifig<nfig;ifig++)
     {
