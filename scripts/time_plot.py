@@ -24,6 +24,7 @@ import json
 import resource
 import gc
 from guppy import hpy
+import katcp
 
 SETTINGS_PATH='~/.katsdpdisp'
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
@@ -68,6 +69,17 @@ SERVE_PATH=resource_filename('katsdpdisp', 'html')
 #k7w.req.sd_metadata_issue()
 #configure()
 #kat.dbe7.print_sensors('chan')
+######################
+# import katcp
+# 
+# client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo
+# client.is_connected()
+# client.start()
+# client.is_connected()
+# ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
+# ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
+# ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
+# client.stop()
 ######################
 #file will be in kat@kat-dc1:/var/kat/data/
 #and synced to eg kat@kat-archive:/var/kat/archive/data/comm/2012/10
@@ -1215,15 +1227,37 @@ def handle_websock_event(handlerkey,*args):
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
                     
-        elif (args[0]=='restartspead'):
+        elif (args[0]=='restartspead' or args[0]=='metadata'):
             print args
-            ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
-            if (fig=={}):#an exception occurred
-                send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
-            elif ('logconsole' in fig):
-                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
-            send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
+            if (args[0]=='restartspead'):
+                ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
+                if (fig=={}):#an exception occurred
+                    send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
+                elif ('logconsole' in fig):
+                    send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+                send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
+            #reissue metadata (in both cases)
+            capture_server,capture_server_port_str=opts.capture_server.split(':')
+            try:
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo, not obs.kat7.karoo
+                #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo, not obs.kat7.karoo
+                # client.is_connected()
+                client.start()
+                time.sleep(0.1)            
+                if client.is_connected():
+                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
+                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
+                    ret = client.blocking_request(katcp.Message.request('add-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
+                    ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
+                    client.stop()
+                    send_websock_cmd('logconsole("Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
+                    print 'Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays'
+                else:
+                    print 'Unable to connect to '+opts.capture_server
+                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
+            except:
+                print 'Exception occurred in metadata'
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             print args[0],':',cmd
@@ -1389,6 +1423,11 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,false,true)',handlerkey)
             return
+        elif ('logignore' in timeseries_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return
+            
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
@@ -1465,6 +1504,10 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,false,true)',handlerkey)
             return
+        elif ('logignore' in spectrum_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),spectrum_fig['version'],'i'),handlerkey);count+=1;
@@ -1521,6 +1564,10 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,false,true)',handlerkey)
+            return
+        elif ('logignore' in waterfall_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             return
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
@@ -1839,8 +1886,6 @@ class htmlHandler(BaseHTTPRequestHandler):
                 filetext=f.read()
                 if (self.path=="/index.html"):
                     filetext=filetext.replace('<!--data_port-->',str(opts.data_port))
-                if (self.path=="/figure.js"):
-                    filetext=filetext.replace('<!--capture_server-->',opts.capture_server)
                 
                 self.wfile.write(filetext)
                 f.close()
@@ -1886,8 +1931,8 @@ parser.add_option("--data_port", dest="data_port", default=8081, type='int',
                   help="Port number used to serve data for signal displays (default=%default)")
 parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
                   help="Port number used to connect to spead stream (default=%default)")
-parser.add_option("--capture_server", dest="capture_server", default="obs.kat7.karoo", type='string',
-                  help="Server that runs kat_capture (default=%default)")       
+parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo:2040", type='string',
+                  help="Server ip-address:port that runs kat_capture (default=%default)")
                 
 
 (opts, args) = parser.parse_args()
