@@ -10,6 +10,7 @@ import sys
 import datetime
 import calendar
 from struct import unpack
+import gc
 
 from quitter import Quitter
 
@@ -366,6 +367,7 @@ class SignalDisplayStore2(object):
         self.timeseriesmaskstr=''
 
     def init_storage(self, n_chans=512, n_bls=0):
+        gc.collect()#garbage collect before large memory allocation to help prevent fragmentation
         self.n_chans = n_chans
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
@@ -383,6 +385,7 @@ class SignalDisplayStore2(object):
         self._last_ts = 0
         self.first_pass = True
         self.timeseriesmaskstr=''
+        gc.collect()#garbage collect after large memory allocation to release previous large block of memory
 
     """Add some data to the store.
     In general this a fragment of a signal display frame and hence
