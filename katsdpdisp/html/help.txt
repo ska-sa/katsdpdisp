@@ -39,7 +39,8 @@ loop - displays a list of different profiles in a loop
 Advanced user commands:
 console - shows,  hides or clears the console
 metadata - re-issue metadata, may be useful when starting up timeplot server while an observation is running
-restartspead - stop, delete and restart the spead receiver
+restartspead - experimental, shows debug info
+RESTART - exits spead receiver process and restarts it, then re-issue metadata
 memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console

@@ -215,6 +215,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='RESTART'):
+                fig={'logconsole':'Exiting ring buffer process'}
+                ringbufferresultqueue.put(fig)
+                return
             if (thelayoutsettings=='restartspead'):
                 print datasd.ig._new_names.keys()
                 fig={'logconsole':'datasd.ig._new_names.keys()= '+str(datasd.ig._new_names.keys())}
@@ -1166,7 +1170,7 @@ def handle_websock_event(handlerkey,*args):
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
-            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
+            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])        
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             print args
             html_layoutsettings[username][args[0]]=args[1]
@@ -1226,7 +1230,23 @@ def handle_websock_event(handlerkey,*args):
                     deregister_websockrequest_handler(thishandler)
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
-                    
+        
+        elif (args[0]=='RESTART'):
+            print args
+            if (args[0]=='RESTART'):
+                ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
+                if (fig=={}):#an exception occurred
+                    send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
+                    time.sleep(2)
+                    Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
+                    print 'RESTART performed, using port=',opts.spead_port,' memusage=',opts.memusage,' datafilename=', opts.datafilename
+                    send_websock_cmd('logconsole("RESTART performed. Please re-issue metadata.",true,true,true)',handlerkey)
+                    #note if metadata reissued automatically too soon after restart, then this may cause current version of katcapture to crash
+                    #simon will make a fix in katcapture, then I can reissue metadata automatically
+            
         elif (args[0]=='restartspead' or args[0]=='metadata'):
             print args
             if (args[0]=='restartspead'):
@@ -1997,7 +2017,8 @@ else:
 
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
-Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, args[0], ringbufferrequestqueue, ringbufferresultqueue)).start()
+opts.datafilename=args[0]
+Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
 htmlrequest_handlers={}
 
 try:

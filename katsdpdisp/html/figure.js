@@ -1535,7 +1535,11 @@ function setsignals(){
     }else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
-    }else if (signaltext=='flags off')
+    }else if (signaltext=='RESTART')
+    {
+        handle_data_user_event('RESTART');        
+    }
+    else if (signaltext=='flags off')
     {
         handle_data_user_event('showflags,off');
     }
