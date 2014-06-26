@@ -1220,7 +1220,8 @@ def handle_websock_event(handlerkey,*args):
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating info",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
-                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+                for printline in ((fig['logconsole']).split('\n')):
+                    send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):
             print args
             ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
