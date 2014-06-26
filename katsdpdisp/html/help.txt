@@ -151,6 +151,9 @@ A few examples:
 [inputs]
 Displays a list of inputs available in current spead stream.
 
+[info]
+Displays information about the current observation
+
 [metadata]
 This command ensures that the default signal display servers are included in kat-capture's list of spead receivers, and re-issue metadata.
 

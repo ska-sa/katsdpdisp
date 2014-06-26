@@ -206,6 +206,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='info'):
+                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+datasd.receiver.heap_count+'\nnchannels:'+datasd.receiver.channels+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                ringbufferresultqueue.put(fig)
+                continue                
             if (thelayoutsettings=='memoryleak'):
                 gc.collect()
                 hpafter = hp.heap()
@@ -1207,6 +1211,14 @@ def handle_websock_event(handlerkey,*args):
             fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+        elif (args[0]=='info'):
+            print args
+            ringbufferrequestqueue.put(['info',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating info",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):

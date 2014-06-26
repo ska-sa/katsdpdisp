@@ -1742,6 +1742,9 @@ function setsignals(){
     }else if (signaltext=='inputs')
 	{
 		handle_data_user_event('inputs');
+    }else if (signaltext=='info')
+	{
+		handle_data_user_event('info');
 	}else if (signaltext=='memoryleak')
 	{
 		handle_data_user_event('memoryleak');
