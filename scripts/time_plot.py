@@ -1231,7 +1231,7 @@ def handle_websock_event(handlerkey,*args):
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
         
-        elif (args[0]=='RESTART'):
+        elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
             print args
             if (args[0]=='RESTART'):
                 ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
@@ -1243,12 +1243,9 @@ def handle_websock_event(handlerkey,*args):
                     time.sleep(2)
                     Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
                     print 'RESTART performed, using port=',opts.spead_port,' memusage=',opts.memusage,' datafilename=', opts.datafilename
-                    send_websock_cmd('logconsole("RESTART performed. Please re-issue metadata.",true,true,true)',handlerkey)
-                    #note if metadata reissued automatically too soon after restart, then this may cause current version of katcapture to crash
-                    #simon will make a fix in katcapture, then I can reissue metadata automatically
-            
-        elif (args[0]=='restartspead' or args[0]=='metadata'):
-            print args
+                    send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
+                    time.sleep(2)
+                    send_websock_cmd('logconsole("Reissuing metadata.",true,true,true)',handlerkey)
             if (args[0]=='restartspead'):
                 ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
