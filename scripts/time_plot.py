@@ -207,7 +207,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='info'):
-                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+datasd.receiver.heap_count+'\nnchannels:'+datasd.receiver.channels+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+str(datasd.receiver.heap_count)+'\nnchannels:'+str(datasd.receiver.channels)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
