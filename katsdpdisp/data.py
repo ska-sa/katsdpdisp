@@ -933,6 +933,7 @@ class SpeadSDReceiver(threading.Thread):
                     if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
+                            print "New center frequency:", self.center_freq, " channel bandwidth: ",self.channel_bandwidth
                     if self.ig['bls_ordering'] is not None:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']] != self.bls_ordering:
                             self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']]
