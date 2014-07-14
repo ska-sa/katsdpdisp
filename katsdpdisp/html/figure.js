@@ -1,4 +1,3 @@
-var username=''
 var log10=Math.log(10);
 var tickfontHeight=15;
 var tickfont2Height=tickfontHeight*0.7;
@@ -10,117 +9,29 @@ var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
 
-var nfigures=0
-var nfigcolumns=1
-var console_timing='off'
-var console_sendfigure='off'
-var console_update='off'
-
-var looptimer= null
-var looptime=5
-var loopusernames=[]
-var RG_fig=[[]]
-RG_fig[0].xdata=[]
-RG_fig[0].version=-1
-
 var swapaxes=false
 var figureaspect=0.5
 var timedrawcomplete=0
-var datasocket = 0;
-var the_lastts = 0;
-var local_last_lastts_change = 0;
-
-var time_receive_data_user_cmd=0
-var time_receive_user_cmd=0
 
 var corrlinepoly=[0,1,0,0,0,0,0,0]
 var corrlinewidth=[2,2,1,1,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinealpha=[1,0.25,1,1,1,0.75,0.5,0.25]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinedash=[[0],[3,3],[0],[3,3],[0],[0],[0],[0]]//HH,VV,HV,VH,crossHH,VV,HV,VH
+var jetR256=[]
+var jetG256=[]
+var jetB256=[]
+var jetRGB256=[]
 var rubberbandDiv;
 var rubberbandmousedown = {}
 var rubberbandRectangle = {}
 var rubberbanddragging = false;
 
-//COOKIE CODE=============================================
-function createCookie(name,value,days) 
-{
-    if (days) 
-    {
-		var date = new Date();
-		date.setTime(date.getTime()+(days*24*60*60*1000));
-		var expires = "; expires="+date.toGMTString();
-	}else var expires = "";
-	document.cookie = name+"="+value+expires+"; path=/";
-}
-
-function readCookie(name) 
-{
-	var nameEQ = name + "=";
-	var ca = document.cookie.split(';');
-	for(var i=0;i < ca.length;i++) 
-	{
-		var c = ca[i];
-		while (c.charAt(0)==' ') c = c.substring(1,c.length);
-		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
-	}
-	return null;
-}
-
-function checkCookie()
-{
-    var sessionusername=sessionStorage.getItem('username');    
-	var username=readCookie("username");
-    if (sessionusername!=null)//this tab is probably reloaded - reuse username for this page which may be different from official username
-    {
-		document.getElementById("usrname").innerHTML=sessionusername
-		setTimeout(function(){handle_data_user_event("setusername,"+sessionusername)},500)        
-    }else
-	if (username!=null && username!="") 
-	{        
-        sessionStorage.setItem('username',username);
-		document.getElementById("usrname").innerHTML=username
-		setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
-	}else 
-	{
-	  	username=prompt("Please enter your name:","");
-	  	if (username!=null && username!="")
-	    {
-            sessionStorage.setItem('username',username);
-	    	createCookie("username",username,365);
-			document.getElementById("usrname").innerHTML=username
-			setTimeout(function(){handle_data_user_event("setusername,"+username)},500)
-	    }
-	}
-}
-
-function newCookie()
-{
-		var username=readCookie("username");
-	  	username=prompt("Please enter your name:",username);
-	  	if (username!=null && username!="")
-	    {
-            sessionStorage.setItem('username',username);
-	    	createCookie("username",username,365);
-			document.getElementById("usrname").innerHTML=username
-			handle_data_user_event("setusername,"+username)
-	    }
-}
-
-//MESSAGE LOGGING ===================================
-
-function logconsole(msg,dotimestamp,doshow,doscroll)
-{    
-    consolectl=document.getElementById("consoletext")
-    if (dotimestamp)
-    {
-        date=(new Date()).toLocaleString();
-        consolectl.innerHTML+=date+' '+msg+'\n'
-    }else consolectl.innerHTML+=msg+'\n'
-    if (doscroll) consolectl.scrollTop = consolectl.scrollHeight;
-    if (doshow && consolectl.style.display=='none')
-        consolectl.style.display = 'block'
-}
+var figdragmode=0
+var figdragstart=[0,0]
+var figdragstartevent=0
+var figdragsizestart=[0,0]
+var mouseclick=0
+var ifigure=0
 
 //RUBBER-BANDING CODE================================
 
@@ -183,15 +94,10 @@ function hideRubberbandDiv()
 
 function resetRubberbandRectangle() 
 {
-   rubberbandRectangle = { top: 0, left: 0, width: 0, height: 0 };
+    rubberbandRectangle = { top: 0, left: 0, width: 0, height: 0 };
 }
 
 //FIGURE PLOTTING CODE =================================================
-
-var jetR256=[]
-var jetG256=[]
-var jetB256=[]
-var jetRGB256=[]
 
 function intensityToJet(inten,min,max)
 {
@@ -506,42 +412,6 @@ function getminmax(datalist)
 		}					
 	}
 	return [mn,mx]
-}
-
-function redrawfigure(ifig)
-{
-    if (typeof(RG_fig[ifig])=="undefined")
-        return
-    
-    RG_fig[ifig].drawstartts=(new Date()).getTime()/1000.0
-	setaxiscanvasrect(ifig)
-    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
-    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
-    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
-    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
-    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
-    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
-	if (RG_fig[ifig].cdata==undefined)
-    {
-        if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
-            drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-        else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-    }else
-        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-
-	RG_fig[ifig].drawstoptts=(new Date()).getTime()/1000.0
-	setTimeout(completefigure,1,ifig)
-}
-
-function completefigure(ifig)
-{    
-	timedrawcomplete=(new Date()).getTime();
-	if (typeof(RG_fig[ifig])!="undefined")
-	{
-		RG_fig[ifig].renderts=timedrawcomplete/1000.0
-		RG_fig[ifig].figureupdated=true
-		if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
-	}
 }
 
 function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
@@ -1229,13 +1099,19 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
         RG_fig[ifig].ymax_eval=vviewmax;
 }
 
+function saveFigure(ifig){
+	var canvas = document.getElementById("myfigurecanvas"+ifig);
+	var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
+	var context = canvas.getContext("2d");
+	context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
+	context.strokeStyle = "#000000";
+	context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
+	var img     = canvas.toDataURL("image/png");
+	context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
+	window.open(img);
+}
+
 //FIGURE MOUSE EVENTS ===================================================================
-var figdragmode=0
-var figdragstart=[0,0]
-var figdragstartevent=0
-var figdragsizestart=[0,0]
-var mouseclick=0
-var ifigure=0
 
 function onFigureMouseDown(event){
     RightContext.killMenu();
@@ -1306,90 +1182,11 @@ function onFigureMouseDown(event){
 	}
 	event.preventDefault();
 }
+
 function onFigureLoseCapture(event){
 	
     rubberbandEnd();
 	event.preventDefault();
-}
-
-//given dimensions of figure canvas, calc axis canvas position and dimensions
-function setaxiscanvasrect(ifig)
-{
-    var axiscanvas = document.getElementById('myaxiscanvas'+ifig);
-    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
-    if (ifig==-1)
-    {
-        _left=50;_top=55;_width=figcanvas.width-130;_height=figcanvas.height-130;
-    }else 
-    if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
-    {
-        if (RG_fig[ifig].showxticklabel=='on')
-            _left=30
-        else
-            _left=0
-        if (RG_fig[ifig].showxlabel=='on')
-            _left+=20
-        else
-            _left+=3
-        if (RG_fig[ifig].showtitle=='on')
-            _top=50
-        else
-            _top=7
-        if (RG_fig[ifig].showlegend=='on')
-        	_width=figcanvas.width-80-_left
-        else
-        	_width=figcanvas.width-7-_left
-        if (RG_fig[ifig].showylabel=='on')
-        	_height=figcanvas.height-55-_top;
-        else
-        	_height=figcanvas.height-33-_top
-        if (RG_fig[ifig].showyticklabel=='on')
-            _height-=0
-        else
-            _height+=30
-    }
-    else
-    {
-        if (RG_fig[ifig].showyticklabel=='on')
-            _left=30
-        else
-            _left=0
-        if (RG_fig[ifig].showylabel=='on')
-            _left+=20
-        else
-            _left+=3
-        if (RG_fig[ifig].showtitle=='on')
-            _top=50
-        else
-            _top=7
-        if (RG_fig[ifig].showlegend=='on')
-        	_width=figcanvas.width-80-_left
-        else
-        	_width=figcanvas.width-7-_left
-        if (RG_fig[ifig].showxlabel=='on')
-        	_height=figcanvas.height-55-_top;
-        else
-        	_height=figcanvas.height-33-_top
-        if (RG_fig[ifig].showxticklabel=='on')
-            _height-=0
-        else
-            _height+=30
-	}
-	if (axiscanvas.style.left!=_left)
-        axiscanvas.style.left = _left + 'px';
-	if (axiscanvas.style.top!=_top)
-        axiscanvas.style.top = _top + 'px';
-    if (axiscanvas.width!=_width)
-    {
-        axiscanvas.style.width = _width + 'px';
-        axiscanvas.width=_width;
-    }
-    if (axiscanvas.height!=_height)
-    {
-        axiscanvas.style.height = _height + 'px';
-        axiscanvas.height=_height;
-    }
-    //return {'left':_left,'top':_top,'width':_width,'height':_height}
 }
 
 function onFigureMouseUp(event){
@@ -1480,391 +1277,6 @@ function onFigureMouseUp(event){
     event.preventDefault();
 }
 
-function setsignals(){
-    signaltext = document.getElementById("signaltext").value;
-    if (signaltext.slice(0,6)=='ncols=')
-    {
-        ncols=parseInt(signaltext.slice(6))
-        if (ncols<1 || ncols>7)
-        {
-            alert('Number of columns must be between 1 and 7');
-        }
-        else
-        {
-            handle_data_user_event('setncols,'+signaltext.slice(6));
-        }
-    }else if (signaltext=='figureaspect')
-    {
-        logconsole('figureaspect='+figureaspect,true,true,true)
-    }else if (signaltext.slice(0,13)=='figureaspect=')
-    {
-        figureaspect=parseFloat(signaltext.slice(13))
-        ApplyViewLayout(nfigures,nfigcolumns)
-    }
-    else if (signaltext=='outlierthreshold')
-    {
-        handle_data_user_event('getoutlierthreshold');
-    }else if (signaltext.slice(0,17)=='outlierthreshold=')
-	{
-		outlierthreshold=parseFloat(signaltext.slice(17))
-        if (outlierthreshold<50 || outlierthreshold>100)
-        {
-            alert('Value for outlierthreshold must be between 50 and 100');
-        }
-        else
-        {
-            handle_data_user_event('setoutlierthreshold,'+outlierthreshold);
-        }		
-	}else if (signaltext=='outliertime')
-    {
-        handle_data_user_event('getoutliertime');
-    }else if (signaltext.slice(0,12)=='outliertime=')
-	{
-		outliertime=parseFloat(signaltext.slice(12))
-        if (outliertime<1 || outliertime>50.0)
-        {
-            alert('Value for outliertime must be between 1 and 50');
-        }
-        else
-        {
-            handle_data_user_event('setoutliertime,'+outliertime);
-        }		
-	}else if (signaltext=='flags')
-    {
-        handle_data_user_event('getflags');
-    }else if (signaltext.slice(0,6)=='flags=')
-    {
-        handle_data_user_event('setflags,'+signaltext.slice(6));
-    }else if (signaltext=='RESTART')
-    {
-        handle_data_user_event('RESTART');        
-    }
-    else if (signaltext=='flags off')
-    {
-        handle_data_user_event('showflags,off');
-    }
-    else if (signaltext=='flags on')
-    {
-        handle_data_user_event('showflags,on');
-    }else if (signaltext=='onlineflags off')
-    {
-        handle_data_user_event('showonlineflags,off');
-    }else if (signaltext=='onlineflags on')
-    {
-        handle_data_user_event('showonlineflags,on');
-    }else if (signaltext=='title off')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showtitle='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showtitle,off')
-	    }
-    }else if (signaltext=='title on')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showtitle='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showtitle,on')
-	    }
-    }else if (signaltext=='legend off')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showlegend='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showlegend,off')
-	    }
-    }else if (signaltext=='legend on')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showlegend='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showlegend,on')
-	    }
-    }else if (signaltext=='xlabel off')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showxlabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
-	    }
-    }else if (signaltext=='xlabel on')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showxlabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
-	    }
-    }else if (signaltext=='ylabel off')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showylabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
-	    }
-    }else if (signaltext=='ylabel on')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showylabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
-	    }
-    }else if (signaltext=='labels off')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showxlabel='off'
-            RG_fig[ifig].showylabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
-	    }
-    }else if (signaltext=='labels on')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-        {
-            RG_fig[ifig].showxlabel='on'
-            RG_fig[ifig].showylabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
-	    }
-    }else if (signaltext=='swap')
-    {
-        swapaxes=!swapaxes
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].figtype=='timeseries')
-        	    redrawfigure(ifig)
-    }
-    else if (signaltext.slice(0,5)=='tmin=' || signaltext.slice(0,5)=='tmax=' )
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].figtype=='timeseries')
-            {
-                if (signaltext.slice(0,5)=='tmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='tmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
-            }
-    }
-    else if (signaltext.slice(0,5)=='cmin=' || signaltext.slice(0,5)=='cmax=')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='ch' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
-            {
-                if (signaltext.slice(0,5)=='cmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='cmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
-            }
-    }
-    else if (signaltext.slice(0,5)=='fmin=' || signaltext.slice(0,5)=='fmax=')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='mhz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
-            {
-                if (signaltext.slice(0,5)=='fmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='fmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
-            }
-    }
-    else if (signaltext.slice(0,5)=='Fmin=' || signaltext.slice(0,5)=='Fmax=')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='ghz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
-            {
-                if (signaltext.slice(0,5)=='Fmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='Fmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
-            }
-    }
-    else if (signaltext.slice(0,5)=='pmin=' || signaltext.slice(0,5)=='pmax=')
-    {
-        for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].type=='pow')
-            {
-        		if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype=='spectrum')
-        		{
-                    if (signaltext.slice(0,5)=='pmin=')
-            		    RG_fig[ifig].ymin=parseFloat(signaltext.slice(5))
-            		if (signaltext.slice(0,5)=='pmax=')
-                	    RG_fig[ifig].ymax=parseFloat(signaltext.slice(5))
-    		    }else
-    		    {
-            		if (signaltext.slice(0,5)=='pmin=')
-            		{
-            		    RG_fig[ifig].cmin=parseFloat(signaltext.slice(5))
-            		}
-            		else
-            		{
-            		    RG_fig[ifig].cmax=parseFloat(signaltext.slice(5))
-        		    }
-    		    }
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
-                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
-            }
-    }
-    else if (signaltext=='console on')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-    }else if (signaltext=='console off')
-    {
-        document.getElementById("consoletext").style.display = 'none'
-    }else if (signaltext=='console clear')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        document.getElementById("consoletext").innerHTML=''
-    }else if (signaltext=='users')
-    {   
-        handle_data_user_event('getusers');
-    }else if (signaltext=='inputs')
-	{
-		handle_data_user_event('inputs');
-    }else if (signaltext=='info')
-	{
-		handle_data_user_event('info');
-	}else if (signaltext=='memoryleak')
-	{
-		handle_data_user_event('memoryleak');
-	}else if (signaltext=='restartspead')
-	{
-		handle_data_user_event('restartspead');
-	}else if (signaltext=='timing on')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_timing='on'
-    }else if (signaltext=='timing off')
-    {
-        console_timing='off'
-    }else if (signaltext.slice(0,7)=='update ')//note space# nvars, byte
-    {
-        valid=['off','nvars','byte','mb','kb','status','servertime','receivetime','drawtime','rendertime','action'];
-        if (valid.indexOf(signaltext.slice(7)) >= 0)
-        {
-            document.getElementById("consoletext").style.display = 'block'
-            console_update=signaltext.slice(7)
-        }
-    }
-    else if (signaltext=='update nvars')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_update='nvars'
-    }else if (signaltext=='update byte' )
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_update='byte'
-    }else if (signaltext=='update kb' || signaltext=='update kilobyte')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_update='kb'
-    }else if (signaltext=='update mb' || signaltext=='update megabyte')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_update='mb'
-    }else if (signaltext=='update off')
-    {
-        console_update='off'
-    }else if (signaltext=='sendfigure on')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        console_sendfigure='on'
-    }else if (signaltext=='sendfigure off')
-    {
-        console_sendfigure='off'
-    }else if (signaltext=='server top')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bn 1 | head -20');
-    }else if (signaltext=='server ps')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bd1n2 | grep time_plot.py | tail -n 2');
-    }else if (signaltext.slice(0,4)=='save')
-    {
-        if (signaltext.length>4)
-            handle_data_user_event('save,'+signaltext.slice(5));
-        else
-            handle_data_user_event('save');
-    }else if (signaltext.slice(0,4)=='load')
-    {
-        if (signaltext.length>4)
-            handle_data_user_event('load,'+signaltext.slice(5));
-        else
-            handle_data_user_event('load');
-    }else if (signaltext.slice(0,7)=='delete ')
-	{
-		handle_data_user_event('delete,'+signaltext.slice(7));
-	}else if (signaltext.slice(0,4)=='loop')
-    {
-		if (signaltext=='looptime')
-		{
-			logconsole('looptime='+looptime,true,true,true)
-		}else if (signaltext.slice(0,9)=='looptime=')
-        {
-			looptime=parseFloat(signaltext.slice(9))
-        }else if (signaltext=='loop off')
-        {
-            clearTimeout(looptimer)
-        }else
-        {
-            newusernames=signaltext.slice(5).split(',')
-            if (newusernames.length>1)
-            {
-	            clearTimeout(looptimer)
-				loopusernames=newusernames
-                looptimer=setTimeout(loopfunction,looptime*1000.0,loopusernames,0)
-            }else
-            {
-                logconsole('Current loop view profiles: '+loopusernames.join(', '),true,true,true)
-            }
-        }
-    }else if (signaltext.slice(0,4)=='help')
-    {
-        document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('help,'+signaltext.slice(5))
-    }else if (signaltext=='metadata')//see also restartspead
-    { //ssh-keygen -t rsa
-      //scp .ssh/id_rsa.pub kat@obs.kat7.karoo
-      //ssh kat@obs.kat7.karoo 'cat id_rsa.pub >> .ssh/authorized_keys; rm id_rsa.pub'
-      //handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
-	  
-      //handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
-      handle_data_user_event('metadata');
-      //'ssh kat@obs.kat7.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
-    }
-    else
-    handle_data_user_event('setsignals,'+signaltext);
-}
-
-function loopfunction(usernames,iusername)
-{
-    iusername=iusername%usernames.length
-    handle_data_user_event('load,'+usernames[iusername]);
-    looptimer=setTimeout(loopfunction,looptime*1000.0,usernames,iusername+1)
-}
-
 function onFigureKeyUp(event){
 	event = event || window.event
 	if (event.keyCode == 27)
@@ -1886,7 +1298,6 @@ function onFigureDblclick(event){
 		RG_fig[ifigure].overridelimit=1;
 	    redrawfigure(ifigure)
 	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
-        // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 	}else if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop+axiscanvas.height && event.layerY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight+tickfont2Height+tickfont2Heightspace)
 	{
         if (swapaxes && (RG_fig[ifigure].figtype=='timeseries'))
@@ -1901,7 +1312,6 @@ function onFigureDblclick(event){
 		RG_fig[ifigure].overridelimit=1;
 	    redrawfigure(ifigure)
 	    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
-        // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 	}	else if (event.layerX>axiscanvas.offsetLeft-(majorticklength+tickfontHeight) && event.layerX<axiscanvas.offsetLeft && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
 		{
             if (swapaxes && (RG_fig[ifigure].figtype=='timeseries'))
@@ -1916,7 +1326,6 @@ function onFigureDblclick(event){
 			RG_fig[ifigure].overridelimit=1;
 		    redrawfigure(ifigure)
 		    handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
-            // handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax)
 		}
          event.preventDefault();
         // return false
@@ -1984,664 +1393,125 @@ function onFigureMouseMove(event){
 		document.body.style.cursor = 'default';
 	}
 }
+
 function onFigureMouseOut(event){
 	document.body.style.cursor = 'default';
 	return;
 }
 
-function saveFigure(ifig){
-	var canvas = document.getElementById("myfigurecanvas"+ifig);
-	var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
-	var context = canvas.getContext("2d");
-	context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
-	context.strokeStyle = "#000000";
-	context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-	var img     = canvas.toDataURL("image/png");
-	context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-	window.open(img);
-}
-
-//FIGURE LAYOUT FUNCTIONS================================================================
-function ApplyViewLayout(nfig,nfigcols)
-{        
-    nfigures=nfig
-    nfigcolumns=nfigcols
-    var listoffigures = document.getElementById("listoffigures")
-    var consolectl=document.getElementById("consoletext")
-    innerHTML='<table width="100%">'
-    RG_fig=[]
-    rowcomplete=1;
-    consolectl.style.width=window.innerWidth-listoffigures.offsetLeft*2-5
-    figwidth=(window.innerWidth-listoffigures.offsetLeft*2)/nfigcols-5
-    if (figwidth<200)
+//REDRAW figure ===================================================================
+//given dimensions of figure canvas, calc axis canvas position and dimensions
+function setaxiscanvasrect(ifig)
+{
+    var axiscanvas = document.getElementById('myaxiscanvas'+ifig);
+    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+    if (ifig==-1)
     {
-        figwidth=200
-        figheight=200
-    }else
+        _left=50;_top=55;_width=figcanvas.width-130;_height=figcanvas.height-130;
+    }else 
+    if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
     {
-        figheight=figwidth*figureaspect
+        if (RG_fig[ifig].showxticklabel=='on')
+            _left=30
+        else
+            _left=0
+        if (RG_fig[ifig].showxlabel=='on')
+            _left+=20
+        else
+            _left+=3
+        if (RG_fig[ifig].showtitle=='on')
+            _top=50
+        else
+            _top=7
+        if (RG_fig[ifig].showlegend=='on')
+        	_width=figcanvas.width-80-_left
+        else
+        	_width=figcanvas.width-7-_left
+        if (RG_fig[ifig].showylabel=='on')
+        	_height=figcanvas.height-55-_top;
+        else
+        	_height=figcanvas.height-33-_top
+        if (RG_fig[ifig].showyticklabel=='on')
+            _height-=0
+        else
+            _height+=30
     }
-    for (ifig=0;ifig<nfig;ifig++)
+    else
     {
-        if (ifig%nfigcols==0)
-        {
-            innerHTML+="<tr>"
-            rowcomplete=0;
-        }
-        RG_fig[ifig]=[]
-        RG_fig[ifig].xdata=[]
-        RG_fig[ifig].version=-1
-        RG_fig[ifig].viewwidth=parseInt(figwidth)
-        RG_fig[ifig].figureupdated=true
-        menuname='figmenu'+ifig
-        thismenu = { attributes: "attr_ifig,attr_type,attr_xtype,cond" ,
-
-                  items: [
-                           {type:RightContext.TYPE_MENU,
-                            text:"Power",                          
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],type,pow')} },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"Magnitude",
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],type,mag')} },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"Phase",
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],type,arg')} },
-
-                           {type: RightContext.TYPE_SEPERATOR },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"Channel",
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],xtype,ch')} },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"MHz",
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],xtype,mhz')} },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"GHz",
-                            onclick:function() {handle_data_user_event('setfigparam,[attr_ifig],xtype,ghz')} },
-
-                           {type:RightContext.TYPE_MENU,
-                            text:"Extra",
-                            requires: ["cond", "Y"],
-                            onclick:function() {alert('This is a custom javascript')} },
-
-                           {type: RightContext.TYPE_SEPERATOR },
-                          
-                           {type:RightContext.TYPE_MENU,
-                            text:"PNG figure",
-                            onclick:function() {saveFigure([attr_ifig]);} },
-                            
-                           {type:RightContext.TYPE_MENU,
-                            text:"Delete figure",
-                            onclick:function() {handle_data_user_event('deletefigure,[attr_ifig]')} }
-                         ]
-                 };
-        innerHTML+='<td valign="top"><div id="myfigurediv'+ifig+'" context="'+menuname+'" attr_ifig="'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+figheight+';">'+
-        '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+figheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
-        '<canvas id="myaxiscanvas'+ifig+'"  width="0" height= "0" style="z-index: 1; position: absolute; left:0; top:0"></canvas>'+
-        '</div></td>'
-        if (ifig%nfigcols==nfigcols-1)
-        {
-            innerHTML+='</tr>'
-            rowcomplete=1;
-        }
-        RightContext.addMenu(menuname, thismenu);        
-    }
-    if (rowcomplete==0)
+        if (RG_fig[ifig].showyticklabel=='on')
+            _left=30
+        else
+            _left=0
+        if (RG_fig[ifig].showylabel=='on')
+            _left+=20
+        else
+            _left+=3
+        if (RG_fig[ifig].showtitle=='on')
+            _top=50
+        else
+            _top=7
+        if (RG_fig[ifig].showlegend=='on')
+        	_width=figcanvas.width-80-_left
+        else
+        	_width=figcanvas.width-7-_left
+        if (RG_fig[ifig].showxlabel=='on')
+        	_height=figcanvas.height-55-_top;
+        else
+        	_height=figcanvas.height-33-_top
+        if (RG_fig[ifig].showxticklabel=='on')
+            _height-=0
+        else
+            _height+=30
+	}
+	if (axiscanvas.style.left!=_left)
+        axiscanvas.style.left = _left + 'px';
+	if (axiscanvas.style.top!=_top)
+        axiscanvas.style.top = _top + 'px';
+    if (axiscanvas.width!=_width)
     {
-        innerHTML+='</tr>'
-        rowcomplete=1;
+        axiscanvas.style.width = _width + 'px';
+        axiscanvas.width=_width;
     }
-    innerHTML+='</table>'
-    listoffigures.innerHTML=innerHTML
-    RightContext.initialize();    
-    updateFigure()
-}
-
-//DATA TRANSPORT FUNCTIONS===============================================================		
-function exec_data_user_cmd(cmd_str) 
-{
-    var ret_str = "";
-    try 
+    if (axiscanvas.height!=_height)
     {
-      	ret_str=eval(cmd_str);
-    } catch(err) { ret_str = "user command failed: " + err;}
-}
-
-//performs assignment of data to global variable
-function unpack_binarydata_msg(arraybuffer,arrivets)
-{
-	varname='RCV_'
-	offset=0;
-	data = new Uint8Array(arraybuffer)			
-	while(data[offset]){varname+=String.fromCharCode(data[offset++]);}	
-	offset++;
-	dtype=String.fromCharCode(data[offset++]);
-	ndims=data[offset++]
-	dims=new Uint16Array(arraybuffer.slice(offset,offset+ndims*2))
-	offset+=ndims*2
-	for (idim=0,totdata=1;idim<ndims;idim++)totdata*=dims[idim];
-	if (dtype=='s')//assumed one dimensional in this case
-	{
-		val=new Array(totdata)
-		for (idata=0;idata<totdata;idata++)
-		{
-			val[idata]=''
-			while(data[offset]){val[idata]+=String.fromCharCode(data[offset++]);}
-			offset++;
-		}
-	}else if (dtype=='b' || dtype=='B')
-	{
-		val=new Uint8Array(arraybuffer.slice(offset,offset+totdata*1))
-		offset+=totdata*1
-	}else if (dtype=='h' || dtype=='H')
-	{
-		val=new Uint16Array(arraybuffer.slice(offset,offset+totdata*2))
-		offset+=totdata*2
-	}else if (dtype=='i' || dtype=='I')
-	{
-		val=new Uint32Array(arraybuffer.slice(offset,offset+totdata*4))
-		offset+=totdata*4
-	}else if (dtype=='f')
-	{
-		val=new Float32Array(arraybuffer.slice(offset,offset+totdata*4))
-		offset+=totdata*4
-	}else if (dtype=='d')
-	{
-		val=new Float64Array(arraybuffer.slice(offset,offset+totdata*8))
-		offset+=totdata*8
-	}else if (dtype=='m')
-	{
-		vmm=new Float32Array(arraybuffer.slice(offset,offset+2*4))
-		val=new Float32Array(totdata)
-		for(ind=0;ind<totdata;ind++)
-		    val[ind]=ind*(vmm[1]-vmm[0])/(totdata-1)+vmm[0]
-		offset+=2*4
-	}
-	else if (dtype=='M')
-	{
-		vmm=new Float64Array(arraybuffer.slice(offset,offset+2*8))
-		val=new Float64Array(totdata)
-		for(ind=0;ind<totdata;ind++)
-		    val[ind]=ind*(vmm[1]-vmm[0])/(totdata-1)+vmm[0]
-		offset+=2*8
-	}	
-	//seperate decode			
-	if (dtype=='B'||dtype=='H')
-	{
-		val=new Float32Array(val)
-		convertminmax=new Float32Array(arraybuffer.slice(offset,offset+2*4))
-		offset+=2*4
-		if (dtype=='B') scale=(convertminmax[1]-convertminmax[0])/(256.0-4.0)
-		else scale=(convertminmax[1]-convertminmax[0])/(65536.0-4.0)
-		for (idata=0;idata<totdata;idata++)
-		{
-			if (val[idata]==0) val[idata]=-Infinity
-			else if (val[idata]==1) val[idata]=Infinity
-			else if (val[idata]==2) val[idata]=NaN
-			else val[idata]=convertminmax[0]+(val[idata]-3)*scale
-		}
-	}else if (dtype=='I')
-	{
-		val=new Float64Array(val)
-		convertminmax=new Float64Array(arraybuffer.slice(offset,offset+2*8))
-		offset+=2*8
-		scale=(convertminmax[1]-convertminmax[0])/(4294967296.0-4.0)
-		for (idata=0;idata<totdata;idata++)
-		{
-			if (val[idata]==0) val[idata]=-Infinity
-			else if (val[idata]==1) val[idata]=Infinity
-			else if (val[idata]==2) val[idata]=NaN
-			else val[idata]=convertminmax[0]+(val[idata]-3)*scale
-		}				
-	}
-	if (ndims==0)
-	{
-		val=val[0]
-	}else if (ndims>1 && dtype!='s')//perform reshape
-	{
-    	entry=[]
-    	stateindex=[]
-    	varoffset=0
-    	for (ilev=0;ilev<ndims;ilev++){entry=[entry];stateindex[ilev]=0;}
-    	while(varoffset<totdata)
-    	{
-    		for (thisentry=entry[0],ilev=0;ilev<ndims-2;ilev++)//ensure array elements exist
-    		{
-    			if (typeof(thisentry[stateindex[ilev]])=="undefined") thisentry[stateindex[ilev]]=[];
-    			thisentry=thisentry[stateindex[ilev]];
-    		}
-    		thisentry[stateindex[ilev]]=val.subarray(varoffset,varoffset+dims[ndims-1]);//assign data
-    		varoffset+=dims[ndims-1];
-    		stateindex[ilev]++;//increment state index
-    		for (ilev=ndims-2;ilev>=0;ilev--)// and perform carry overs
-    			if (stateindex[ilev]>=dims[ilev])
-    			{
-    				stateindex[ilev]=0;
-    			 	if (ilev>0)stateindex[ilev-1]++;
-    			}
-    	}
-    	val=entry[0];
-	}
-	assignvariable(varname,val,arraybuffer.byteLength,arrivets)
-}
-
-
-//typical calls would be...
-// figure[ifigure].title='hello'
-// figure[ifigure].legend=['er','re','e']
-// figure[ifigure].ydata[itwin][iline]=linedata
-function assignvariable(varname,val,ntxbytes,arrivets)
-{
-	sublist=[]
-	thisname=''
-	for (ic=0;ic<varname.length;ic++)
-	{
-		if (varname[ic]=='.' || varname[ic]==']' || varname[ic]=='[')
-		{
-			if (thisname.length>0)
-			{						
-				if (varname[ic]==']') sublist[sublist.length]=parseInt(thisname);
-				else sublist[sublist.length]=thisname;
-				thisname='';
-			}
-		}else
-		{
-			thisname+=varname[ic];
-		}
-	}
-	if (thisname.length)sublist[sublist.length]=thisname;
-	theobj=window;
-	lastnamedobj=[]
-	lastnamedobjlev=0
-	for (ilev=0;ilev<sublist.length-1;ilev++)
-	{
-		if (typeof(theobj[sublist[ilev]])=="undefined") theobj[sublist[ilev]]=[];
-		theobj=theobj[sublist[ilev]];
-		if (typeof(sublist[ilev])=="string") 
-		{
-			lastnamedobj=theobj
-			lastnamedobjlev=ilev
-		}
-	}
-	if (sublist[ilev]=='lastts' && Math.abs(the_lastts-val)>0.1)
-	{//the most recent local time that a change in data timestamp is detected
-	    the_lastts=val;
-	    local_last_lastts_change=arrivets
-	}
-	theobj[sublist[ilev]]=val
-	if (sublist[0]!='RCV_fig') return
-	rcvfig=window[sublist[0]][sublist[1]]
-    thisfigure=window['RG_fig'][sublist[1]]
-	if (typeof(rcvfig.recvcount)=="undefined")//receiving first variable of a figure
-	{
-	    rcvfig.recvcount=1;
-		rcvfig['receivingts']=arrivets;
-		rcvfig['reqts']=thisfigure['reqts']//steals reqts
-		rcvfig['ntxbytes']=0
-    }else//receiving subsequent variables of a figure 
-    {
-        rcvfig.recvcount++;
-        rcvfig['ntxbytes']+=ntxbytes
+        axiscanvas.style.height = _height + 'px';
+        axiscanvas.height=_height;
     }
-	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount<rcvfig.recvcount)
-	{//note that server could possibly still be busy sending an old figure update so future received data may become misaligned even if fresh update requested!
-        logconsole('More than expected variables received, reloading figure '+sublist[1],true,false,true)
-        thisfigure['version']=-1
-        window[sublist[0]][sublist[1]]=undefined
-	    window['RG_fig'][sublist[1]].figureupdated=true
-        return;
-	}
-	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
-	{
-		if (window['RCV_fig'][sublist[1]].version>window['RG_fig'][sublist[1]].version)
-			window['RG_fig'][sublist[1]].overridelimit=0
-		if (typeof(window['RG_fig'][sublist[1]].overridelimit)!="undefined" && window['RG_fig'][sublist[1]].overridelimit==1)
-			overridevars={'xmin':0,'xmax':0,'ymin':0,'ymax':0,'cmin':0,'cmax':0}//just use as a list of variable names
-		else overridevars={}
-		
-		rcvfig['receivedts']=Date.now()/1000;
-	    if (rcvfig.action=='none')
-	    {
-		    thisfigure.figureupdated=true
-			thisfigure.action='none'
-			thisfigure.receivingts=rcvfig.receivingts
-			thisfigure.receivedts=rcvfig.receivedts
-			thisfigure.ntxbytes=rcvfig.ntxbytes
-			thisfigure.recvcount=rcvfig.recvcount
-			thisfigure.drawstartts=(new Date()).getTime()/1000.0
-			thisfigure.drawstoptts=thisfigure.drawstartts
-		    window['RCV_fig'][sublist[1]]=undefined			
-			completefigure(sublist[1])//RG_fig[sublist[1]].figureupdated=true;set RG_fig[sublist[1]].renderts
-		    return
-	    }else if (rcvfig.action=='reset')
-		{
-		    lastts=thisfigure.lastts//this might be a bug - why not [sublist[1]]
-		    viewwidth=thisfigure.viewwidth
-			overridelimit=thisfigure.overridelimit
-			xmin=thisfigure.xmin
-			xmax=thisfigure.xmax
-			ymin=thisfigure.ymin
-			ymax=thisfigure.ymax
-			cmin=thisfigure.cmin
-			cmax=thisfigure.cmax
-		    window['RG_fig'][sublist[1]]=[]
-		    window['RG_fig'][sublist[1]].viewwidth=viewwidth
-		    window['RG_fig'][sublist[1]].lastts=lastts
-			window['RG_fig'][sublist[1]].overridelimit=overridelimit
-			window['RG_fig'][sublist[1]].xmin=xmin
-			window['RG_fig'][sublist[1]].xmax=xmax
-			window['RG_fig'][sublist[1]].ymin=ymin
-			window['RG_fig'][sublist[1]].ymax=ymax
-			window['RG_fig'][sublist[1]].cmin=cmin
-			window['RG_fig'][sublist[1]].cmax=cmax
-		    for (var thevar in window['RCV_fig'][sublist[1]])
-				if (!(thevar in overridevars))
-					window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
-		    window['RCV_fig'][sublist[1]]=undefined
-		}else if (rcvfig.action=='set')
-		{
-		    for (var thevar in window['RCV_fig'][sublist[1]])
-				if (!(thevar in overridevars))
-		        	window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
-		    window['RCV_fig'][sublist[1]]=undefined
-		}else if (rcvfig.action=='augmentydata')
-		{
-		    aug='ydata'
-		    if (typeof(thisfigure[aug])=="undefined")
-		    {
-		        logconsole('Timeseries figure ydata incorrectly shaped, reloading figure '+sublist[1],true,false,true)
-                thisfigure['version']=-1
-                window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
-    		    window['RG_fig'][sublist[1]].figureupdated=true
-                return;
-		    }
-		    ntwin=thisfigure[aug].length
-			for (itwin=0;itwin<ntwin;itwin++)
-			{
-                if (thisfigure[aug][itwin].length!=rcvfig[aug][itwin].length)
-                {
-                    logconsole('Timeseries number lines changed unexpectedly from '+thisfigure[aug][itwin].length+' to '+rcvfig[aug][itwin].length+', reloading figure '+sublist[1],true,false,true)
-                    thisfigure['version']=-1
-                    window[sublist[0]][sublist[1]]=undefined
-        		    window['RG_fig'][sublist[1]].figureupdated=true
-                    return;
-                }
-    		    misalignment=thisfigure['lastts']-rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1]
-                if (Math.abs(misalignment)>0.1)
-                {
-                    logconsole('Timeseries time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1])+'; reloading figure '+sublist[1],true,false,true)
-                    for (it=0;it<rcvfig[aug][itwin].length;it++)
-                        logconsole(' t['+(it-rcvfig[aug][itwin].length+1)+']='+rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length+it],true,false,true)
-
-                    thisfigure['version']=-1
-                    window[sublist[0]][sublist[1]]=undefined
-        		    window['RG_fig'][sublist[1]].figureupdated=true
-                    return;
-                }else
-				for (iline=0;iline<thisfigure[aug][itwin].length;iline++)//loops through each line to augment
-				{
-					diff=rcvfig['xdata'].length-thisfigure[aug][itwin][iline].length
-					newvals=rcvfig[aug][itwin][iline]
-					rcvfig[aug][itwin][iline]=[]
-					for (iv=0;iv<rcvfig['xdata'].length-newvals.length;iv++)
-					    rcvfig[aug][itwin][iline][iv]=thisfigure[aug][itwin][iline][iv+newvals.length-diff]
-					for (iv=0;iv<newvals.length;iv++)
-						rcvfig[aug][itwin][iline][rcvfig['xdata'].length-newvals.length+iv]=newvals[iv];
-				}
-			}
-			for (var thevar in window['RCV_fig'][sublist[1]])
-				if (!(thevar in overridevars))
-					window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
-		    window['RCV_fig'][sublist[1]]=undefined		    
-		}else if (rcvfig.action=='augmentcdata')
-		{
-		    aug='cdata'
-		    if (typeof(thisfigure[aug])=="undefined")
-		    {
-		        logconsole('Waterfall figure cdata incorrectly shaped, reloading figure '+sublist[1],true,false,true)
-                thisfigure['version']=-1
-                window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
-    		    window['RG_fig'][sublist[1]].figureupdated=true
-                return;
-		    }
-		    misalignment=thisfigure['lastts']-rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1]
-            if (Math.abs(misalignment)>0.1)
-            {
-                logconsole('Waterfall time data misaligned by '+misalignment+ 's; current figure lastts: '+thisfigure['lastts']+'; aug prestart ts: '+(rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1])+'; reloading figure '+sublist[1],true,false,true)
-                for (it=0;it<rcvfig[aug].length;it++)
-                    logconsole(' t['+(it-rcvfig[aug].length+1)+']='+rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length+it],true,false,true)
-                thisfigure['version']=-1
-                window[sublist[0]][sublist[1]]=undefined
-    		    window['RG_fig'][sublist[1]].figureupdated=true
-                return;
-            }else
-            {
-				diff=rcvfig['ydata'].length-thisfigure[aug].length
-				newvals=rcvfig[aug]
-				rcvfig[aug]=[]
-				for (iv=0;iv<rcvfig['ydata'].length-newvals.length;iv++)
-				    rcvfig[aug][iv]=thisfigure[aug][iv+newvals.length-diff]
-				for (iv=0;iv<newvals.length;iv++)
-					rcvfig[aug][rcvfig['ydata'].length-newvals.length+iv]=newvals[iv];
-			}
-			for (var thevar in window['RCV_fig'][sublist[1]])
-				if (!(thevar in overridevars))
-		        	window['RG_fig'][sublist[1]][thevar]=window['RCV_fig'][sublist[1]][thevar]
-		    window['RCV_fig'][sublist[1]]=undefined				
-		}else//unknown action
-		{
-            logconsole('Unknown augment action requested: '+rcvfig.action+'; reloading figure '+sublist[1],true,false,true)
-            thisfigure['version']=-1
-            window[sublist[0]][sublist[1]]=undefined
-		    window['RG_fig'][sublist[1]].figureupdated=true
-            return;
-        }
-		//issue draw instruction
-		setTimeout(redrawfigure,1,sublist[1])
-	}
-}
-			
-
-function loadpage()
-{
-	start_data();
-	checkCookie()	
+    //return {'left':_left,'top':_top,'width':_width,'height':_height}
 }
 
-function start_data() 
+function redrawfigure(ifig)
 {
-    datasocket = new WebSocket('ws://'+document.domain+':'+webdataportnumber);	
-	var supports_binary = (datasocket.binaryType != undefined);
-	datasocket.binaryType = 'arraybuffer';
-	datasocket.onerror = function(e) 
-	{
-        logconsole('Websocket error occurred',true,false,true)
-	}
-	datasocket.onmessage = function(e) 
-	{
-	    if (e.data instanceof ArrayBuffer)
-	    {
-		    time_receive_data_user_cmd=(new Date()).getTime();
-			unpack_binarydata_msg(e.data,time_receive_data_user_cmd/1000.0)
-		}else if (e.data.indexOf("/*exec_user_cmd*/") == 0) 
-		{
-		    time_receive_user_cmd=(new Date()).getTime();
-		    exec_data_user_cmd(e.data);
-        }
-    }
-}
-
-function stop_data() 
-{
-    datasocket.onmessage = function(e) {};
-	datasocket.close();
-}
-
-function restore_data()
-{
- 	clearInterval(timerid)
-	if (datasocket.readyState==1)
-	{
-		checkCookie()
-		for (ifig=0;ifig<nfigures;ifig++)
-		{
-	    	RG_fig[ifig].figureupdated=true
-			window['RCV_fig'][ifig]=undefined
-		}
-		timerid=setInterval(updateFigure,1000)
-		logconsole('Connection restored',true,false,true)
-	}else
-	{
-		start_data();
-		timerid=setTimeout(restore_data,5000)
-		logconsole('Attempting to restore connection',true,false,true)
-	}
-}
-
-function handle_data_user_event(arg_string) 
-{
-  try {
-        if (datasocket.readyState==1)
-        {
-            datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
-        }else if (datasocket.readyState==3)
-        {
-            logconsole('Websocket connection closed, trying to reestablish',true,false,true)
-			restore_data()
-        }else
-        {
-            logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,true,false,true)
-        }
-      } catch (err) {}
- } 
-
-function updateFigure()
-{
-    reqts=(new Date()).getTime()/1000.0
-	time0=(new Date()).getTime();
-	if (timedrawcomplete!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
-	{
-		document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
-	}
-	summary=[]
-	for (ifig=0;ifig<nfigures;ifig++)
-	{
-        if (console_update=='byte')
-            summary[ifig]=''+ifig+': '+RG_fig[ifig].ntxbytes
-        else if (console_update=='kb')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].ntxbytes/1024).toFixed(2)
-        else if (console_update=='mb')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].ntxbytes/1024/1024).toFixed(2)
-        else if (console_update=='nvars')
-            summary[ifig]=''+ifig+': '+RG_fig[ifig].recvcount
-        else if (console_update=='servertime')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)
-        else if (console_update=='receivetime')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)
-        else if (console_update=='drawtime')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)
-        else if (console_update=='rendertime')
-            summary[ifig]=''+ifig+': '+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3)
-        else if (console_update=='action')
-            summary[ifig]=''+ifig+': '+RG_fig[ifig].action
-        
-	    if (RG_fig[ifig].figureupdated)
-	    {
-	        //var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
-		    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
-	        RG_fig[ifig].figureupdated=false
-	        RG_fig[ifig].reqts=reqts
-            oldwidth=RG_fig[ifig].viewwidth
-            //if (axiscanvas.width!=0)RG_fig[ifig].viewwidth=axiscanvas.width//else already has value from applyviewlayout
-			if (figcanvas.width!=0)RG_fig[ifig].viewwidth=figcanvas.width//else already has value from applyviewlayout
-	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
-	        {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': Ok'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash)
-	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash,true,false,true)
-	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
-            }else 
-	        {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': reloading'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth+",0")
-            }
-        }else
-        {
-            if (timedrawcomplete!=0 && time0-time_receive_data_user_cmd>10000)
-            {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting for server orig'
-				logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig+' reloading page',true,false,true)
-				stop_data()
-				restore_data()
-				return
-            }else
-            if ((reqts-RG_fig[ifig].receivingts>120) && (time0-time_receive_data_user_cmd)<10000)
-            {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting for server'
-                logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
-                RG_fig[ifig].figureupdated=true
-            }else if (typeof(RG_fig[ifig].receivingts)=="undefined" && RG_fig[ifig].version>0)//something wrong with the figure, probably due to broken network connection
-			{//BEWARE this might never happen!
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': undefined error'
-                logconsole('Undefined variables in figure '+ifig+' attempting to restore figure'+ifig,true,false,true)
-				//RG_fig[ifig].version=-1//should perhaps try this
-                RG_fig[ifig].figureupdated=true
-			}else
-            {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting'
-            }
-        }
-    }
-    if (console_update=='byte')
-        logconsole('byte: '+summary.join(', '),true,false,true)
-    if (console_update=='kb')
-        logconsole('kb: '+summary.join(', '),true,false,true)
-    if (console_update=='mb')
-        logconsole('mb: '+summary.join(', '),true,false,true)
-    if (console_update=='status')
-        logconsole('status: '+summary.join(', '),true,false,true)
-    if (console_update=='nvars')
-        logconsole('nvars: '+summary.join(', '),true,false,true)
-    if (console_update=='servertime')
-        logconsole('servertime: '+summary.join(', '),true,false,true)
-    if (console_update=='receivetime')
-        logconsole('receivetime: '+summary.join(', '),true,false,true)
-    if (console_update=='drawtime')
-        logconsole('drawtime: '+summary.join(', '),true,false,true)
-    if (console_update=='rendertime')
-        logconsole('rendertime: '+summary.join(', '),true,false,true)
-    if (console_update=='action')
-        logconsole('action: '+summary.join(', '),true,false,true)
+    if (typeof(RG_fig[ifig])=="undefined")
+        return
     
-    if (RG_fig.length && typeof(RG_fig[0].lastdt)!="undefined")
+    RG_fig[ifig].drawstartts=(new Date()).getTime()/1000.0
+	setaxiscanvasrect(ifig)
+    if (typeof(RG_fig[ifig].xmin)!="number")RG_fig[ifig].xmin=NaN
+    if (typeof(RG_fig[ifig].xmax)!="number")RG_fig[ifig].xmax=NaN
+    if (typeof(RG_fig[ifig].ymin)!="number")RG_fig[ifig].ymin=NaN
+    if (typeof(RG_fig[ifig].ymax)!="number")RG_fig[ifig].ymax=NaN
+    if (typeof(RG_fig[ifig].cmin)!="number")RG_fig[ifig].cmin=NaN
+    if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
+	if (RG_fig[ifig].cdata==undefined)
     {
-        dt2=RG_fig[0].lastdt.toFixed(2)
-        
-    	if ((reqts-local_last_lastts_change)>(dt2*2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
-    	{//checks that longer than dump local delay occur for change in last timestamp while still having received updates within this time
-    	    document.getElementById("healthtext").innerHTML='halted stream'
-    	}else
-    	{
-        	dt1=RG_fig[0].lastdt.toFixed(1)
-        	dt0=RG_fig[0].lastdt.toFixed(0)
-        	if (Math.abs(dt0-dt2)<0.01)
-                document.getElementById("healthtext").innerHTML=''+dt0+'s dumps'
-            else if (Math.abs(dt1-dt2)<0.01)
-                document.getElementById("healthtext").innerHTML=''+dt1+'s dumps'
-            else
-                document.getElementById("healthtext").innerHTML=''+dt2+'s dumps'
-        }
-    }
+        if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
+            drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+        else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+    }else
+        drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+
+	RG_fig[ifig].drawstoptts=(new Date()).getTime()/1000.0
+	setTimeout(completefigure,1,ifig)
 }
 
-timerid=setInterval(updateFigure,1000)
+function completefigure(ifig)
+{    
+	timedrawcomplete=(new Date()).getTime();
+	if (typeof(RG_fig[ifig])!="undefined")
+	{
+		RG_fig[ifig].renderts=timedrawcomplete/1000.0
+		RG_fig[ifig].figureupdated=true
+		if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
+	}
+}

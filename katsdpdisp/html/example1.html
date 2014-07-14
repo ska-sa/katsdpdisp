@@ -1,0 +1,97 @@
+<html>
+<head>
+<script type="text/javascript" src="figure.js"></script>
+<title>Figure example</title>
+</head>
+<body onload='loadpage()' bgcolor="#FFFFFF">
+<div id="overalldiv">
+<div id='rubberbandDiv' style="position: absolute; border-width: 1px; border-style:dotted; border-color: black; cursor: crosshair; z-index: 3; display:none"></div>
+<div id="listoffigures" onmousedown = "onFigureMouseDown(event);" onmouseup = "onFigureMouseUp(event);" onmousemove = "onFigureMouseMove(event);" onmouseout ="onFigureMouseOut(event);" onlosecapture="onFigureLoseCapture(event);" ondblclick="onFigureDblclick(event);">
+</div>
+</div>
+</body>
+</html>
+<script>
+var nfigures
+var RG_fig=[]
+var RightContext = {killMenu: function () {}}
+var console_timing='off'
+function logconsole(msg,dotimestamp,doshow,doscroll){}
+function handle_data_user_event(cmd){}
+function loadpage()
+{
+    makejet()
+    var listoffigures = document.getElementById("listoffigures")
+    //prepare first figure (image style figure)
+    ifig=0
+    RG_fig[ifig]=[]
+    figwidth=(window.innerWidth-listoffigures.offsetLeft*2)-5
+    figheight=figwidth*figureaspect
+    listoffigures.innerHTML='<td valign="top"><div id="myfigurediv'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+figheight+';">'+
+    '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+figheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
+    '<canvas id="myaxiscanvas'+ifig+'"  width="0" height= "0" style="z-index: 1; position: absolute; left:0; top:0"></canvas>'+
+    '</div></td>'
+    RG_fig[ifig].xdata=[0,1,2,3]
+    RG_fig[ifig].ydata=[10,11,12]
+    RG_fig[ifig].cdata=[[0,1,2],[2,0,1],[3,1,2],[2,2.5,0]]
+    RG_fig[ifig].color=[]
+    RG_fig[ifig].xmin=NaN
+    RG_fig[ifig].xmax=NaN
+    RG_fig[ifig].ymin=NaN
+    RG_fig[ifig].ymax=NaN
+    RG_fig[ifig].cmin=NaN
+    RG_fig[ifig].cmax=NaN
+    RG_fig[ifig].title='the title'
+    RG_fig[ifig].xlabel='the xlabel'
+    RG_fig[ifig].ylabel='the ylabel 09:02:00 2014'
+    RG_fig[ifig].clabel='the clabel'
+    RG_fig[ifig].xunit='Hz'
+    RG_fig[ifig].yunit='s'
+    RG_fig[ifig].cunit='dB'
+    RG_fig[ifig].legend=['']
+    RG_fig[ifig].span=[]
+    RG_fig[ifig].spancolor=[]
+    
+    RG_fig[ifig].showyticklabel='on'
+    RG_fig[ifig].showylabel='on'
+    RG_fig[ifig].showtitle='on'
+    RG_fig[ifig].showlegend='on'
+    RG_fig[ifig].showxlabel='on'
+    RG_fig[ifig].showxticklabel='on'
+    redrawfigure(ifig)
+    //prepare second figure (line style figure)
+    ifig=1
+    RG_fig[ifig]=[]
+    RG_fig[ifig].figtype='timeseries'
+    listoffigures.innerHTML+='<td valign="top"><div id="myfigurediv'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+figheight+';">'+
+    '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+figheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
+    '<canvas id="myaxiscanvas'+ifig+'"  width="0" height= "0" style="z-index: 1; position: absolute; left:0; top:0"></canvas>'+
+    '</div></td>'
+    RG_fig[ifig].xdata=[0,1,2,3,4,5]
+    RG_fig[ifig].ydata=[[[10,17,12,13,16,10],[0,7,2,3,6,0]]]
+    RG_fig[ifig].color=[[0,0,0,0],[100,100,0,0]]
+    RG_fig[ifig].xmin=NaN
+    RG_fig[ifig].xmax=NaN
+    RG_fig[ifig].ymin=NaN
+    RG_fig[ifig].ymax=NaN
+    RG_fig[ifig].title='the title'
+    RG_fig[ifig].xlabel='the time 09:02:00 2014'
+    RG_fig[ifig].ylabel=['Power']
+    RG_fig[ifig].xunit='s'
+    RG_fig[ifig].yunit=['dB']
+    RG_fig[ifig].legend=['a','b']
+    RG_fig[ifig].span=[]
+    RG_fig[ifig].spancolor=[]
+    
+    RG_fig[ifig].showyticklabel='on'
+    RG_fig[ifig].showylabel='on'
+    RG_fig[ifig].showtitle='on'
+    RG_fig[ifig].showlegend='on'
+    RG_fig[ifig].showxlabel='on'
+    RG_fig[ifig].showxticklabel='on'
+
+    nfigures=RG_fig.length
+    for (var i=0;i<nfigures;i++)
+        redrawfigure(i)
+}
+</script>
