@@ -1756,8 +1756,6 @@ def pack_binarydata_msg(varname,val,dtype):
 
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
 def parse_websock_cmd(s, request):
-    if (request not in websockrequest_username):
-        raise error('Unknown request handler will be deregistered') #raising this exception will subsequently close any associated handler and thread
     try:
         # print 'PARSING s=',s,'thread=',thread.get_ident()
         action = s[1:s.find(" ")]
@@ -1767,6 +1765,8 @@ def parse_websock_cmd(s, request):
             websockrequest_lasttime[request]=websockrequest_time[request]
         else:
             websockrequest_lasttime[request]=time.time()
+        if (request not in websockrequest_username):
+            websockrequest_username[request]='no-name'
         websockrequest_time[request]=time.time()
         if (action=='data_user_event_timeseries'):
             handle_websock_event(request,*args)
