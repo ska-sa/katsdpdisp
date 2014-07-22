@@ -1756,6 +1756,8 @@ def pack_binarydata_msg(varname,val,dtype):
 
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
 def parse_websock_cmd(s, request):
+    if (request not in websockrequest_username):
+        raise error('Unknown request handler will be deregistered') #raising this exception will subsequently close any associated handler and thread
     try:
         # print 'PARSING s=',s,'thread=',thread.get_ident()
         action = s[1:s.find(" ")]
@@ -1765,8 +1767,6 @@ def parse_websock_cmd(s, request):
             websockrequest_lasttime[request]=websockrequest_time[request]
         else:
             websockrequest_lasttime[request]=time.time()
-        if (request not in websockrequest_username):
-            websockrequest_username[request]='no-name'
         websockrequest_time[request]=time.time()
         if (action=='data_user_event_timeseries'):
             handle_websock_event(request,*args)
@@ -1804,11 +1804,16 @@ def register_websockrequest_handler(request):
     websockrequest_handlers[request] = request.connection.remote_addr[0]
     
 def deregister_websockrequest_handler(request):
-    del websockrequest_type[request]
-    del websockrequest_time[request]
-    del websockrequest_lasttime[request]
-    del websockrequest_username[request]
-    del websockrequest_handlers[request]
+    if (request in websockrequest_type):
+        del websockrequest_type[request]
+    if (request in websockrequest_time):
+        del websockrequest_time[request]
+    if (request in websockrequest_lasttime):
+        del websockrequest_lasttime[request]
+    if (request in websockrequest_username):
+        del websockrequest_username[request]
+    if (request in websockrequest_handlers):
+        del websockrequest_handlers[request]
     del request
 
 def websock_transfer_data(request):
