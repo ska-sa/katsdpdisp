@@ -1772,7 +1772,8 @@ def parse_websock_cmd(s, request):
             handle_websock_event(request,*args)
         
     except AttributeError:
-        logger.warning("Cannot find request method handle_%s" % action)
+        print "Received invalid request: %s" % s
+        logger.warning("Cannot find request method %s" % s)
 
 def send_websock_data(binarydata, handlerkey):
     try:
