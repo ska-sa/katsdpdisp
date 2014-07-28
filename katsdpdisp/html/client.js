@@ -331,7 +331,7 @@ function setsignals(){
     }else if (signaltext=='server ps')
     {
         document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bd1n2 | grep time_plot.py | tail -n 2');
+        handle_data_user_event('server,'+'ps aux | grep time_plot.py');
     }else if (signaltext.slice(0,4)=='save')
     {
         if (signaltext.length>4)
