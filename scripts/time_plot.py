@@ -12,7 +12,7 @@ import commands
 import time
 import SocketServer
 import socket
-import thread
+import thread,threading
 import struct
 import sys
 import logging
@@ -1185,16 +1185,18 @@ def handle_websock_event(handlerkey,*args):
             send_websock_cmd('logconsole("outlierthreshold=%g'%(html_layoutsettings[username]['outlierthreshold'])+'",true,true,true)',handlerkey)
         elif (args[0]=='getoutliertime'):
             print args
-            ringbufferrequestqueue.put(['getoutliertime',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['getoutliertime',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating getoutliertime",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
         elif (args[0]=='getflags'):
             print args
-            ringbufferrequestqueue.put(['getflags',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['getflags',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating getflags",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
@@ -1204,7 +1206,8 @@ def handle_websock_event(handlerkey,*args):
             html_layoutsettings[username]['outlierthreshold']=float(args[1])
         elif (args[0]=='setoutliertime'):
             print args
-            ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
         elif (args[0]=='setsignals'):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')
@@ -1244,7 +1247,8 @@ def handle_websock_event(handlerkey,*args):
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
-            ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])        
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])        
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             print args
             html_layoutsettings[username][args[0]]=args[1]
@@ -1277,16 +1281,18 @@ def handle_websock_event(handlerkey,*args):
             send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
             print args
-            ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='info'):
             print args
-            ringbufferrequestqueue.put(['info',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['info',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating info",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
@@ -1294,8 +1300,9 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):
             print args
-            ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
-            fig=ringbufferresultqueue.get()
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating memoryleak",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
@@ -1317,8 +1324,9 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
             print args
             if (args[0]=='RESTART'):
-                ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
-                fig=ringbufferresultqueue.get()
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
+                    fig=ringbufferresultqueue.get()
                 if (fig=={}):#an exception occurred
                     send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
                 else:
@@ -1330,8 +1338,9 @@ def handle_websock_event(handlerkey,*args):
                     time.sleep(2)
                     send_websock_cmd('logconsole("Reissuing metadata.",true,true,true)',handlerkey)
             if (args[0]=='restartspead'):
-                ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
-                fig=ringbufferresultqueue.get()
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
+                    fig=ringbufferresultqueue.get()
                 if (fig=={}):#an exception occurred
                     send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
                 elif ('logconsole' in fig):
@@ -1510,8 +1519,10 @@ def printablesignal(product):
 
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
-        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
-        timeseries_fig=ringbufferresultqueue.get()
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            timeseries_fig=ringbufferresultqueue.get()
+
         count=0
         if (timeseries_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
@@ -1591,8 +1602,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
-        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
-        spectrum_fig=ringbufferresultqueue.get()
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            spectrum_fig=ringbufferresultqueue.get()
         count=0
         if (spectrum_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
@@ -1652,8 +1664,10 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
 
 def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
-        ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
-        waterfall_fig=ringbufferresultqueue.get()
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            waterfall_fig=ringbufferresultqueue.get()
+            
         count=0
         if (waterfall_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
@@ -2104,6 +2118,7 @@ else:
     logger.setLevel(logging.CRITICAL)
 #    logger.setLevel(logging.WARNING)
 
+RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 opts.datafilename=args[0]
