@@ -72,7 +72,7 @@ SERVE_PATH=resource_filename('katsdpdisp', 'html')
 ######################
 # import katcp
 # 
-# client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo
+# client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
 # client.is_connected()
 # client.start()
 # client.is_connected()
@@ -84,7 +84,7 @@ SERVE_PATH=resource_filename('katsdpdisp', 'html')
 #file will be in kat@kat-dc1:/var/kat/data/
 #and synced to eg kat@kat-archive:/var/kat/archive/data/comm/2012/10
 #note may need to reaugment file if sensor data missing:
-#on kat-dc1.karoo execute ps aux | grep aug
+#on kat-dc1.karoo.kat.ac.za execute ps aux | grep aug
 #see something like /usr/bin/python /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -v -b -d /var/kat/data/staging --dbe=dbe7
 #must then run /usr/local/bin/k7_augment.py -c xmlrpc:http://192.168.193.3:2010 -s systems/karoo_kat.conf -o -f filename.h5 to augment file in place
 #####################################################################################
@@ -1340,8 +1340,8 @@ def handle_websock_event(handlerkey,*args):
             #reissue metadata (in both cases)
             capture_server,capture_server_port_str=opts.capture_server.split(':')
             try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo, not obs.kat7.karoo
-                #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo, not obs.kat7.karoo
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 # client.is_connected()
                 client.start()
                 time.sleep(0.1)            
@@ -2037,7 +2037,7 @@ parser.add_option("--data_port", dest="data_port", default=8081, type='int',
                   help="Port number used to serve data for signal displays (default=%default)")
 parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
                   help="Port number used to connect to spead stream (default=%default)")
-parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo:2040", type='string',
+parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type='string',
                   help="Server ip-address:port that runs kat_capture (default=%default)")
                 
 
