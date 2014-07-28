@@ -1836,7 +1836,10 @@ def parse_websock_cmd(s, request):
         else:
             websockrequest_lasttime[request]=time.time()
         if (request not in websockrequest_username):
-            websockrequest_username[request]='no-name'
+            if (args[0]=='setusername'):
+                websockrequest_username[request]='no-name'
+            else:
+                raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(request))
         websockrequest_time[request]=time.time()
         if (action=='data_user_event_timeseries'):
             handle_websock_event(request,*args)
