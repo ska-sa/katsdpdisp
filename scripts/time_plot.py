@@ -29,6 +29,8 @@ import katcp
 SETTINGS_PATH='~/.katsdpdisp'
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
+np.set_printoptions(threshold=4096)
+
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
 
@@ -223,12 +225,25 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':'Exiting ring buffer process'}
                 ringbufferresultqueue.put(fig)
                 return
+            if (thelayoutsettings=='sendfiguredata'):
+                try:
+                    if (list(thesignals[0]) in datasd.cpref.bls_ordering):
+                        signal = datasd.select_data(dtype=thetype, product=tuple(thesignals[0]), end_time=lastts, include_ts=False,include_flags=False)
+                        signal=np.array(signal).reshape(-1)
+                    else:
+                        signal=None
+                except Exception, e:
+                    print '--------------------------------------------------------'
+                    print 'Exception in sendfiguredata:',str(e)
+                    signal=None
+                    pass
+                ringbufferresultqueue.put(signal)
+                continue
             if (thelayoutsettings=='restartspead'):
                 print datasd.ig._new_names.keys()
                 fig={'logconsole':'datasd.ig._new_names.keys()= '+str(datasd.ig._new_names.keys())}
                 ringbufferresultqueue.put(fig)
                 datasd.ig._new_names={}
-                
                 # objgraph.show_refs([dh],filename='objgraph_refs.png')
                 # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
                 # print 'show_most_common_types()'
@@ -1118,6 +1133,18 @@ def handle_websock_event(handlerkey,*args):
             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[args[1]]))+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
         elif (username not in html_viewsettings):
             print 'Warning: unrecognised username:',username
+        elif (args[0]=='sendfiguredata'):
+            reqts=float(args[1])#eg -1
+            chan0=int(args[2])
+            chan1=int(args[3])
+            thesignals=[(args[4],args[5])] #eg('ant1h','ant1h')
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['sendfiguredata',0,thesignals,reqts,0,0])
+                spectrum=ringbufferresultqueue.get()
+            if (chan1>0 and chan0>0):
+                send_websock_data(repr(spectrum[chan0:chan1]),handlerkey);
+            else:
+                send_websock_data(repr(spectrum),handlerkey);
         elif (args[0]=='sendfigure'):
             # print args
             ifigure=int(args[1])
