@@ -715,7 +715,7 @@ class SignalDisplayStore(object):
             self.n_chans = nc
             cf = d['/MetaData/Sensors/RFE/center-frequency-hz'][0][1]
             self.center_freqs_mhz = [(cf + (bw/nc*1.0)*c + 0.5*(bw/nc*1.0))/1000000 for c in range(-nc/2, nc/2)]
-            #self.center_freqs_mhz.reverse()
+            # self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except KeyError:
             print "Did not find the required attributes bandwidth and n_chans. Frequency information not populated\n"
@@ -765,7 +765,7 @@ class SignalDisplayStore(object):
                 nc = int(d['Correlator'].attrs['num_freq_channels'])
                 self.n_chans = nc
                 self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
-                #self.center_freqs_mhz.reverse()
+                # self.center_freqs_mhz.reverse()
                  # channels mapped in reverse order
             except KeyError:
                 pass # no frequency information
@@ -874,7 +874,7 @@ class SpeadSDReceiver(threading.Thread):
             self.channels = self.ig['n_chans']
             self.channel_bandwidth = self.ig['bandwidth'] / self.channels
             self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
-            #self.center_freqs_mhz.reverse()
+            # self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except ValueError:
             print "Failed to update center frequency table due to missing metadata."
@@ -1784,7 +1784,7 @@ class DataHandler(object):
             print "User asked for",dumps,"dumps. Only",len(wfall_data[1]),"are available. Truncating further calls to this length."
             dumps = len(wfall_data[1])
         tstamps = wfall_data[0]
-        #wfall_data.:
+        #wfall_data.reverse()
 
         ax_wfall = pl.axes(rect_wfall)
         cax = ax_wfall.imshow(wfall_data[1], aspect='auto', interpolation='bicubic', animated=True)
