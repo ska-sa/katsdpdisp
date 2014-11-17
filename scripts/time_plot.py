@@ -1528,28 +1528,22 @@ def convertunicode(input):
     else:
         return input
         
-#decodes signals of form 1h3h to ('ant1h','ant3h')
-#returns () if invalid
+#decodes abreviated signals of form 1h3h to ('ant1h','ant3h')
+#else decodes, eg d0001hd0003v into ('d0001h','d0003v')
+#returns () if otherwise invalid
+#note this is not foolproof
 def decodecustomsignal(signalstr):
-    sreg=re.compile('[h|v|H|V]').split(signalstr)    
-    if (len(sreg)!=3 or len(sreg[2])!=0 or (not sreg[0].isdigit()) or (not sreg[1].isdigit())):
+    sreg=re.compile('[h|v|H|V|x|y]').split(signalstr)    
+    if (len(sreg)!=3 or len(sreg[2])!=0):
         return ();
-    # return ('ant'+sreg[0]+signalstr[len(sreg[0])].lower(),'ant'+sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
+    if ((not sreg[0].isdigit()) or (not sreg[1].isdigit())):
+        return (sreg[0]+signalstr[len(sreg[0])],sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])])
     return (ANTNAMEPREFIX%(int(sreg[0]))+signalstr[len(sreg[0])].lower(),ANTNAMEPREFIX%(int(sreg[1]))+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
     
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
 def printablesignal(product):
-    if (product[0][:3]=='ant'):
-        rv=product[0][3:]
-    else:
-        rv=str(int(product[0][1:-1]))+product[0][-1]
-    if (product[1][:3]=='ant'):
-        rv+=product[1][3:]
-    else:
-        rv+=str(int(product[1][1:-1]))+product[1][-1]
-    return rv
-    
+    return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]    
 
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
