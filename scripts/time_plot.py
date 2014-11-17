@@ -1190,7 +1190,14 @@ def handle_websock_event(handlerkey,*args):
                 return
             theviewsettings=html_viewsettings[username][ifigure]
             theviewsettings[args[2]]=str(args[3])
-            theviewsettings['version']+=1            
+            if (args[2]=='type'):
+                theviewsettings['ymin']=np.nan
+                theviewsettings['ymax']=np.nan
+            elif (args[2]=='typex'):
+                theviewsettings['xmin']=np.nan
+                theviewsettings['xmax']=np.nan
+            theviewsettings['version']+=1
+                
         elif (args[0]=='deletefigure'):
             print args
             ifigure=int(args[1])

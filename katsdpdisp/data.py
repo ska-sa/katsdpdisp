@@ -844,7 +844,7 @@ class SpeadSDReceiver(threading.Thread):
         self._port = port
         self.storage = storage
         try:
-            import spead
+            import spead64_48 as spead
         except Exception, e:
             print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
             return
@@ -883,7 +883,7 @@ class SpeadSDReceiver(threading.Thread):
         """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
            the storage object.
         """
-        import spead
+        import spead64_48 as spead
         if self.direct:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
