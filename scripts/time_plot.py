@@ -1193,7 +1193,7 @@ def handle_websock_event(handlerkey,*args):
             if (args[2]=='type'):
                 theviewsettings['ymin']=np.nan
                 theviewsettings['ymax']=np.nan
-            elif (args[2]=='typex'):
+            elif (args[2]=='xtype'):
                 theviewsettings['xmin']=np.nan
                 theviewsettings['xmax']=np.nan
             theviewsettings['version']+=1
