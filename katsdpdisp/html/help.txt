@@ -38,6 +38,7 @@ loop - displays a list of different profiles in a loop
 
 Advanced user commands:
 console - shows,  hides or clears the console
+DROP - Drops this ip from list of signal displays
 metadata - re-issue metadata, may be useful when starting up timeplot server while an observation is running
 restartspead - experimental, shows debug info
 RESTART - exits spead receiver process and restarts it, then re-issue metadata

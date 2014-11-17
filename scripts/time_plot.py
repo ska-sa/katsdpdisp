@@ -1355,6 +1355,23 @@ def handle_websock_event(handlerkey,*args):
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
         
+        elif (args[0]=='DROP'):
+            print args
+            capture_server,capture_server_port_str=opts.capture_server.split(':')
+            try:
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client.start()
+                time.sleep(0.1)            
+                if client.is_connected():
+                    ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
+                    client.stop()
+                    send_websock_cmd('logconsole("Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
+                    print 'Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays'
+                else:
+                    print 'Unable to connect to '+opts.capture_server
+                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
+            except:
+                print 'Exception occurred in drop-sdisp-ip'            
         elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
             print args
             if (args[0]=='RESTART'):

@@ -70,6 +70,10 @@ function setsignals(){
     {
         handle_data_user_event('RESTART');        
     }
+    }else if (signaltext=='DROP')
+    {
+        handle_data_user_event('DROP');        
+    }
     else if (signaltext=='flags off')
     {
         handle_data_user_event('showflags,off');
