@@ -69,7 +69,6 @@ function setsignals(){
     }else if (signaltext=='RESTART')
     {
         handle_data_user_event('RESTART');        
-    }
     }else if (signaltext=='DROP')
     {
         handle_data_user_event('DROP');        
