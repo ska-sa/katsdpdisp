@@ -1282,7 +1282,24 @@ def handle_websock_event(handlerkey,*args):
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
             with RingBufferLock:
-                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])        
+                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
+                
+            ####set timeseries mask on ingest
+            capture_server,capture_server_port_str=opts.capture_server.split(':')
+            try:
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client.start()
+                time.sleep(0.1)            
+                if client.is_connected():
+                    ret = client.blocking_request(katcp.Message.request('set-timeseries-mask',','.join(args[1:])), timeout=5)
+                    client.stop()
+                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                else:
+                    print 'Unable to connect to '+opts.capture_server
+                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
+            except:
+                print 'Exception occurred in setflags - set timeseries mask'
+            
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             print args
             html_layoutsettings[username][args[0]]=args[1]

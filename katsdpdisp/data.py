@@ -423,13 +423,11 @@ class SignalDisplayStore2(object):
         if flags is not None: self.flags[self.roll_point] = flags
         self._last_ts = timestamp_ms
 
-    #data is one timestamps worth of [bls,spectrum] complex data
+    #data is one timestamps worth of timeseries data [bls] complex data
     #sorts this collection of data into 0% 100% 25% 75% 50%
-    #return shape is [5,nchannels]
-    #could improve algorithm by first sorting for one channel then apply ordering to next channel, and then using mergesort; instead of searching from scratch each channel
-    def percsort(self,data,percrunavg,flags=None):
+    #return shape is [5]
+    def percsort(self,data,percrunavg):
         nsignals=data.shape[0]
-        colindex=range(data.shape[1])
         isort=np.argsort(np.abs(data),axis=0)
         ilev=(nsignals*25)/100;
         #define outlier threshold percentile level eg 90%
@@ -439,23 +437,17 @@ class SignalDisplayStore2(object):
         #outlier calculation based not on spectrum, only on timeseries for given halflife period; look at channel[0]
         #for this (out of 8) collection product, the list of signals that is >threshold now is [....]
         #for all 8 collections *[all signals in collection] store running average percentile score for each signal in collection at each time
-        iisort=np.argsort(isort[:,0])#uses timeseries
+        iisort=np.argsort(isort)#uses timeseries
         curoutlierlevel=100.0*(np.abs(iisort-(nsignals-1)/2.0)/(nsignals-1)+0.5)#percent, not fraction
         #nsamplesdelay=outlierdelay/dumptime
         nsamplesdelay=self.outliertime        
         percrunavg=(curoutlierlevel+percrunavg*(nsamplesdelay-1.0))/nsamplesdelay
         
-        # print 'isort[0,:]',np.shape(isort[0,:]),'isort.shape',isort.shape,'np.shape(colindex)',np.shape(colindex)
-        # return [np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.max(np.abs(data),axis=0),np.min(np.abs(data),axis=0),np.median(np.abs(data),axis=0)]
-        if (flags is not None):
-            anyflags=np.any(flags,axis=0)
-            flags=[anyflags,anyflags,anyflags,anyflags,anyflags]
-        return [[data.reshape(-1)[isort[0,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[-1,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[ilev,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[-1-ilev,:]*isort.shape[1]+colindex],
-            data.reshape(-1)[isort[nsignals/2,:]*isort.shape[1]+colindex]],percrunavg,
-            flags]
+        return [[data.reshape(-1)[isort[0]],
+            data.reshape(-1)[isort[-1]],
+            data.reshape(-1)[isort[ilev]],
+            data.reshape(-1)[isort[-1-ilev]],
+            data.reshape(-1)[isort[nsignals/2]]],percrunavg]
         
     #collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
     def set_bls(self,bls_ordering):
@@ -547,47 +539,40 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None):
+    def add_data2(self, timestamp_ms, data, flags=None, timeseries=None, percspectrum=None, percspectrumflags=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
             self.roll_point = (self.frame_count-1) % self.slots
             self.ts[self.roll_point] = timestamp_ms
-
             #calculate timeseries masked average for all signals and overwrite it into channel 0
-            if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
-                data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
-            else:
-                data[:,0] = 0.0;
+            if (timeseries!=None):
+                data[:,0] = timeseries
+                #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
+                #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
+                perctimeseries=[]
+                #only calculate percentiles of timeseries (for spectrum, this is calculated by ingest)
+                for ip,iproducts in enumerate(self.collectionproducts):
+                    if (len(iproducts)>0):
+                        pdata,self.percrunavg[ip]=self.percsort(timeseries[iproducts],self.percrunavg[ip])
+                        perctimeseries.extend(pdata)
+                    else:
+                        perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
+                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
+                self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
 
-            #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
-            #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
-            percdata=[]
-            percflags=[]
+                self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
+            else:
+                if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
+                    data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
+                else:
+                    data[:,0] = 0.0;
+
+            
             if (flags is not None):
                 self.flags[self.roll_point] = flags
-                for ip,iproducts in enumerate(self.collectionproducts):
-                    if (len(iproducts)>0):
-                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],flags[iproducts,:])
-                        percdata.extend(pdata)
-                        percflags.extend(pflags)
-                    else:
-                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
-                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
-                        
-            else:
-                for ip,iproducts in enumerate(self.collectionproducts):
-                    if (len(iproducts)>0):
-                        pdata,self.percrunavg[ip],pflags=self.percsort(data[iproducts,:],self.percrunavg[ip],None)
-                        percdata.extend(pdata)
-                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
-                    else:    
-                        percdata.extend(np.nan*np.zeros([5,self.n_chans],dtype=np.complex64))
-                        percflags.extend(np.zeros([5,self.n_chans],dtype=np.uint8))
-            
             self.data[self.roll_point,:,:] = data
-            self.percdata[self.roll_point,:,:]=np.array(percdata,dtype=np.complex64)
-            self.percflags[self.roll_point,:,:]=np.array(percflags,dtype=np.uint8)
+
             self._last_ts = timestamp_ms
 
 class SignalDisplayStore(object):
@@ -844,7 +829,7 @@ class SpeadSDReceiver(threading.Thread):
         self._port = port
         self.storage = storage
         try:
-            import spead
+            import spead64_48 as spead
         except Exception, e:
             print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
             return
@@ -883,7 +868,7 @@ class SpeadSDReceiver(threading.Thread):
         """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
            the storage object.
         """
-        import spead
+        import spead64_48 as spead
         if self.direct:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -950,11 +935,12 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.set_mask(self.storage.timeseriesmaskstr)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
-                        ts = self.ig['sd_timestamp'] * 10.0
+                        ts = self.ig['sd_timestamp'] * 10.0                        
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
                             flags = self.ig['sd_flags'].swapaxes(0,1) if 'sd_flags' in self.ig.keys() else None
-                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags)
+                            
+                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, self.ig['sd_timeseries'].astype(np.float32).view(np.complex64)[:,0], self.ig['sd_percspectrum'].astype(np.float32),self.ig['sd_percspectrumflags'].astype(np.uint8))
                         else:
                             data = self.ig['sd_data'].swapaxes(0,1)
                             for id in range(data.shape[0]):
