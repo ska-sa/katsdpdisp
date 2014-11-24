@@ -551,7 +551,7 @@ class SignalDisplayStore2(object):
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
-                #only calculate percentiles of timeseries (for spectrum, this is calculated by ingest)
+                #only calculate percentiles for timeseries (for spectrum, percentiles are calculated by ingest)
                 for ip,iproducts in enumerate(self.collectionproducts):
                     if (len(iproducts)>0):
                         pdata,self.percrunavg[ip]=self.percsort(timeseries[iproducts],self.percrunavg[ip])
@@ -562,12 +562,6 @@ class SignalDisplayStore2(object):
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
 
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
-            else:
-                if (len(self.timeseriesmaskind)>0 and self.timeseriesmaskind[-1]<self.n_chans):
-                    data[:,0] = np.mean(data[:,self.timeseriesmaskind],axis=1)
-                else:
-                    data[:,0] = 0.0;
-
             
             if (flags is not None):
                 self.flags[self.roll_point] = flags
