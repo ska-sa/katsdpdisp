@@ -483,7 +483,7 @@ class SignalDisplayStore2(object):
         self.percrunavg=[np.zeros(len(bls),dtype='float') for bls in self.collectionproducts]
         
         
-    def set_mask(self,maskstr=''):
+    def set_timeseries_mask_internal(self,maskstr=''):
         self.timeseriesmaskstr=maskstr
         if (self.n_chans<1):
             self.timeseriesmaskind=[]
@@ -897,7 +897,7 @@ class SpeadSDReceiver(threading.Thread):
                         else:
                             self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
                             self.storage.set_bls(self.cpref.bls_ordering)
-                            self.storage.set_mask(self.storage.timeseriesmaskstr)
+                            self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -911,7 +911,7 @@ class SpeadSDReceiver(threading.Thread):
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.set_bls(self.cpref.bls_ordering)
-                                self.storage.set_mask(self.storage.timeseriesmaskstr)
+                                self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
                     if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
@@ -926,7 +926,7 @@ class SpeadSDReceiver(threading.Thread):
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.set_bls(self.cpref.bls_ordering)
-                                self.storage.set_mask(self.storage.timeseriesmaskstr)
+                                self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         ts = self.ig['sd_timestamp'] * 10.0                        
