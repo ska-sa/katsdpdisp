@@ -75,8 +75,7 @@ np.set_printoptions(threshold=4096)
 # import katcp
 # 
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
-# client.is_connected()
-# client.start()
+# client.wait_connected(timeout=5)
 # client.is_connected()
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
@@ -1289,7 +1288,7 @@ def handle_websock_event(handlerkey,*args):
             try:
                 client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 client.start()
-                time.sleep(0.1)            
+                client.wait_connected(timeout=5)
                 if client.is_connected():
                     ret = client.blocking_request(katcp.Message.request('set-timeseries-mask',','.join(args[1:])), timeout=5)
                     client.stop()
@@ -1378,7 +1377,7 @@ def handle_websock_event(handlerkey,*args):
             try:
                 client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 client.start()
-                time.sleep(0.1)            
+                client.wait_connected(timeout=5)
                 if client.is_connected():
                     ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
                     client.stop()
@@ -1421,7 +1420,7 @@ def handle_websock_event(handlerkey,*args):
                 #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 # client.is_connected()
                 client.start()
-                time.sleep(0.1)            
+                client.wait_connected(timeout=5)
                 if client.is_connected():
                     # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
                     # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
