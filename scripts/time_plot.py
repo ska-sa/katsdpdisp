@@ -19,6 +19,7 @@ import logging
 import numpy as np
 import copy
 import katsdpdisp
+import katsdpdisp.data as sdispdata
 import re
 import json
 import resource
@@ -180,7 +181,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
     warnOnce=True
     try:
         while(True):
-            #datasd.storage.set_timeseries_mask_internal('..170,220..')
             #ts = datasd.select_data(product=0, start_time=0, end_time=-1, start_channel=0, stop_channel=0, include_ts=True)[0]#gets last timestamp only
             #ts[0] contains times
             #antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])
@@ -190,7 +190,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             [thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
 
             if (thelayoutsettings=='setflags'):
-                datasd.storage.set_timeseries_mask_internal(str(','.join(theviewsettings)))
+                datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
+                datasd.storage.timeseriesmaskind,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
                 continue
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings

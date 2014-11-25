@@ -449,90 +449,6 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[-1-ilev]],
             data.reshape(-1)[isort[nsignals/2]]],percrunavg]
         
-    #collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
-    def set_bls(self,bls_ordering):
-        auto=[]
-        autohh=[]
-        autovv=[]
-        autohv=[]
-        cross=[]
-        crosshh=[]
-        crossvv=[]
-        crosshv=[]
-        for ibls,bls in enumerate(bls_ordering):
-            if (bls[0][:-1]==bls[1][:-1]):#auto
-                if (bls[0][-1]==bls[1][-1]):#autohh or autovv
-                    auto.append(ibls)
-                    if (bls[0][-1]=='h'):
-                        autohh.append(ibls)
-                    else:
-                        autovv.append(ibls)                        
-                else:#autohv or vh 
-                    autohv.append(ibls)
-            else:#cross
-                if (bls[0][-1]==bls[1][-1]):#crosshh or crossvv
-                    cross.append(ibls)
-                    if (bls[0][-1]=='h'):
-                        crosshh.append(ibls)
-                    else:
-                        crossvv.append(ibls)                        
-                else:#crosshv or vh 
-                    crosshv.append(ibls)
-                
-        self.collectionproducts=[auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-        self.percrunavg=[np.zeros(len(bls),dtype='float') for bls in self.collectionproducts]
-        
-        
-    def set_timeseries_mask_internal(self,maskstr=''):
-        self.timeseriesmaskstr=maskstr
-        self.spectrum_flag0=[]
-        self.spectrum_flag1=[]
-        if (self.n_chans<1):
-            self.timeseriesmaskind=[]
-            return
-        spectrum_width=self.n_chans
-        spectrum_flagmask=np.ones([spectrum_width])
-        try:
-            args=maskstr.split(',')
-            for c in range(len(args)):
-                rng=args[c].split('..');
-                if (len(rng)==1):
-                    if (args[c]!=''):
-                        chan=int(args[c])
-                        self.spectrum_flag0.append(chan)
-                        self.spectrum_flag1.append(chan+1)
-                        spectrum_flagmask[chan]=0
-                elif (len(rng)==2):
-                    if (rng[0]==''):
-                        chan0=0
-                    else:
-                        chan0=int(rng[0])
-                    if (rng[1]==''):
-                        chan1=spectrum_width-1
-                    else:
-                        chan1=int(rng[1])
-                    if (chan0<0):
-                        chan0=spectrum_width+chan0
-                        if (chan0<0):
-                            chan0=0;
-                    elif (chan0>=spectrum_width):
-                        chan0=spectrum_width-1
-                    if (chan1<0):
-                        chan1=spectrum_width+chan1
-                        if (chan1<0):
-                            chan1=0;
-                    elif (chan1>=spectrum_width):
-                        chan1=spectrum_width-1;
-                    if (chan0>chan1):
-                        tmp=chan0
-                        chan0=chan1
-                        chan1=tmp
-                    self.spectrum_flag0.append(chan0)
-                    self.spectrum_flag1.append(chan1)
-                    spectrum_flagmask[chan0:(chan1+1)]=0
-        except Exception, e:
-            pass
-        self.timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
         
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
@@ -894,8 +810,8 @@ class SpeadSDReceiver(threading.Thread):
                         if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                         else:
                             self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
-                            self.storage.set_bls(self.cpref.bls_ordering)
-                            self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
+                            self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
+                            self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -908,8 +824,8 @@ class SpeadSDReceiver(threading.Thread):
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
-                                self.storage.set_bls(self.cpref.bls_ordering)
-                                self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
+                                self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
+                                self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                     if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
@@ -923,8 +839,8 @@ class SpeadSDReceiver(threading.Thread):
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
-                                self.storage.set_bls(self.cpref.bls_ordering)
-                                self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
+                                self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
+                                self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         ts = self.ig['sd_timestamp'] * 10.0
@@ -3126,3 +3042,96 @@ def external_ip(preferred_prefixes=('eth', 'en')):
         return ips[0]
     else:
         return None
+
+def parse_timeseries_mask(maskstr,spectrum_width):
+    """
+    maskstr='500' flags channel 500
+    maskstr='..200' flags the first 200 channels
+    maskstr='-200..' flags the last 200 channels
+    maskstr='300..350' flags channels 300 to 350
+    maskstr='..200,300..350,500,-200..' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
+    """
+    spectrum_flagmask=np.ones([spectrum_width])
+    spectrum_flag0=[]
+    spectrum_flag1=[]
+    if (spectrum_width<1):
+        return [],[],[]
+    try:
+        args=maskstr.split(',')
+        for c in range(len(args)):
+            rng=args[c].split('..');
+            if (len(rng)==1):
+                if (args[c]!=''):
+                    chan=int(args[c])
+                    spectrum_flag0.append(chan)
+                    spectrum_flag1.append(chan+1)
+                    spectrum_flagmask[chan]=0
+            elif (len(rng)==2):
+                if (rng[0]==''):
+                    chan0=0
+                else:
+                    chan0=int(rng[0])
+                if (rng[1]==''):
+                    chan1=spectrum_width-1
+                else:
+                    chan1=int(rng[1])
+                if (chan0<0):
+                    chan0=spectrum_width+chan0
+                    if (chan0<0):
+                        chan0=0;
+                elif (chan0>=spectrum_width):
+                    chan0=spectrum_width-1
+                if (chan1<0):
+                    chan1=spectrum_width+chan1
+                    if (chan1<0):
+                        chan1=0;
+                elif (chan1>=spectrum_width):
+                    chan1=spectrum_width-1;
+                if (chan0>chan1):
+                    tmp=chan0
+                    chan0=chan1
+                    chan1=tmp
+                spectrum_flag0.append(chan0)
+                spectrum_flag1.append(chan1)
+                spectrum_flagmask[chan0:(chan1+1)]=0
+    except Exception, e:
+        pass
+    timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
+    return timeseriesmaskind,spectrum_flag0,spectrum_flag1
+
+
+def set_bls(bls_ordering):
+    """
+    collectionproducts contains product indices of: autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
+    """
+    auto=[]
+    autohh=[]
+    autovv=[]
+    autohv=[]
+    cross=[]
+    crosshh=[]
+    crossvv=[]
+    crosshv=[]
+    for ibls,bls in enumerate(bls_ordering):
+        if (bls[0][:-1]==bls[1][:-1]):#auto
+            if (bls[0][-1]==bls[1][-1]):#autohh or autovv
+                auto.append(ibls)
+                if (bls[0][-1]=='h'):
+                    autohh.append(ibls)
+                else:
+                    autovv.append(ibls)                        
+            else:#autohv or vh 
+                autohv.append(ibls)
+        else:#cross
+            if (bls[0][-1]==bls[1][-1]):#crosshh or crossvv
+                cross.append(ibls)
+                if (bls[0][-1]=='h'):
+                    crosshh.append(ibls)
+                else:
+                    crossvv.append(ibls)                        
+            else:#crosshv or vh 
+                crosshv.append(ibls)
+    collectionproducts=[auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
+    percunavg=[np.zeros(len(bls),dtype='float') for bls in collectionproducts]
+    return collectionproducts,percunavg
+    
