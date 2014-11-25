@@ -929,12 +929,15 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.set_timeseries_mask_internal(self.storage.timeseriesmaskstr)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
-                        ts = self.ig['sd_timestamp'] * 10.0                        
+                        ts = self.ig['sd_timestamp'] * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
                             flags = self.ig['sd_flags'].swapaxes(0,1) if 'sd_flags' in self.ig.keys() else None
                             
-                            self.storage.add_data2(ts, self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, self.ig['sd_timeseries'].astype(np.float32).view(np.complex64)[:,0], self.ig['sd_percspectrum'].astype(np.float32),self.ig['sd_percspectrumflags'].astype(np.uint8))
+                            self.storage.add_data2(ts,  self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, \
+                                                        self.ig['sd_timeseries'].astype(np.float32).view(np.complex64)[:,0], \
+                                                        self.ig['sd_percspectrum'].astype(np.float32), \
+                                                        self.ig['sd_percspectrumflags'].astype(np.uint8))
                         else:
                             data = self.ig['sd_data'].swapaxes(0,1)
                             for id in range(data.shape[0]):
