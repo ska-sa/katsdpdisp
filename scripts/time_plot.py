@@ -19,6 +19,7 @@ import logging
 import numpy as np
 import copy
 import katsdpdisp
+import katsdpdisp.data as sdispdata
 import re
 import json
 import resource
@@ -75,8 +76,7 @@ np.set_printoptions(threshold=4096)
 # import katcp
 # 
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
-# client.is_connected()
-# client.start()
+# client.wait_connected(timeout=5)
 # client.is_connected()
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
@@ -181,7 +181,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
     warnOnce=True
     try:
         while(True):
-            #datasd.storage.set_mask('..170,220..')
             #ts = datasd.select_data(product=0, start_time=0, end_time=-1, start_channel=0, stop_channel=0, include_ts=True)[0]#gets last timestamp only
             #ts[0] contains times
             #antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])
@@ -191,7 +190,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             [thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
 
             if (thelayoutsettings=='setflags'):
-                datasd.storage.set_mask(str(','.join(theviewsettings)))
+                datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
+                datasd.storage.timeseriesmaskind,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
                 continue
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings
@@ -1282,7 +1282,24 @@ def handle_websock_event(handlerkey,*args):
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
             with RingBufferLock:
-                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])        
+                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
+                
+            ####set timeseries mask on ingest
+            capture_server,capture_server_port_str=opts.capture_server.split(':')
+            try:
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client.start()
+                client.wait_connected(timeout=5)
+                if client.is_connected():
+                    ret = client.blocking_request(katcp.Message.request('set-timeseries-mask',','.join(args[1:])), timeout=5)
+                    client.stop()
+                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                else:
+                    print 'Unable to connect to '+opts.capture_server
+                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
+            except:
+                print 'Exception occurred in setflags - set timeseries mask'
+            
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             print args
             html_layoutsettings[username][args[0]]=args[1]
@@ -1361,7 +1378,7 @@ def handle_websock_event(handlerkey,*args):
             try:
                 client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 client.start()
-                time.sleep(0.1)            
+                client.wait_connected(timeout=5)
                 if client.is_connected():
                     ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
                     client.stop()
@@ -1404,7 +1421,7 @@ def handle_websock_event(handlerkey,*args):
                 #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
                 # client.is_connected()
                 client.start()
-                time.sleep(0.1)            
+                client.wait_connected(timeout=5)
                 if client.is_connected():
                     # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
                     # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)

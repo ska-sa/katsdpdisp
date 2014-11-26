@@ -144,7 +144,7 @@ A few examples:
 'flags=..200' flags the first 200 channels
 'flags=-200..' flags the last 200 channels
 'flags=300..350' flags channels 300 to 350
-'flags=..200,300..350,500,-200' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
+'flags=..200,300..350,500,-200..' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
 
 'flags on' shows the current flags for all the figures on the page
 'flags off' hides the current flags for all the figures on the page
