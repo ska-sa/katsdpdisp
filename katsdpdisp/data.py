@@ -3135,6 +3135,6 @@ def set_bls(bls_ordering):
             else:#crosshv or vh 
                 crosshv.append(ibls)
     collectionproducts=[auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-    percunavg=[np.zeros(len(bls),dtype='float') for bls in collectionproducts]
-    return collectionproducts,percunavg
+    percrunavg=[np.zeros(len(bls),dtype='float') for bls in collectionproducts] #clears running percentile average
+    return collectionproducts,percrunavg
     
