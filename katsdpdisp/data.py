@@ -3094,7 +3094,10 @@ def parse_timeseries_mask(maskstr,spectrum_width):
                 spectrum_flag0.append(chan0)
                 spectrum_flag1.append(chan1)
                 spectrum_flagmask[chan0:(chan1+1)]=0
-    except Exception, e:
+    except Exception, e:#clears flags if exception occurred during parsing
+        spectrum_flagmask=np.ones([spectrum_width])
+        spectrum_flag0=[]
+        spectrum_flag1=[]
         pass
     timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
     return timeseriesmaskind,spectrum_flag0,spectrum_flag1
