@@ -348,6 +348,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
+                    ydata=np.array(ydata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         ydata=20.0*np.log10(ydata)
                         fig['ylabel']=['Power']
