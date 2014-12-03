@@ -470,6 +470,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
+                    ydata=np.array(ydata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         ydata=20.0*np.log10(ydata)
                         fig['ylabel']=['Power']
@@ -574,6 +575,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             rvcdata[1]=np.array([rvcdata[1]])                    
                         cdata=rvcdata[1]
                     
+                    cdata=np.array(cdata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         cdata=20.0*np.log10(cdata)
                         fig['clabel']='Power'
