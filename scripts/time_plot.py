@@ -305,7 +305,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 for iprod in range(2):#only min and max
                                     product=icolprod*5+iprod
                                     signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
-                                    ydata.append(signal.reshape(-1))
+                                    signal=signal.reshape(-1)
+                                    if (len(signal)<len(ts)):
+                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                                    ydata.append(signal)
                                     legend.append(colprod[8:])
                                     if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
                                         c=np.array(np.r_[cbase,0],dtype='int')
@@ -322,7 +325,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
                                     signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
-                                    ydata.append(signal.reshape(-1))
+                                    signal=signal.reshape(-1)
+                                    if (len(signal)<len(ts)):
+                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                                    ydata.append(signal)
                                     legend.append(colprod)
                                     if (iprod==4):
                                         c=np.array(np.r_[cbase,0],dtype='int')
@@ -332,8 +338,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         if (list(product) in datasd.cpref.bls_ordering):
                             signal = datasd.select_data(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                             signal=np.array(signal).reshape(-1)
+                            if (len(signal)<len(ts)):
+                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
                         else:
-                            signal=np.nan*np.ones(len(ts))
+                            signal=np.tile(np.nan,len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(printablesignal(product))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
@@ -342,13 +350,14 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
                         signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                         signal=np.array(signal).reshape(-1)
+                        if (len(signal)<len(ts)):
+                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
-                    ydata=np.array(ydata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         ydata=20.0*np.log10(ydata)
                         fig['ylabel']=['Power']
@@ -470,7 +479,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
-                    ydata=np.array(ydata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         ydata=20.0*np.log10(ydata)
                         fig['ylabel']=['Power']
@@ -575,7 +583,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             rvcdata[1]=np.array([rvcdata[1]])                    
                         cdata=rvcdata[1]
                     
-                    cdata=np.array(cdata,dtype=np.float32)
                     if (theviewsettings['type']=='pow'):
                         cdata=20.0*np.log10(cdata)
                         fig['clabel']='Power'
