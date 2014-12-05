@@ -359,7 +359,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
                     if (theviewsettings['type']=='pow'):
-                        ydata=20.0*np.log10(ydata)
+                        ydata=10.0*np.log10(ydata)
                         fig['ylabel']=['Power']
                         fig['yunit']=['dB']
                     elif (thetype=='mag'):
@@ -480,7 +480,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         ydata=[np.nan*ts]
                         color=[np.array([255,255,255,0])]
                     if (theviewsettings['type']=='pow'):
-                        ydata=20.0*np.log10(ydata)
+                        ydata=10.0*np.log10(ydata)
                         fig['ylabel']=['Power']
                         fig['yunit']=['dB']
                     elif (thetype=='mag'):
@@ -584,7 +584,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         cdata=rvcdata[1]
                     
                     if (theviewsettings['type']=='pow'):
-                        cdata=20.0*np.log10(cdata)
+                        cdata=10.0*np.log10(cdata)
                         fig['clabel']='Power'
                         fig['cunit']='dB'
                     elif (thetype=='mag'):
