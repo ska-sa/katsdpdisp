@@ -811,7 +811,7 @@ class SpeadSDReceiver(threading.Thread):
                         else:
                             self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
                             self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
-                            self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
+                            self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
         else:
             for heap in spead.iterheaps(self.rx):
                 self.ig.update(heap)
@@ -825,7 +825,7 @@ class SpeadSDReceiver(threading.Thread):
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
-                                self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
+                                self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                     if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
@@ -840,7 +840,7 @@ class SpeadSDReceiver(threading.Thread):
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
-                                self.storage.timeseriesmaskind,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
+                                self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         self.ig['bls_ordering'] = None
                     if self.ig['sd_data'] is not None:
                         ts = self.ig['sd_timestamp'] * 10.0
@@ -3051,7 +3051,7 @@ def parse_timeseries_mask(maskstr,spectrum_width):
     maskstr='300..350' flags channels 300 to 350
     maskstr='..200,300..350,500,-200..' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
     """
-    spectrum_flagmask=np.ones([spectrum_width])
+    spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
     spectrum_flag0=[]
     spectrum_flag1=[]
     if (spectrum_width<1):
@@ -3095,12 +3095,13 @@ def parse_timeseries_mask(maskstr,spectrum_width):
                 spectrum_flag1.append(chan1)
                 spectrum_flagmask[chan0:(chan1+1)]=0
     except Exception, e:#clears flags if exception occurred during parsing
-        spectrum_flagmask=np.ones([spectrum_width])
+        spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
         spectrum_flag0=[]
         spectrum_flag1=[]
         pass
     timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
-    return timeseriesmaskind,spectrum_flag0,spectrum_flag1
+    weightedmask=spectrum_flagmask/len(timeseriesmaskind)
+    return timeseriesmaskind,weightedmask,spectrum_flag0,spectrum_flag1
 
 
 def set_bls(bls_ordering):

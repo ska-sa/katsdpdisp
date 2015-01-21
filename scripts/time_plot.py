@@ -191,7 +191,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
 
             if (thelayoutsettings=='setflags'):
                 datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
-                datasd.storage.timeseriesmaskind,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
+                datasd.storage.timeseriesmaskind,weightedmask,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
                 continue
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings
