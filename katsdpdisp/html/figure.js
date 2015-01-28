@@ -953,7 +953,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 					rowscale=(dataylist.length)/(dataymax-dataymin)
 					colscale=(dataylist[0].length)/(dataxmax-dataxmin)
 
-					if (xunit=='')
+					if (1)//xunit=='')
 			        for(var i=0;i<imgdatalen-4;i+=4)
 			        {
 //				        imgdata.data[i+3] = 255;//A			    
