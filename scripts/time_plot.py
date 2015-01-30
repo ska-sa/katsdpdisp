@@ -546,7 +546,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             flags=np.logical_or(flags,rvcdata[2])
                         else:                        
                             product=decodecustomsignal(productstr)
-                            if (list(product) in datasd.cpref.bls_ordering):#test
+                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
                                 reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
                                 thech=thech[::reduction]
                                 newchanincr=chanincr/reduction
