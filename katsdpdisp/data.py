@@ -374,7 +374,11 @@ class SignalDisplayStore2(object):
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
-        self.outliertime=5
+        self.blmxslots = 256
+        self.blmxn_chans = 256
+        self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
+        self.blmxroll_point = 0
+        self.outliertime=  5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
         self.percrunavg = []
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
@@ -412,15 +416,6 @@ class SignalDisplayStore2(object):
         self.data[self.roll_point][corr_prod_id][offset:offset+len(data)] = data.view(np.complex64)
         if flags is not None:
             self.flags[self.roll_point][corr_prod_id][offset:offset+len(data)] = flags
-        self._last_ts = timestamp_ms
-
-    def add_data2old(self, timestamp_ms, data, flags=None):
-        if timestamp_ms != self._last_ts: self.frame_count += 1
-        if self.first_pass and self.frame_count > self.slots: self.first_pass = False
-        self.roll_point = (self.frame_count-1) % self.slots
-        self.ts[self.roll_point] = timestamp_ms
-        self.data[self.roll_point] = data
-        if flags is not None: self.flags[self.roll_point] = flags
         self._last_ts = timestamp_ms
 
     #data is one timestamps worth of timeseries data [bls] complex data
@@ -472,10 +467,13 @@ class SignalDisplayStore2(object):
                         perctimeseries.extend(pdata)
                     else:
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
-                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
+                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)                
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
 
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
+                
+                self.blmxroll_point = (self.frame_count-1) % self.blmxslots
+                self.blmxdata[self.blmxroll_point,:,:] = np.add.reduceat(data,range(0,self.n_chans,self.n_chans/self.blmxn_chans),axis=1)
             
             if (flags is not None):
                 self.flags[self.roll_point] = flags
@@ -1996,6 +1994,67 @@ class DataHandler(object):
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
             return frames
 
+    def select_blmxdata(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return
+            
+        with datalock:
+            if product is None: product = self.default_product
+            orig_product = product
+            product = self.cpref.user_to_id(product)
+
+            ts = []
+            roll_point = (0 if self.storage.first_pass else (self.storage.blmxroll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.blmxslots: end_time = -self.storage.blmxslots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.blmxslots if split_end - split_start > self.storage.blmxslots else split_end
+
+            arraylen=self.storage.blmxdata.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+            if (_split_start<_split_end):
+                frames=self.storage.blmxdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
+                if include_flags:
+                    flags = np.zeros(frames.shape,dtype=np.uint8)
+            else:
+                frames=np.concatenate((self.storage.blmxdata[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.blmxdata[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
+                if include_flags:
+                    flags = np.zeros(frames.shape,dtype=np.uint8)
+
+            frames = frames.squeeze()
+            if include_flags: flags = flags.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if avg_axis is not None:
+                frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+            if sum_axis is not None:
+                frames = np.sum(frames, sum_axis)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
+            if include_flags:
+                frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
+            return frames
+            
     def get_baseline_matrix(self, start_channel=0, stop_channel=-1):
         map = np.array([[0, 0],
            [0, 1],

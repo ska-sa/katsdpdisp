@@ -546,7 +546,15 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             flags=np.logical_or(flags,rvcdata[2])
                         else:                        
                             product=decodecustomsignal(productstr)
-                            if (list(product) in datasd.cpref.bls_ordering):
+                            if (list(product) in datasd.cpref.bls_ordering):#test
+                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                                thech=thech[::reduction]
+                                newchanincr=chanincr/reduction
+                                if (newchanincr<1):
+                                    newchanincr=1
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                flags=np.logical_or(flags,rvcdata[2])
+                            elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                                 flags=np.logical_or(flags,rvcdata[2])
                             else:
@@ -1262,7 +1270,12 @@ def handle_websock_event(handlerkey,*args):
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
-                if (len(decodedsignal)):
+                if (sig[:9]=='waterfall'):#creates new waterfall plot
+                    html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+                    for thishandler in websockrequest_username.keys():
+                        if (websockrequest_username[thishandler]==username):
+                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                elif (len(decodedsignal)):
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
@@ -1280,11 +1293,6 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                elif (sig[:9]=='waterfall'):#creates new waterfall plot
-                    html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    for thishandler in websockrequest_username.keys():
-                        if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)                    
                     
         elif (args[0]=='setflags'):
             print args
