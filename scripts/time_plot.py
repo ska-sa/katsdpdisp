@@ -1262,7 +1262,12 @@ def handle_websock_event(handlerkey,*args):
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
-                if (len(decodedsignal)):
+                if (sig[:9]=='waterfall'):#creates new waterfall plot
+                    html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+                    for thishandler in websockrequest_username.keys():
+                        if (websockrequest_username[thishandler]==username):
+                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)                    
+                elif (len(decodedsignal)):
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
@@ -1280,11 +1285,6 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                elif (sig[:9]=='waterfall'):#creates new waterfall plot
-                    html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    for thishandler in websockrequest_username.keys():
-                        if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)                    
                     
         elif (args[0]=='setflags'):
             print args
