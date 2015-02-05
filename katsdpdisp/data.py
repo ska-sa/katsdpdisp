@@ -448,7 +448,7 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, timeseries=None, percspectrum=None, percspectrumflags=None):
+    def add_data2(self, timestamp_ms, data, flags=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
@@ -473,7 +473,7 @@ class SignalDisplayStore2(object):
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
                 
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
-                self.blmxdata[self.blmxroll_point,:,:] = np.add.reduceat(data,range(0,self.n_chans,self.n_chans/self.blmxn_chans),axis=1)
+                self.blmxdata[self.blmxroll_point,:,:] = blmxdata
             
             if (flags is not None):
                 self.flags[self.roll_point] = flags
@@ -849,7 +849,9 @@ class SpeadSDReceiver(threading.Thread):
                             self.storage.add_data2(ts,  self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, \
                                                         self.ig['sd_timeseries'].astype(np.float32).view(np.complex64)[:,0], \
                                                         self.ig['sd_percspectrum'].astype(np.float32), \
-                                                        self.ig['sd_percspectrumflags'].astype(np.uint8))
+                                                        self.ig['sd_percspectrumflags'].astype(np.uint8), \
+                                                        self.ig['sd_blmxdata'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
+                                                        self.ig['sd_blmxflags'].astype(np.uint8))
                         else:
                             data = self.ig['sd_data'].swapaxes(0,1)
                             for id in range(data.shape[0]):

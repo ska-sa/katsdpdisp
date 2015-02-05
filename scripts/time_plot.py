@@ -154,7 +154,6 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
             channelincr=1
     return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
 
-
 #import objgraph
 
 #idea is to store the averaged time series profile in channel 0
@@ -548,7 +547,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             product=decodecustomsignal(productstr)
                             if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
                                 reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
-                                thech=thech[::reduction]
+                                thech=ch[start_chan:stop_chan:reduction]
                                 newchanincr=chanincr/reduction
                                 if (newchanincr<1):
                                     newchanincr=1
