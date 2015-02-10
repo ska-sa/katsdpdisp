@@ -21,22 +21,14 @@ RUN apt-get -y update && apt-get -y install \
     build-essential software-properties-common wget git-core \
     python python-dev python-pip \
     python-appdirs \
-    python-blinker \
     python-decorator \
     python-h5py \
-    python-iniparse \
-    python-mako \
     python-markupsafe \
-    python-mock \
     python-nose \
     python-numpy \
     python-ply \
     python-py \
     python-pytools \
-    python-scipy \
-    python-twisted \
-    python-unittest2 \
-    gfortran libatlas-base-dev libblas-dev libexpat1-dev \
     ipython \
     python-matplotlib
 
@@ -47,8 +39,6 @@ RUN apt-get -y update && apt-get -y install \
 RUN pip install --no-deps \
     ansicolors==1.0.2 \
     katcp==0.5.5 \
-    pyephem==3.7.5.3 \
-    scikits.fitting==0.5.1 \
     mplh5canvas==0.7 \
     guppy==0.1.10 \
     ProxyTypes==0.9 \
