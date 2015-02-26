@@ -223,7 +223,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 continue
             if (thelayoutsettings=='resetcolours'):
                 global colour_dict
-                colour_dict={}
+                if (len(theviewsettings)==0 or (len(theviewsettings)==1 and len(theviewsettings[0])==0)):
+                    colour_dict={}
+                else:#randomise specific signals only
+                    for signalname in theviewsettings:
+                        colour_dict[signalname]=np.random.random(3)*255
                 continue
             if (thelayoutsettings=='RESTART'):
                 fig={'logconsole':'Exiting ring buffer process'}
@@ -1259,7 +1263,7 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='resetcolours'):
             print args
             with RingBufferLock:
-                ringbufferrequestqueue.put(['resetcolours',0,0,0,0,0])
+                ringbufferrequestqueue.put(['resetcolours',args[1:],0,0,0,0])
         elif (args[0]=='setsignals'):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')

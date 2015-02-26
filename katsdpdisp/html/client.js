@@ -66,9 +66,9 @@ function setsignals(){
     }else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
-    }else if (signaltext=='resetcolours')
+    }else if (signaltext.slice(0,12)=='resetcolours')
     {
-        handle_data_user_event('resetcolours');
+        handle_data_user_event('resetcolours,'+signaltext.slice(12).replace(' ',''));
     }else if (signaltext=='RESTART')
     {
         handle_data_user_event('RESTART');        

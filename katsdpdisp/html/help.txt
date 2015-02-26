@@ -168,6 +168,11 @@ This command stops, deletes and restarts the spead receiver. Note that historic 
 [resetcolours]
 Randomises the line colours
 
+'resetcolours' randomises all colours
+'resetcolours 5h5h' randomises colour for 5h5h signal only
+'resetcolours 5h5h,5h7h' randomises colours for 5h5h and 5h7h signals only
+
+
 [ncols]
 Change the number of columns, and recalculate figure sizes accordingly.
 
