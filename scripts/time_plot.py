@@ -221,6 +221,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='resetcolours'):
+                global colour_dict
+                colour_dict={}
+                continue
             if (thelayoutsettings=='RESTART'):
                 fig={'logconsole':'Exiting ring buffer process'}
                 ringbufferresultqueue.put(fig)
@@ -1253,7 +1257,9 @@ def handle_websock_event(handlerkey,*args):
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
         elif (args[0]=='resetcolours'):
-            colour_dict={}
+            print args
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['resetcolours',0,0,0,0,0])
         elif (args[0]=='setsignals'):
             print args
             #decodes signals of from 1h3h to ('ant1h','ant3h')
