@@ -41,6 +41,7 @@ console - shows,  hides or clears the console
 DROP - Drops this ip from list of signal displays
 metadata - re-issue metadata, may be useful when starting up timeplot server while an observation is running
 restartspead - experimental, shows debug info
+resetcolours - randomise signal colours
 RESTART - exits spead receiver process and restarts it, then re-issue metadata
 memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
@@ -163,6 +164,9 @@ Prints out counts of new objects stored in memory.
 
 [restartspead]
 This command stops, deletes and restarts the spead receiver. Note that historic data is deleted. The metadata command is also executed afterwards.
+
+[resetcolours]
+Randomises the line colours
 
 [ncols]
 Change the number of columns, and recalculate figure sizes accordingly.

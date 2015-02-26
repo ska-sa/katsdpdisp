@@ -66,6 +66,9 @@ function setsignals(){
     }else if (signaltext.slice(0,6)=='flags=')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
+    }else if (signaltext=='resetcolours')
+    {
+        handle_data_user_event('resetcolours');
     }else if (signaltext=='RESTART')
     {
         handle_data_user_event('RESTART');        
