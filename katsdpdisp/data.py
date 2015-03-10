@@ -828,7 +828,7 @@ class SpeadSDReceiver(threading.Thread):
                         if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
                             self.update_center_freqs()
                             print "New center frequency:", self.center_freq, " channel bandwidth: ",self.channel_bandwidth
-                    if self.ig['bls_ordering'] is not None:
+                    if self.ig.get_item('bls_ordering').has_changed():
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']] != self.bls_ordering:
                             self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']]
                             self.cpref.bls_ordering = self.bls_ordering
@@ -839,7 +839,7 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
-                        self.ig['bls_ordering'] = None
+                        self.ig.get_item('bls_ordering').unset_changed()
                     if self.ig['sd_data'] is not None:
                         ts = self.ig['sd_timestamp'] * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
