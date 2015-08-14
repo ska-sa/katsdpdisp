@@ -375,7 +375,7 @@ class SignalDisplayStore2(object):
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.blmxslots = 256
-        self.blmxn_chans = 256
+        self.blmxn_chans = 32 #256
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxroll_point = 0
         self.outliertime=  5

@@ -1269,6 +1269,7 @@ def handle_websock_event(handlerkey,*args):
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
+                print 'signal',sig,' ==> decodedsignal',decodedsignal
                 if (sig[:9]=='waterfall'):#creates new waterfall plot
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
