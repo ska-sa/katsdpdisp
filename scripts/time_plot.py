@@ -2136,7 +2136,10 @@ parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
                   help="Port number used to connect to spead stream (default=%default)")
 parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type='string',
                   help="Server ip-address:port that runs kat_capture (default=%default)")
-                
+parser.add_option("--telstate", dest="telstate", default="localhost:6379", type='string',
+                  help="Telescope State ip-address:port (default=%default)")
+parser.add_option("--name", dest="name", default="sdp.timeplot.1", type='string',
+                  help="Name of this task (default=%default)")
 
 (opts, args) = parser.parse_args()
 SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
