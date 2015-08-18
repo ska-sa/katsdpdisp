@@ -43,7 +43,8 @@ RUN pip install --no-deps \
     guppy==0.1.10 \
     ProxyTypes==0.9 \
     mod_pywebsocket==0.7.9 \
-    psutil==2.1.1
+    psutil==2.1.1 \
+    manhole
 COPY requirements.txt /tmp/install/requirements.txt
 # Keep only dependent git repositories; everything else is installed explicitly
 # by this Dockerfile.

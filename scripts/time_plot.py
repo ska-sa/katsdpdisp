@@ -24,6 +24,8 @@ import re
 import json
 import resource
 import gc
+import manhole
+import signal
 from guppy import hpy
 import katcp
 
@@ -2136,7 +2138,10 @@ parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
                   help="Port number used to connect to spead stream (default=%default)")
 parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type='string',
                   help="Server ip-address:port that runs kat_capture (default=%default)")
-                
+parser.add_option("--telstate", dest="telstate", default="localhost:6379", type='string',
+                  help="Telescope State ip-address:port (default=%default)")
+parser.add_option("--name", dest="name", default="sdp.timeplot.1", type='string',
+                  help="Name of this task (default=%default)")
 
 (opts, args) = parser.parse_args()
 SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
@@ -2202,14 +2207,28 @@ RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 opts.datafilename=args[0]
-Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
+rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue))
+rb_process.start()
 htmlrequest_handlers={}
+
+def graceful_exit(_signo=None, _stack_frame=None):
+    logger.info("Exiting time_plot on SIGTERM")
+    rb_process.terminate()
+     # SIGINT gets swallowed by the HTTP server
+     # so we explicitly terminate the Ring Buffer
+    os.kill(os.getpid(), signal.SIGINT)
+     # rely on the interrupt handler around the HTTP server
+     # to peform graceful shutdown. this preserves the command
+     # line Ctrl-C shutdown.
+
+signal.signal(signal.SIGTERM, graceful_exit)
+ # mostly needed for Docker use since this process runs as PID 1
+ # and does not get passed sigterm unless it has a custom listener
 
 try:
     websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
     print 'Started data websocket server on port ' , opts.data_port
     thread.start_new_thread(websockserver.serve_forever, ())
-    
 except Exception, e:
     print "Failed to create data websocket server. (%s)" % str(e)
     sys.exit(1)
@@ -2217,8 +2236,9 @@ except Exception, e:
 try:
     server = HTTPServer(("", opts.html_port), htmlHandler)
     print 'Started httpserver on port ' , opts.html_port
+    manhole.install(oneshot_on='USR1', locals={'server':server, 'websockserver':websockserver, 'opts':opts})
+     # allow remote debug connections and expose server, websockserver and opts
     server.serve_forever()
-
 except KeyboardInterrupt:
     print '^C received, shutting down the web server'
     server.socket.close()
