@@ -2,6 +2,7 @@
 
 ####!/usr/bin/env python
 import optparse
+import katsdptelstate
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from pkg_resources import resource_filename
@@ -2120,30 +2121,26 @@ def register_htmlrequest_handler(requesthandler):
 def deregister_htmlrequest_handler(webid):
     htmlrequest_handlers.pop(webid)#del rv?
 
-# Parse command-line opts and arguments
-parser = optparse.OptionParser(usage="%prog [opts] <file or 'stream' or 'k7simulator'>",
-                               description="Launches the HTML5 signal displays front end server. "
-                               "If no <file> is given then it defaults to 'stream'.")
-parser.add_option("-d", "--debug", dest="debug", action="store_true",default=False,
-                  help="Display debug messages.")
-parser.add_option("-m", "--memusage", dest="memusage", default=10.0, type='float',
-                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%default)")
-parser.add_option("--rts", dest="rts_antenna_labels", action="store_true",default=False,
-                  help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
-parser.add_option("--html_port", dest="html_port", default=8080, type='int',
-                  help="Port number used to serve html pages for signal displays (default=%default)")
-parser.add_option("--data_port", dest="data_port", default=8081, type='int',
-                  help="Port number used to serve data for signal displays (default=%default)")
-parser.add_option("--spead_port", dest="spead_port", default=7149, type='int',
-                  help="Port number used to connect to spead stream (default=%default)")
-parser.add_option("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type='string',
-                  help="Server ip-address:port that runs kat_capture (default=%default)")
-parser.add_option("--telstate", dest="telstate", default="localhost:6379", type='string',
-                  help="Telescope State ip-address:port (default=%default)")
-parser.add_option("--name", dest="name", default="sdp.timeplot.1", type='string',
-                  help="Name of this task (default=%default)")
+parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
+                               description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
 
-(opts, args) = parser.parse_args()
+parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
+                  help="Display debug messages.")
+parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
+                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%default)")
+parser.add_argument("--rts", type=bool, dest="rts_antenna_labels", default=False,
+                  help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
+parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
+                  help="Port number used to serve html pages for signal displays (default=%default)")
+parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
+                  help="Port number used to serve data for signal displays (default=%default)")
+parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
+                  help="Port number used to connect to spead stream (default=%default)")
+parser.add_argument("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type=str,
+                  help="Server ip-address:port that runs kat_capture (default=%default)")
+
+(opts, args) = parser.parse_known_args()
+
 SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
