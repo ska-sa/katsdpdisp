@@ -2128,7 +2128,7 @@ parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
                   help="Display debug messages.")
 parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%default)")
-parser.add_argument("--rts", type=bool, dest="rts_antenna_labels", default=False,
+parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=False,
                   help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%default)")
