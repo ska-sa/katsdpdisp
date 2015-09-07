@@ -2127,17 +2127,17 @@ parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'strea
 parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
                   help="Display debug messages.")
 parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
-                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%default)")
+                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%(default)s)")
 parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=False,
                   help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
-                  help="Port number used to serve html pages for signal displays (default=%default)")
+                  help="Port number used to serve html pages for signal displays (default=%(default)s)")
 parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
-                  help="Port number used to serve data for signal displays (default=%default)")
+                  help="Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
-                  help="Port number used to connect to spead stream (default=%default)")
+                  help="Port number used to connect to spead stream (default=%(default)s)")
 parser.add_argument("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type=str,
-                  help="Server ip-address:port that runs kat_capture (default=%default)")
+                  help="Server ip-address:port that runs kat_capture (default=%(default)s)")
 
 (opts, args) = parser.parse_known_args()
 
