@@ -725,24 +725,23 @@ class SpeadSDReceiver(threading.Thread):
         The object in which to store the received signal display data. If none specified then only the current frame
         of data will be available at any given time.
         default: None
-    pkt_buffer_count : integer
-        The buffer size for a single SPEAD heap.
-        default: 1024
     direct : boolean
         If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, pkt_buffer_count=1024, direct=False):
+    def __init__(self, port, storage, direct=False):
         self._port = port
         self.storage = storage
         try:
-            import spead64_48 as spead
+            import spead2
+            import spead2.recv
         except Exception, e:
             print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
             return
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
-        self.rx = spead.TransportUDPrx(self._port, pkt_count=pkt_buffer_count)
-        self.ig = spead.ItemGroup()
+        self.rx = spead2.recv.Stream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
+        self.rx.add_udp_reader(self._port)
+        self.ig = spead2.ItemGroup()
         self.heap_count = 0
         self.bls_ordering = None
         self.center_freq = 0
@@ -761,9 +760,9 @@ class SpeadSDReceiver(threading.Thread):
         """Update the table containing the center frequencies for each channels."""
         print "Attempting to update center frequencies..."
         try:
-            self.center_freq = self.ig['center_freq']
-            self.channels = self.ig['n_chans']
-            self.channel_bandwidth = self.ig['bandwidth'] / self.channels
+            self.center_freq = self.ig['center_freq'].value
+            self.channels = self.ig['n_chans'].value
+            self.channel_bandwidth = self.ig['bandwidth'].value / self.channels
             self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
@@ -774,27 +773,26 @@ class SpeadSDReceiver(threading.Thread):
         """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
            the storage object.
         """
-        import spead64_48 as spead
         if self.direct:
-            for heap in spead.iterheaps(self.rx):
+            for heap in self.rx:
                 self.ig.update(heap)
                 self.heap_count += 1
                 if self._direct_meta_required == []:
                  # we have enough meta data to handle direct responses
-                    if self.ig['xeng_raw'] is not None:
-                        ts = int((self._direct_meta['sync_time'] + (self.ig['timestamp'] / self._direct_meta['scale_factor_timestamp'])) * 1000)
+                    if self.ig['xeng_raw'].value is not None:
+                        ts = int((self._direct_meta['sync_time'] + (self.ig['timestamp'].value / self._direct_meta['scale_factor_timestamp'])) * 1000)
                         if isinstance(self.storage,SignalDisplayStore2):
-                            data = self.ig['xeng_raw'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0]
+                            data = self.ig['xeng_raw'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0]
                             self.storage.add_data2(ts, data)
                         else:
-                            data = self.ig['xeng_raw'].swapaxes(0,1)
+                            data = self.ig['xeng_raw'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
                                 fdata = data[id].flatten()
                                 self.storage.add_data(ts, id, 0, len(fdata), fdata)
                 else:
                     for name in self.ig.keys():
                         if name in self._direct_meta_required:
-                            self._direct_meta[name] = self.ig[name]
+                            self._direct_meta[name] = self.ig[name].value
                             self._direct_meta_required.remove(name)
                     if self._direct_meta_required == []:
                         self.update_center_freqs()
@@ -811,49 +809,50 @@ class SpeadSDReceiver(threading.Thread):
                             self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                             self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
         else:
-            for heap in spead.iterheaps(self.rx):
+            bls_ordering_version = -1
+            for heap in self.rx:
                 self.ig.update(heap)
                 self.heap_count += 1
                 try:
-                    if self.ig['n_chans'] is not None:
-                        if self.ig['n_chans'] != self.channels:
-                            print "Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'])
+                    if self.ig['n_chans'].value is not None:
+                        if self.ig['n_chans'].value != self.channels:
+                            print "Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'].value)
                             self.update_center_freqs()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
-                    if self.ig['center_freq'] is not None and self.ig['bandwidth'] is not None and self.ig['n_chans'] is not None:
-                        if self.ig['center_freq'] != self.center_freq or self.ig['bandwidth'] / self.ig['n_chans'] != self.channel_bandwidth:
+                    if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
+                        if self.ig['center_freq'].value != self.center_freq or self.ig['bandwidth'].value / self.ig['n_chans'].value != self.channel_bandwidth:
                             self.update_center_freqs()
                             print "New center frequency:", self.center_freq, " channel bandwidth: ",self.channel_bandwidth
-                    if self.ig.get_item('bls_ordering').has_changed():
-                        if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']] != self.bls_ordering:
-                            self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering']]
+                    if self.ig['bls_ordering'].version != bls_ordering_version:
+                        if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value] != self.bls_ordering:
+                            self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value]
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
                             print "Signal display store data purged due to changed baseline ordering..."
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
-                        self.ig.get_item('bls_ordering').unset_changed()
-                    if self.ig['sd_data'] is not None:
-                        ts = self.ig['sd_timestamp'] * 10.0
+                        bls_ordering_version = self.ig['bls_ordering'].version
+                    if self.ig['sd_data'].value is not None:
+                        ts = self.ig['sd_timestamp'].value * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
-                            flags = self.ig['sd_flags'].swapaxes(0,1) if 'sd_flags' in self.ig.keys() else None
+                            flags = self.ig['sd_flags'].value.swapaxes(0,1) if 'sd_flags' in self.ig.keys() else None
                             
-                            self.storage.add_data2(ts,  self.ig['sd_data'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, \
-                                                        self.ig['sd_timeseries'].astype(np.float32).view(np.complex64)[:,0], \
-                                                        self.ig['sd_percspectrum'].astype(np.float32), \
-                                                        self.ig['sd_percspectrumflags'].astype(np.uint8), \
-                                                        self.ig['sd_blmxdata'].astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
-                                                        self.ig['sd_blmxflags'].astype(np.uint8))
+                            self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, \
+                                                        self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
+                                                        self.ig['sd_percspectrum'].value.astype(np.float32), \
+                                                        self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
+                                                        self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
+                                                        self.ig['sd_blmxflags'].value.astype(np.uint8))
                         else:
-                            data = self.ig['sd_data'].swapaxes(0,1)
+                            data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
                                 fdata = data[id].flatten()
                                 self.storage.add_data(ts, id, 0, len(fdata), fdata)

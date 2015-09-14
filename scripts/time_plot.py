@@ -242,10 +242,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(signal)
                 continue
             if (thelayoutsettings=='restartspead'):
-                print datasd.ig._new_names.keys()
-                fig={'logconsole':'datasd.ig._new_names.keys()= '+str(datasd.ig._new_names.keys())}
-                ringbufferresultqueue.put(fig)
-                datasd.ig._new_names={}
                 # objgraph.show_refs([dh],filename='objgraph_refs.png')
                 # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
                 # print 'show_most_common_types()'
