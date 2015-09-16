@@ -44,6 +44,8 @@ RUN pip install --no-deps \
     ProxyTypes==0.9 \
     mod_pywebsocket==0.7.9 \
     psutil==2.1.1 \
+    redis \
+    netifaces \
     manhole
 COPY requirements.txt /tmp/install/requirements.txt
 # Keep only dependent git repositories; everything else is installed explicitly
