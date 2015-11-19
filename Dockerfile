@@ -45,8 +45,10 @@ RUN pip install --no-deps \
     guppy==0.1.10 \
     ProxyTypes==0.9 \
     mod_pywebsocket==0.7.9 \
+    netifaces==0.10.4 \
     psutil==2.1.1 \
-    manhole \
+    manhole==1.3.0 \
+    redis==2.10.5 \
     six==1.9.0 \
     spead2==0.3.0
 COPY requirements.txt /tmp/install/requirements.txt
