@@ -1,4 +1,4 @@
-FROM sdp-ingest5.kat.ac.za:5000/docker-base:docker-refactor
+FROM sdp-ingest5.kat.ac.za:5000/docker-base
 
 MAINTAINER Mattieu de Villiers "mattieu@ska.ac.za"
 
