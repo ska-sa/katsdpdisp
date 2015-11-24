@@ -17,9 +17,6 @@ var corrlinepoly=[0,1,0,0,0,0,0,0]
 var corrlinewidth=[2,2,1,1,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinealpha=[1,0.25,1,1,1,0.75,0.5,0.25]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinedash=[[0],[3,3],[0],[3,3],[0],[0],[0],[0]]//HH,VV,HV,VH,crossHH,VV,HV,VH
-var jetR256=[]
-var jetG256=[]
-var jetB256=[]
 var jetRGB256=[]
 var rubberbandDiv;
 var rubberbandmousedown = {}
@@ -127,10 +124,36 @@ function intensityToJet(inten,min,max)
 	}
 }
 
+function intensityToSpectral(inten,min,max)
+{
+    idx=[0.0,12.7,25.5,38.3,51.1,63.9,76.7,89.5,102.3,115.1,153.4,166.2,179.0,191.8,204.6,217.4,230.2,243.0,256.0];
+    R=[0.,118.12488863,135.87204162,0.90342145,0.,0.,0.,0.,0.,0.,0.,185.01855334,237.47332884,254.83383646,255.,255.,221.3007286,204.13957737,204.];
+    G=[0.,0.,0.,0.,0.,118.31091208,152.81403634,169.92209496,170.0085,153.07311196,254.62807268,255.,238.16431008,204.33207796,153.47831184,1.37514654,0.,0.,204.];
+    B=[0.,134.98179367,152.88036225,169.89550879,220.68962544,221.0085,221.0085,170.26758558,136.151017,0.58456682,0.,0.,0.,0.,0.,0.,0.,0.,204.];
+    len=idx.length
+	in256=(inten-min)/(max-min)*256.0;
+	if (in256<=0.0)
+	{
+		return [Math.floor(R[0]),Math.floor(G[0]),Math.floor(B[0])]
+	}else
+    {
+        for (var c=1;c<len;c++)
+        {
+            if (in256<idx[c])
+            {
+                f=(in256-idx[c-1])/(idx[c]-idx[c-1])
+                return [Math.floor(R[c]*f+R[c-1]*(1.0-f)),Math.floor(G[c]*f+G[c-1]*(1.0-f)),Math.floor(B[c]*f+B[c-1]*(1.0-f))]
+            }
+        }
+    }
+    return [Math.floor(R[len-1]),Math.floor(G[len-1]),Math.floor(B[len-1])]
+}
+
 function makejet()
 {
 	for (c=0;c<256;c++)
-		jetRGB256[c]=intensityToJet(c,0,255)
+        // jetRGB256[c]=intensityToJet(c,0,255)
+        jetRGB256[c]=intensityToSpectral(c,0,255)
 	jetRGB256[NaN]=[255,255,255]
 }
 
