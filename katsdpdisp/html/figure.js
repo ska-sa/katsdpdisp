@@ -27,6 +27,7 @@ var figdragmode=0
 var figdragstart=[0,0]
 var figdragstartevent=0
 var figdragsizestart=[0,0]
+var mousemovepos=[0,0,0]
 var mouseclick=0
 var ifigure=0
 
@@ -444,26 +445,33 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		return;
 	}
 	yviewmin=[]
-	yviewmax=[]			
+	yviewmax=[]
 	var localdatax
+    var imousemovepos
 	if (datax.length==2 && (dataylist[0][0]).length>2)
 	{
 		localdatax=new Array((dataylist[0][0]).length)
 		if ((xunit=='s'))
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[0]-datax[datax.length-1]+(datax[1]-datax[0])*i/(localdatax.length-1)
-		else
+		}else
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[0]+(datax[1]-datax[0])*i/(localdatax.length-1)
+        }
 	}else
 	{
 		localdatax=new Array(datax.length)
 		if ((xunit=='s'))
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[i]-datax[datax.length-1]
-		else
+		}else
+        {
 			for (i=0;i<localdatax.length;i++)
-				localdatax[i]=datax[i]				
+				localdatax[i]=datax[i]
+        }
 	}
 	xviewmin=Math.min(localdatax[0],localdatax[localdatax.length-1])
 	xviewmax=Math.max(localdatax[0],localdatax[localdatax.length-1])				
@@ -501,10 +509,22 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		context.fillStyle = "#000000";
 		xscale=xspan/(xviewmax-xviewmin)
 		xoff=-xviewmin*xscale;
+        imousemoveposx=-1;
+        if (localdatax.length>2)
+        {
+            if (localdatax[0]<localdatax[1])
+                for (imousemoveposx=0;imousemoveposx<localdatax.length && (xoff+xscale*localdatax[imousemoveposx])<mousemovepos[0];imousemoveposx++);
+            else
+                for (imousemoveposx=0;imousemoveposx<localdatax.length && (xoff+xscale*localdatax[imousemoveposx])>=mousemovepos[0];imousemoveposx++);
+        }
+
 		for (x=0;x<localdatax.length && (xoff+xscale*localdatax[x])<0;x++);
 		if (x>1)ixstart=x-2;else ixstart=0;
 		for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
-		if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+        if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+        var bestdist=1e100;
+        var ibestline=0;
+        var ibesttwin=0;
 		for (itwin=0;itwin<dataylist.length;itwin++)
 		{
 			yviewmin[itwin]=-60
@@ -525,6 +545,13 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			for (iline=0;iline<dataylist[itwin].length;iline++)
 			{
 			        context.beginPath();
+                    thisdist=Math.abs((yoff-yscale*dataylist[itwin][iline][imousemoveposx])-mousemovepos[1])
+                    if (thisdist<bestdist)
+                    {
+                        bestdist=thisdist;
+                        ibestline=iline;
+                        ibesttwin=itwin;
+                    }
 					if (ixend-ixstart<=1024)
 					{
 						context.lineWidth=corrlinewidth[clrlist[iline][3]]
@@ -652,8 +679,13 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
     				   	figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+legendfontHeight/5.0);
     				    figcontext.stroke();
     					figcontext.closePath();
-    				    figcontext.strokeStyle = "#000000";
+                        if (ibestline==iline && ibesttwin==0 && mousemovepos[2]==ifig)
+                            figcontext.fillStyle = "#000000";
+                        else
+                            figcontext.fillStyle = "rgb(128,128,128)";
     					figcontext.fillText(legend[iline],x+legendfontHeight*0.75+2,y)
+                        figcontext.fillStyle = "#000000";
+                        figcontext.strokeStyle = "#000000";
     				}
     				figcontext.lineWidth=1;
     				//figcontext.setLineDash([0])
@@ -1374,6 +1406,7 @@ function onFigureMouseMove(event){
 	var figurediv = document.getElementById("myfigurediv"+tempifigure);
 	var canvas = document.getElementById("myfigurecanvas"+tempifigure);
 	var axiscanvas = document.getElementById("myaxiscanvas"+tempifigure);
+    mousemovepos=[event.layerX-axiscanvas.offsetLeft,event.layerY-axiscanvas.offsetTop,tempifigure]
 	mouseclick=0;
 	if (figdragmode==2)
 	{
