@@ -17,9 +17,6 @@ var corrlinepoly=[0,1,0,0,0,0,0,0]
 var corrlinewidth=[2,2,1,1,1,1,1,1]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinealpha=[1,0.25,1,1,1,0.75,0.5,0.25]//HH,VV,HV,VH,crossHH,VV,HV,VH
 var corrlinedash=[[0],[3,3],[0],[3,3],[0],[0],[0],[0]]//HH,VV,HV,VH,crossHH,VV,HV,VH
-var jetR256=[]
-var jetG256=[]
-var jetB256=[]
 var jetRGB256=[]
 var rubberbandDiv;
 var rubberbandmousedown = {}
@@ -30,6 +27,7 @@ var figdragmode=0
 var figdragstart=[0,0]
 var figdragstartevent=0
 var figdragsizestart=[0,0]
+var mousemovepos=[0,0,0]
 var mouseclick=0
 var ifigure=0
 
@@ -127,10 +125,36 @@ function intensityToJet(inten,min,max)
 	}
 }
 
+function intensityToSpectral(inten,min,max)
+{
+    idx=[0.0,12.7,25.5,38.3,51.1,63.9,76.7,89.5,102.3,115.1,153.4,166.2,179.0,191.8,204.6,217.4,230.2,243.0,256.0];
+    R=[0.,118.12488863,135.87204162,0.90342145,0.,0.,0.,0.,0.,0.,0.,185.01855334,237.47332884,254.83383646,255.,255.,221.3007286,204.13957737,204.];
+    G=[0.,0.,0.,0.,0.,118.31091208,152.81403634,169.92209496,170.0085,153.07311196,254.62807268,255.,238.16431008,204.33207796,153.47831184,1.37514654,0.,0.,204.];
+    B=[0.,134.98179367,152.88036225,169.89550879,220.68962544,221.0085,221.0085,170.26758558,136.151017,0.58456682,0.,0.,0.,0.,0.,0.,0.,0.,204.];
+    len=idx.length
+	in256=(inten-min)/(max-min)*256.0;
+	if (in256<=0.0)
+	{
+		return [Math.floor(R[0]),Math.floor(G[0]),Math.floor(B[0])]
+	}else
+    {
+        for (var c=1;c<len;c++)
+        {
+            if (in256<idx[c])
+            {
+                f=(in256-idx[c-1])/(idx[c]-idx[c-1])
+                return [Math.floor(R[c]*f+R[c-1]*(1.0-f)),Math.floor(G[c]*f+G[c-1]*(1.0-f)),Math.floor(B[c]*f+B[c-1]*(1.0-f))]
+            }
+        }
+    }
+    return [Math.floor(R[len-1]),Math.floor(G[len-1]),Math.floor(B[len-1])]
+}
+
 function makejet()
 {
 	for (c=0;c<256;c++)
-		jetRGB256[c]=intensityToJet(c,0,255)
+        // jetRGB256[c]=intensityToJet(c,0,255)
+        jetRGB256[c]=intensityToSpectral(c,0,255)
 	jetRGB256[NaN]=[255,255,255]
 }
 
@@ -421,26 +445,33 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		return;
 	}
 	yviewmin=[]
-	yviewmax=[]			
+	yviewmax=[]
 	var localdatax
+    var imousemovepos
 	if (datax.length==2 && (dataylist[0][0]).length>2)
 	{
 		localdatax=new Array((dataylist[0][0]).length)
 		if ((xunit=='s'))
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[0]-datax[datax.length-1]+(datax[1]-datax[0])*i/(localdatax.length-1)
-		else
+		}else
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[0]+(datax[1]-datax[0])*i/(localdatax.length-1)
+        }
 	}else
 	{
 		localdatax=new Array(datax.length)
 		if ((xunit=='s'))
+        {
 			for (i=0;i<localdatax.length;i++)
 				localdatax[i]=datax[i]-datax[datax.length-1]
-		else
+		}else
+        {
 			for (i=0;i<localdatax.length;i++)
-				localdatax[i]=datax[i]				
+				localdatax[i]=datax[i]
+        }
 	}
 	xviewmin=Math.min(localdatax[0],localdatax[localdatax.length-1])
 	xviewmax=Math.max(localdatax[0],localdatax[localdatax.length-1])				
@@ -478,10 +509,22 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		context.fillStyle = "#000000";
 		xscale=xspan/(xviewmax-xviewmin)
 		xoff=-xviewmin*xscale;
+        imousemoveposx=-1;
+        if (localdatax.length>2)
+        {
+            if (localdatax[0]<localdatax[1])
+                for (imousemoveposx=0;imousemoveposx<localdatax.length && (xoff+xscale*localdatax[imousemoveposx])<mousemovepos[0];imousemoveposx++);
+            else
+                for (imousemoveposx=0;imousemoveposx<localdatax.length && (xoff+xscale*localdatax[imousemoveposx])>=mousemovepos[0];imousemoveposx++);
+        }
+
 		for (x=0;x<localdatax.length && (xoff+xscale*localdatax[x])<0;x++);
 		if (x>1)ixstart=x-2;else ixstart=0;
 		for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
-		if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+        if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+        var bestdist=1e100;
+        var ibestline=0;
+        var ibesttwin=0;
 		for (itwin=0;itwin<dataylist.length;itwin++)
 		{
 			yviewmin[itwin]=-60
@@ -502,6 +545,13 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 			for (iline=0;iline<dataylist[itwin].length;iline++)
 			{
 			        context.beginPath();
+                    thisdist=Math.abs((yoff-yscale*dataylist[itwin][iline][imousemoveposx])-mousemovepos[1])
+                    if (thisdist<bestdist)
+                    {
+                        bestdist=thisdist;
+                        ibestline=iline;
+                        ibesttwin=itwin;
+                    }
 					if (ixend-ixstart<=1024)
 					{
 						context.lineWidth=corrlinewidth[clrlist[iline][3]]
@@ -629,8 +679,13 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
     				   	figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+legendfontHeight/5.0);
     				    figcontext.stroke();
     					figcontext.closePath();
-    				    figcontext.strokeStyle = "#000000";
+                        if (ibestline==iline && ibesttwin==0 && mousemovepos[2]==ifig)
+                            figcontext.fillStyle = "#000000";
+                        else
+                            figcontext.fillStyle = "rgb(128,128,128)";
     					figcontext.fillText(legend[iline],x+legendfontHeight*0.75+2,y)
+                        figcontext.fillStyle = "#000000";
+                        figcontext.strokeStyle = "#000000";
     				}
     				figcontext.lineWidth=1;
     				//figcontext.setLineDash([0])
@@ -953,7 +1008,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 					rowscale=(dataylist.length)/(dataymax-dataymin)
 					colscale=(dataylist[0].length)/(dataxmax-dataxmin)
 
-					if (xunit=='')
+					if (1)//xunit=='')
 			        for(var i=0;i<imgdatalen-4;i+=4)
 			        {
 //				        imgdata.data[i+3] = 255;//A			    
@@ -1351,6 +1406,7 @@ function onFigureMouseMove(event){
 	var figurediv = document.getElementById("myfigurediv"+tempifigure);
 	var canvas = document.getElementById("myfigurecanvas"+tempifigure);
 	var axiscanvas = document.getElementById("myaxiscanvas"+tempifigure);
+    mousemovepos=[event.layerX-axiscanvas.offsetLeft,event.layerY-axiscanvas.offsetTop,tempifigure]
 	mouseclick=0;
 	if (figdragmode==2)
 	{
