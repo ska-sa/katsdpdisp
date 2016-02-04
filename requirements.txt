@@ -22,9 +22,9 @@ python-dateutil==2.4.2
 pytz==2015.7
 redis
 six
+spead2
 traceback2
 twisted
 unittest2
 zope.interface
-git+https://github.com/ska-sa/PySPEAD
 git+ssh://git@github.com/ska-sa/katsdptelstate
