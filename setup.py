@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 
 setup (
     name = "katsdpdisp",
-    version = "trunk",
     description = "Karoo Array Telescope Online Signal Displays",
     author = "Mattieu de Villiers",
     packages = find_packages(),
@@ -13,4 +12,6 @@ setup (
         "scripts/time_plot.py",
         ],
     zip_safe = False,
+    setup_requires=["katversion"],
+    use_katversion=True
 )
