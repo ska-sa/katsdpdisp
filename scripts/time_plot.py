@@ -210,8 +210,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
                 ringbufferresultqueue.put(fig)
                 continue
+            if (thelayoutsettings=='get_bls_ordering'):
+                ringbufferresultqueue.put(datasd.cpref.bls_ordering)
+                continue
             if (thelayoutsettings=='info'):
-                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+str(datasd.receiver.heap_count)+'\nnchannels:'+str(datasd.receiver.channels)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+str(datasd.receiver.heap_count)+'\nnbaselines:'+str(len(datasd.cpref.bls_ordering))+'\nnchannels:'+str(datasd.receiver.channels)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
@@ -1131,6 +1134,49 @@ websockrequest_username = {}
 new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
 timeseries_recalced=0
 
+def SetCustomSignals(handlerkey):
+    #determine custom signals currently used
+    thecustomsignals=[]
+    try:
+        with RingBufferLock:
+            ringbufferrequestqueue.put(['get_bls_ordering',0,0,0,0,0])
+            bls_ordering=ringbufferresultqueue.get()
+        for thishandler in websockrequest_username.keys():
+            timedelay=(time.time()-websockrequest_time[thishandler])
+            if (timedelay<10):# connection been active within past 10 seconds
+                thisusername=websockrequest_username[thishandler]
+                for theviewsettings in html_viewsettings[thisusername]:#add waterfall plot signals to custom signals
+                    if (theviewsettings['figtype'][:9]=='waterfall'):
+                        product=list(decodecustomsignal(theviewsettings['figtype'][9:]))
+                        if (product in bls_ordering):
+                            productid=bls_ordering.index(product)
+                            if (productid not in thecustomsignals):
+                                thecustomsignals.append(productid)
+                for product in html_customsignals[thisusername]:
+                    product=list(product)
+                    if (product in bls_ordering):
+                        productid=bls_ordering.index(product)
+                        if (productid not in thecustomsignals):
+                            thecustomsignals.append(productid)
+        thecustomsignals=np.array(np.sort(thecustomsignals),dtype='S')
+    except:
+        print 'Exception occurred in setsignals - whilst gathering custom signals'
+    ####set custom signals on ingest
+    capture_server,capture_server_port_str=opts.capture_server.split(':')
+    try:
+        client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+        client.start()
+        client.wait_connected(timeout=5)
+        if client.is_connected():
+            ret = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
+            client.stop()
+            send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
+        else:
+            print 'Unable to connect to '+opts.capture_server
+            send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
+    except:
+        print 'Exception occurred in setsignals - set custom signals'
+
 def handle_websock_event(handlerkey,*args):
     try:
         # print(time.asctime()+' DATA '+str(args))
@@ -1147,6 +1193,7 @@ def handle_websock_event(handlerkey,*args):
             if (args[1] not in html_layoutsettings):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[args[1]]))+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
+            SetCustomSignals(handlerkey)
         elif (username not in html_viewsettings):
             print 'Warning: unrecognised username:',username
         elif (args[0]=='sendfiguredata'):
@@ -1224,6 +1271,7 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+            SetCustomSignals(handlerkey)
         elif (args[0]=='setncols'):
             print args
             html_layoutsettings[username]['ncols']=int(args[1])
@@ -1265,21 +1313,25 @@ def handle_websock_event(handlerkey,*args):
             standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
             for theviewsettings in html_viewsettings[username]:
                 theviewsettings['version']+=1
+            dosetcustomsignals=False
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
                 print 'signal',sig,' ==> decodedsignal',decodedsignal
                 if (sig[:9]=='waterfall'):#creates new waterfall plot
+                    dosetcustomsignals=True
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (len(decodedsignal)):
+                    dosetcustomsignals=True
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
+                    dosetcustomsignals=True
                     html_customsignals[username]=[]
                     html_collectionsignals[username]=[]
                 elif (sig=='timeseries'):#creates new timeseries plot
@@ -1292,7 +1344,8 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                    
+            if (dosetcustomsignals):
+                SetCustomSignals(handlerkey)
         elif (args[0]=='setflags'):
             print args
             for theviewsettings in html_viewsettings[username]:
@@ -1499,6 +1552,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
+            SetCustomSignals(handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             print args
             if (len(args)==2):
@@ -1563,6 +1617,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
+            SetCustomSignals(handlerkey)
             
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
