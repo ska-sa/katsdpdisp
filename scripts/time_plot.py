@@ -388,6 +388,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['xlabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['span']=[]
                     fig['spancolor']=[]
+                    fig['outlierproducts']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customsignals']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in customsignals]
                 elif (theviewsettings['figtype']=='spectrum'):
                     #nchannels=datasd.receiver.channels
                     ydata=[]
@@ -528,7 +530,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         
                     fig['spancolor']=np.array(spancolor)
                     fig['span']=span
-                        
+                    fig['outlierproducts']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customsignals']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in customsignals]
                 elif (theviewsettings['figtype'][:9]=='waterfall'):
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
@@ -633,7 +636,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['xdata']=np.arange(start_chan,stop_chan,chanincr)
                         fig['xlabel']='Channel number'
                         fig['xunit']=''
-                    
+                    fig['outlierproducts']=[]
+                    fig['customsignals']=[product if type(product)==int else datasd.cpref.bls_ordering.index(list(product))]
                 else:                        
                     fig={}
             except Exception, e:
@@ -1132,50 +1136,46 @@ websockrequest_time = {}
 websockrequest_lasttime = {}
 websockrequest_username = {}
 new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
-timeseries_recalced=0
 
-def SetCustomSignals(handlerkey):
-    #determine custom signals currently used
-    thecustomsignals=[]
-    try:
-        with RingBufferLock:
-            ringbufferrequestqueue.put(['get_bls_ordering',0,0,0,0,0])
-            bls_ordering=ringbufferresultqueue.get()
-        for thishandler in websockrequest_username.keys():
-            timedelay=(time.time()-websockrequest_time[thishandler])
-            if (timedelay<10):# connection been active within past 10 seconds
-                thisusername=websockrequest_username[thishandler]
-                for theviewsettings in html_viewsettings[thisusername]:#add waterfall plot signals to custom signals
-                    if (theviewsettings['figtype'][:9]=='waterfall'):
-                        product=list(decodecustomsignal(theviewsettings['figtype'][9:]))
-                        if (product in bls_ordering):
-                            productid=bls_ordering.index(product)
-                            if (productid not in thecustomsignals):
-                                thecustomsignals.append(productid)
-                for product in html_customsignals[thisusername]:
-                    product=list(product)
-                    if (product in bls_ordering):
-                        productid=bls_ordering.index(product)
-                        if (productid not in thecustomsignals):
-                            thecustomsignals.append(productid)
-        thecustomsignals=np.array(np.sort(thecustomsignals),dtype='S')
-    except:
-        print 'Exception occurred in setsignals - whilst gathering custom signals'
-    ####set custom signals on ingest
-    capture_server,capture_server_port_str=opts.capture_server.split(':')
-    try:
-        client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
-        client.start()
-        client.wait_connected(timeout=5)
-        if client.is_connected():
-            ret = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
-            client.stop()
-            send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
-        else:
-            print 'Unable to connect to '+opts.capture_server
-            send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
-    except:
-        print 'Exception occurred in setsignals - set custom signals'
+
+ingest_signals={}
+
+#adds or removes custom signals requested from ingest
+#if an outlier signal is detected the intention is that it keeps being transmitted for atleast a minute
+def UpdateCustomSignals(handlerkey,customsignals,outlierproducts):
+    #remove stale items
+    timenow=time.time()
+    changed=False
+    for sig in ingest_signals.keys():
+        if (timenow-ingest_signals[sig])>60.0 and (sig not in customsignals) and (sig not in outlierproducts):
+            del ingest_signals[sig]
+            changed=True
+    for sig in customsignals:
+        if sig not in ingest_signals.keys():
+            changed=True
+        ingest_signals[sig]=time.time()
+    for sig in outlierproducts:
+        if sig not in ingest_signals.keys():
+            changed=True
+        ingest_signals[sig]=time.time()
+    if (changed):
+        ####set custom signals on ingest
+        thecustomsignals=np.array(np.sort(ingest_signals.keys()),dtype='S')
+        print 'customsignals:',thecustomsignals
+        capture_server,capture_server_port_str=opts.capture_server.split(':')
+        try:
+            client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+            client.start()
+            client.wait_connected(timeout=5)
+            if client.is_connected():
+                ret = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
+                client.stop()
+                send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
+            else:
+                print 'Unable to connect to '+opts.capture_server
+                send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
+        except:
+            print 'Exception occurred in setsignals - set custom signals'
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1193,7 +1193,6 @@ def handle_websock_event(handlerkey,*args):
             if (args[1] not in html_layoutsettings):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[args[1]]))+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
-            SetCustomSignals(handlerkey)
         elif (username not in html_viewsettings):
             print 'Warning: unrecognised username:',username
         elif (args[0]=='sendfiguredata'):
@@ -1225,11 +1224,12 @@ def handle_websock_event(handlerkey,*args):
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
-                send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customsignals,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype']=='spectrum'):
-                send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customsignals,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customsignals,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            UpdateCustomSignals(handlerkey,customsignals,outlierproducts)
         elif (args[0]=='setzoom'):
             print args
             ifigure=int(args[1])
@@ -1271,7 +1271,6 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-            SetCustomSignals(handlerkey)
         elif (args[0]=='setncols'):
             print args
             html_layoutsettings[username]['ncols']=int(args[1])
@@ -1313,25 +1312,21 @@ def handle_websock_event(handlerkey,*args):
             standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
             for theviewsettings in html_viewsettings[username]:
                 theviewsettings['version']+=1
-            dosetcustomsignals=False
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
                 print 'signal',sig,' ==> decodedsignal',decodedsignal
                 if (sig[:9]=='waterfall'):#creates new waterfall plot
-                    dosetcustomsignals=True
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (len(decodedsignal)):
-                    dosetcustomsignals=True
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
-                    dosetcustomsignals=True
                     html_customsignals[username]=[]
                     html_collectionsignals[username]=[]
                 elif (sig=='timeseries'):#creates new timeseries plot
@@ -1344,8 +1339,6 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-            if (dosetcustomsignals):
-                SetCustomSignals(handlerkey)
         elif (args[0]=='setflags'):
             print args
             for theviewsettings in html_viewsettings[username]:
@@ -1552,7 +1545,6 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
-            SetCustomSignals(handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             print args
             if (len(args)==2):
@@ -1617,7 +1609,6 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
-            SetCustomSignals(handlerkey)
             
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
@@ -1662,16 +1653,16 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logconsole' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logignore' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return
+            return [],[]
             
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
@@ -1731,8 +1722,10 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return timeseries_fig['customsignals'],timeseries_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
+    return [],[]
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
@@ -1744,16 +1737,16 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logconsole' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logignore' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return
+            return [],[]
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),spectrum_fig['version'],'i'),handlerkey);count+=1;
@@ -1792,8 +1785,10 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return spectrum_fig['customsignals'],spectrum_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
+    return [],[]
 
 
 def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1807,16 +1802,16 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logconsole' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,false,true)',handlerkey)
-            return
+            return [],[]
         elif ('logignore' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return
+            return [],[]
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),waterfall_fig['version'],'i'),handlerkey);count+=1;
@@ -1880,9 +1875,10 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return waterfall_fig['customsignals'],waterfall_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
-
+    return [],[]
 #client sends request to server; server may respond with numerous assignments of data into a datastructure on client side to address request
 #datastructure transmitted in binary to client
 #keep an indexible list of elements rather than individual arrays
