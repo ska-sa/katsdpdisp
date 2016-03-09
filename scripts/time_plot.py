@@ -293,6 +293,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     legend=[]
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
+                    customproducts=[]
                     for colprod in collectionsignals:
                         if (colprod[:8]=='envelope'):
                             if (colprod[8:] in collections):
@@ -337,6 +338,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
+                            customproducts.append(product)
                             signal = datasd.select_data(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<len(ts)):
@@ -388,8 +390,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['xlabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['span']=[]
                     fig['spancolor']=[]
-                    fig['outlierproducts']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
-                    fig['customsignals']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in customsignals]
+                    fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
                 elif (theviewsettings['figtype']=='spectrum'):
                     #nchannels=datasd.receiver.channels
                     ydata=[]
@@ -399,6 +401,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     thech_=np.arange(start_chan,stop_chan,chanincr)
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
+                    customproducts=[]
                     flags=np.zeros(len(thech))
                     for colprod in collectionsignals:
                         if (colprod[:8]=='envelope'):
@@ -440,6 +443,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
+                            customproducts.append(product)
                             signal,theflags = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                             flags=np.logical_or(flags,theflags.reshape(-1))
                             signal=np.array(signal).reshape(-1)
@@ -530,8 +534,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         
                     fig['spancolor']=np.array(spancolor)
                     fig['span']=span
-                    fig['outlierproducts']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
-                    fig['customsignals']=[sig if type(sig)==int else datasd.cpref.bls_ordering.index(list(sig)) for sig in customsignals]
+                    fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
                 elif (theviewsettings['figtype'][:9]=='waterfall'):
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
@@ -637,7 +641,12 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['xlabel']='Channel number'
                         fig['xunit']=''
                     fig['outlierproducts']=[]
-                    fig['customsignals']=[product if type(product)==int else datasd.cpref.bls_ordering.index(list(product))]
+                    if (isinstance(product,int)):
+                        fig['customproducts']=[product]
+                    elif (list(product) in datasd.cpref.bls_ordering):
+                        fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]
+                    else:
+                        fig['customproducts']=[]
                 else:                        
                     fig={}
             except Exception, e:
@@ -1141,16 +1150,16 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 ingest_signals={}
 
 #adds or removes custom signals requested from ingest
-#if an outlier signal is detected the intention is that it keeps being transmitted for atleast a minute
-def UpdateCustomSignals(handlerkey,customsignals,outlierproducts):
+#if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
+def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
     #remove stale items
     timenow=time.time()
     changed=False
     for sig in ingest_signals.keys():
-        if (timenow-ingest_signals[sig])>60.0 and (sig not in customsignals) and (sig not in outlierproducts):
+        if (timenow-ingest_signals[sig])>60.0 and (sig not in customproducts) and (sig not in outlierproducts):
             del ingest_signals[sig]
             changed=True
-    for sig in customsignals:
+    for sig in customproducts:
         if sig not in ingest_signals.keys():
             changed=True
         ingest_signals[sig]=time.time()
@@ -1160,22 +1169,27 @@ def UpdateCustomSignals(handlerkey,customsignals,outlierproducts):
         ingest_signals[sig]=time.time()
     if (changed):
         ####set custom signals on ingest
-        thecustomsignals=np.array(np.sort(ingest_signals.keys()),dtype='S')
-        print 'customsignals:',thecustomsignals
+        thecustomsignals=[str(x) for x in sorted(ingest_signals.keys())]
+        print 'Trying to set customsignals to:',thecustomsignals
         capture_server,capture_server_port_str=opts.capture_server.split(':')
         try:
-            client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+            client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
             client.start()
             client.wait_connected(timeout=5)
             if client.is_connected():
-                ret = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
+                reply, informs = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
                 client.stop()
-                send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
+                if reply.reply_ok():
+                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+' failed on '+opts.capture_server+'",true,true,true)',handlerkey)
+                print 'set-custom-signals response from Ingest:', reply
             else:
                 print 'Unable to connect to '+opts.capture_server
                 send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
         except:
             print 'Exception occurred in setsignals - set custom signals'
+            send_websock_cmd('logconsole("Exception occurred in setsignals - set custom signals",true,true,true)',handlerkey)
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1224,12 +1238,12 @@ def handle_websock_event(handlerkey,*args):
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
-                customsignals,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype']=='spectrum'):
-                customsignals,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                customsignals,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
-            UpdateCustomSignals(handlerkey,customsignals,outlierproducts)
+                customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            UpdateCustomSignals(handlerkey,customproducts,outlierproducts)
         elif (args[0]=='setzoom'):
             print args
             ifigure=int(args[1])
@@ -1350,7 +1364,7 @@ def handle_websock_event(handlerkey,*args):
             ####set timeseries mask on ingest
             capture_server,capture_server_port_str=opts.capture_server.split(':')
             try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
                 client.start()
                 client.wait_connected(timeout=5)
                 if client.is_connected():
@@ -1439,7 +1453,7 @@ def handle_websock_event(handlerkey,*args):
             print args
             capture_server,capture_server_port_str=opts.capture_server.split(':')
             try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
                 client.start()
                 client.wait_connected(timeout=5)
                 if client.is_connected():
@@ -1480,8 +1494,8 @@ def handle_websock_event(handlerkey,*args):
             #reissue metadata (in both cases)
             capture_server,capture_server_port_str=opts.capture_server.split(':')
             try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
-                #client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za, not obs.kat7.karoo
+                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
+                #client = katcp.BlockingClient('192.168.193.5',2040)
                 # client.is_connected()
                 client.start()
                 client.wait_connected(timeout=5)
@@ -1722,7 +1736,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return timeseries_fig['customsignals'],timeseries_fig['outlierproducts']
+        return timeseries_fig['customproducts'],timeseries_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
     return [],[]
@@ -1785,7 +1799,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return spectrum_fig['customsignals'],spectrum_fig['outlierproducts']
+        return spectrum_fig['customproducts'],spectrum_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
     return [],[]
@@ -1875,7 +1889,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return waterfall_fig['customsignals'],waterfall_fig['outlierproducts']
+        return waterfall_fig['customproducts'],waterfall_fig['outlierproducts']
     except Exception, e:
         logger.warning("User event exception %s" % str(e))
     return [],[]
