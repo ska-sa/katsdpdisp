@@ -448,15 +448,17 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
+    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
             self.roll_point = (self.frame_count-1) % self.slots
             self.ts[self.roll_point] = timestamp_ms
             #calculate timeseries masked average for all signals and overwrite it into channel 0
-            if (timeseries!=None):
-                data[:,0] = timeseries
+            if (timeseries is not None):
+                self.data[self.roll_point,:,0] = timeseries
+                if (data_index is not None):
+                    data[:,0] = timeseries[data_index]
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
@@ -469,15 +471,14 @@ class SignalDisplayStore2(object):
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
                 self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)                
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
-
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
-                
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
-            
-            if (flags is not None):
-                self.flags[self.roll_point] = flags
-            self.data[self.roll_point,:,:] = data
+
+            if (data_index is not None):
+                if (flags is not None):
+                    self.flags[self.roll_point,data_index,:] = flags
+                self.data[self.roll_point,data_index,:] = data
 
             self._last_ts = timestamp_ms
 
@@ -839,19 +840,20 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         bls_ordering_version = self.ig['bls_ordering'].version
-                    if self.ig['sd_data'].value is not None:
+                    hasdata = (self.ig['sd_data'].value is not None)
+                    if (hasdata) or (self.ig['sd_percspectrum'].value is not None):
                         ts = self.ig['sd_timestamp'].value * 10.0
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
-                            flags = self.ig['sd_flags'].value.swapaxes(0,1) if 'sd_flags' in self.ig.keys() else None
-                            
-                            self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], flags, \
+                            self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if hasdata else None, \
+                                                        self.ig['sd_flags'].value.swapaxes(0,1) if hasdata and ('sd_flags' in self.ig.keys()) else None , \
+                                                        self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None, \
                                                         self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
                                                         self.ig['sd_blmxflags'].value.astype(np.uint8))
-                        else:
+                        elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
                                 fdata = data[id].flatten()
