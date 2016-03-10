@@ -19,7 +19,7 @@ datalock = threading.RLock()
 quitter = Quitter("exit")
  # create a quitter to handle exit conditions
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("katsdpdisp.data")
 
 try:
@@ -235,7 +235,7 @@ class CorrProdRef(object):
             if pol.lower() in self._pol_dict: pol = self._pol_dict.index(pol.lower())
             else: pol = -1
         if pol < 0 or pol > 3:
-            print "Unknown polarisation (" + str(pol) + ") specified."
+            logger.warning("Unknown polarisation (" + str(pol) + ") specified.")
             return None
         return pol
 
@@ -245,7 +245,7 @@ class CorrProdRef(object):
             try:
                 return self.bls_ordering.index([inp[0].lower(),inp[1].lower()])
             except ValueError:
-                print "Unknown label pair (%s,%s) provided. Consult cpref.labels for valid labels (usually located under sd or sd_hist)." % (inp[0],inp[1])
+                logger.warning("Unknown label pair (%s,%s) provided. Consult cpref.labels for valid labels (usually located under sd or sd_hist)." % (inp[0],inp[1]))
                 return None
         if len(inp) == 3:
             pol = self._pol_dict[self._convert_pol(inp[2])]
@@ -253,10 +253,10 @@ class CorrProdRef(object):
             try:
                 prod_id = self.bls_ordering.index(blkey)
             except ValueError:
-                print "Unknown antenna / polarisation triple (ant%s%s * ant%s%s) specified. It may be that the form of the input labels from the dbe do not support direct antenna addressing (ant\w+[H|V] e.g. ant1H). Consult cpref.bls_ordering to see the mapping provided by the correlator (usually located under sd or sd_hist)." % (str(inp[0]),pol[0],str(inp[1]),pol[1])
+                logger.warning("Unknown antenna / polarisation triple (ant%s%s * ant%s%s) specified. It may be that the form of the input labels from the dbe do not support direct antenna addressing (ant\w+[H|V] e.g. ant1H). Consult cpref.bls_ordering to see the mapping provided by the correlator (usually located under sd or sd_hist)." % (str(inp[0]),pol[0],str(inp[1]),pol[1]))
                 return None
         else:
-            print "Product specifier " + str(inp) + " not parseable."
+            logger.warning("Product specifier " + str(inp) + " not parseable.")
             return None
         return prod_id
 
@@ -312,7 +312,7 @@ class SignalDisplayFrame(object):
         stop_channel : integer
         """
         if not dtype in self._allowed_views:
-            print "Specified type",dtype,"is unknown. Must be in",self._allowed_views
+            logger.warning("Specified type "+dtype+" is unknown. Must be in "+repr(self._allowed_views))
         return getattr(self,'get_' + dtype)(start_channel, stop_channel)
 
     def get_complex(self, start_channel=0, stop_channel=None):
@@ -352,7 +352,7 @@ class SignalDisplayStore2(object):
         except ImportError:
             self.mem_cap = 1024*1024*128
              # default to 128 megabytes if we cannot determine system memory
-        print "Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0))
+        logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
@@ -736,7 +736,7 @@ class SpeadSDReceiver(threading.Thread):
             import spead2
             import spead2.recv
         except Exception, e:
-            print "Failed to import SPEAD module (",e,").\nThis receiver will not function.\n"
+            logger.warning("Failed to import SPEAD module ("+repr(e)+").\nThis receiver will not function.")
             return
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
@@ -759,7 +759,7 @@ class SpeadSDReceiver(threading.Thread):
 
     def update_center_freqs(self):
         """Update the table containing the center frequencies for each channels."""
-        print "Attempting to update center frequencies..."
+        logger.info("Attempting to update center frequencies...")
         try:
             self.center_freq = self.ig['center_freq'].value
             self.channels = self.ig['n_chans'].value
@@ -768,7 +768,7 @@ class SpeadSDReceiver(threading.Thread):
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except ValueError:
-            print "Failed to update center frequency table due to missing metadata."
+            logger.warning("Failed to update center frequency table due to missing metadata.")
 
     def run(self):
         """Main thread loop. Creates socket connection, handles incoming data and marshalls it into
@@ -798,11 +798,11 @@ class SpeadSDReceiver(threading.Thread):
                     if self._direct_meta_required == []:
                         self.update_center_freqs()
                         self.cpref.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self._direct_meta['bls_ordering']]
-                        print "\nAll Metadata for direct stream acquired"
-                        print "======================================="
-                        print "Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq'])
-                        print "Sync Time: %i, Scale Factor: %i" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp'])
-                        print "Baseline Ordering Mapping: %i entries\n" % len(self.cpref.bls_ordering)
+                        logger.info("\nAll Metadata for direct stream acquired")
+                        logger.info("=======================================")
+                        logger.info("Channels: %i, Bandwidth: %.2e, Center Freq: %.3e" % (self._direct_meta['n_chans'], self._direct_meta['bandwidth'], self._direct_meta['center_freq']))
+                        logger.info("Sync Time: %i, Scale Factor: %i" % (self._direct_meta['sync_time'], self._direct_meta['scale_factor_timestamp']))
+                        logger.info("Baseline Ordering Mapping: %i entries\n" % len(self.cpref.bls_ordering))
                         self.cpref.precompute()
                         if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                         else:
@@ -817,7 +817,7 @@ class SpeadSDReceiver(threading.Thread):
                 try:
                     if self.ig['n_chans'].value is not None:
                         if self.ig['n_chans'].value != self.channels:
-                            print "Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'].value)
+                            logger.info("Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'].value))
                             self.update_center_freqs()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
@@ -827,13 +827,13 @@ class SpeadSDReceiver(threading.Thread):
                     if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
                         if self.ig['center_freq'].value != self.center_freq or self.ig['bandwidth'].value / self.ig['n_chans'].value != self.channel_bandwidth:
                             self.update_center_freqs()
-                            print "New center frequency:", self.center_freq, " channel bandwidth: ",self.channel_bandwidth
+                            logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
                     if self.ig['bls_ordering'].version != bls_ordering_version:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value] != self.bls_ordering:
                             self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value]
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
-                            print "Signal display store data purged due to changed baseline ordering..."
+                            logger.info("Signal display store data purged due to changed baseline ordering...")
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))

@@ -1168,7 +1168,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
     if (changed):
         ####set custom signals on ingest
         thecustomsignals=[str(x) for x in sorted(ingest_signals.keys())]
-        logger.warning('Trying to set customsignals to:'+repr(thecustomsignals))
+        logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
         capture_server,capture_server_port_str=opts.capture_server.split(':')
         try:
             client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
@@ -2202,7 +2202,11 @@ sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 logging.root.addHandler(sh)
 
-logger = logging.getLogger("katsdpdisp.timeplot")
+#disable annoying katcp warnings
+logger_katcp=logging.getLogger("katcp")
+logger_katcp.setLevel(logging.CRITICAL)
+
+logger = logging.getLogger("katsdpdisp.time_plot")
 if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
@@ -2284,7 +2288,7 @@ signal.signal(signal.SIGTERM, graceful_exit)
 
 try:
     websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
-    logger.info('Started data websocket server on port '+opts.data_port)
+    logger.info('Started data websocket server on port '+str(opts.data_port))
     thread.start_new_thread(websockserver.serve_forever, ())
 except Exception, e:
     logger.warning("Failed to create data websocket server. (%s)" % str(e))
@@ -2292,7 +2296,7 @@ except Exception, e:
 
 try:
     server = HTTPServer(("", opts.html_port), htmlHandler)
-    logger.info('Started httpserver on port '+opts.html_port)
+    logger.info('Started httpserver on port '+str(opts.html_port))
     manhole.install(oneshot_on='USR1', locals={'server':server, 'websockserver':websockserver, 'opts':opts})
      # allow remote debug connections and expose server, websockserver and opts
     server.serve_forever()
