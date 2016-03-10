@@ -34,6 +34,7 @@ SETTINGS_PATH='~/.katsdpdisp'
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
 np.set_printoptions(threshold=4096)
+np.seterr(all='ignore')
 
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
@@ -176,10 +177,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
         try:
             dh.load_k7_data(datafilename,rows=300,startrow=0)
         except Exception,e:
-            print time.asctime()+" Failed to load file using k7 loader (%s)" % e
+            logger.warning(" Failed to load file using k7 loader (%s)" % e)
             dh.load_ff_data(datafilename)
         datasd=dh.sd_hist
-    print 'Started ring buffer process'
+    logger.info('Started ring buffer process')
     warnOnce=True
     try:
         while(True):
@@ -187,7 +188,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             #ts[0] contains times
             #antbase=np.unique([0 if len(c)!=5 else int(c[3:-1])-1 for c in datasd.cpref.inputs])
             #datasd.cpref.inputs=['ant1h','ant1v','ant2h','ant2v','ant3h','ant3v','ant4h','ant4v','ant5h','ant5v','ant6h','ant6v']
-            #print antbase
             #ts[0] # [  1.37959922e+09   1.37959922e+09]
             [thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
 
@@ -221,8 +221,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 gc.collect()
                 hpafter = hp.heap()
                 hpleftover=hpafter-hpbefore
-                print 'Memory usage %s (kb)'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-                print hpleftover
+                logger.info('Memory usage %s (kb)'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
+                logger.info(hpleftover)
                 fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
                 ringbufferresultqueue.put(fig)
                 continue
@@ -238,8 +238,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         signal=None
                 except Exception, e:
-                    print '--------------------------------------------------------'
-                    print 'Exception in sendfiguredata:',str(e)
+                    logger.warning('Exception in sendfiguredata: '+str(e))
                     signal=None
                     pass
                 ringbufferresultqueue.put(signal)
@@ -650,16 +649,15 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 else:                        
                     fig={}
             except Exception, e:
-                print '--------------------------------------------------------'
-                print 'Exception in RingBufferProcess:',str(e)
-                print traceback.format_exc()
+                logger.warning('Exception in RingBufferProcess: '+str(e))
+                logger.warning(repr(traceback.format_exc()))
                 fig={}
                 pass
             
             ringbufferresultqueue.put(fig)
             
     except KeyboardInterrupt:
-        print '^C received, shutting down the ringbuffer process'
+        logger.warning('^C received, shutting down the ringbuffer process')
         
 
 html_customsignals= {'default': [],
@@ -1170,7 +1168,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
     if (changed):
         ####set custom signals on ingest
         thecustomsignals=[str(x) for x in sorted(ingest_signals.keys())]
-        print 'Trying to set customsignals to:',thecustomsignals
+        logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
         capture_server,capture_server_port_str=opts.capture_server.split(':')
         try:
             client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
@@ -1183,21 +1181,20 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
                     send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+' failed on '+opts.capture_server+'",true,true,true)',handlerkey)
-                print 'set-custom-signals response from Ingest:', reply
+                logger.info('set-custom-signals response from Ingest: '+repr(reply))
             else:
-                print 'Unable to connect to '+opts.capture_server
+                logger.warning('Unable to connect to '+opts.capture_server)
                 send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
         except:
-            print 'Exception occurred in setsignals - set custom signals'
+            logger.warning('Exception occurred in setsignals - set custom signals')
             send_websock_cmd('logconsole("Exception occurred in setsignals - set custom signals",true,true,true)',handlerkey)
 
 def handle_websock_event(handlerkey,*args):
     try:
-        # print(time.asctime()+' DATA '+str(args))
         username=websockrequest_username[handlerkey]
         if (args[0]=='setusername' and username!=args[1]):
             websockrequest_username[handlerkey]=args[1]
-            print args
+            logger.info(repr(args))
             if (args[1] not in html_viewsettings):
                 html_viewsettings[args[1]]=copy.deepcopy(html_viewsettings['default'])
             if (args[1] not in html_customsignals):
@@ -1208,7 +1205,7 @@ def handle_websock_event(handlerkey,*args):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[args[1]]))+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
         elif (username not in html_viewsettings):
-            print 'Warning: unrecognised username:',username
+            logger.info('Warning: unrecognised username:'+username)
         elif (args[0]=='sendfiguredata'):
             reqts=float(args[1])#eg -1
             chan0=int(args[2])
@@ -1222,7 +1219,6 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_data(repr(spectrum),handlerkey);
         elif (args[0]=='sendfigure'):
-            # print args
             ifigure=int(args[1])
             reqts=float(args[2])# timestamp on browser side when sendfigure request was issued
             lastts=np.round(float(args[3])*1000.0)/1000.0
@@ -1230,7 +1226,7 @@ def handle_websock_event(handlerkey,*args):
             view_npixels=int(args[5])
             outlierhash=int(args[6])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
-                print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
+                logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
                 return
             if (view_npixels<64):
                 view_npixels=64
@@ -1245,10 +1241,10 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             UpdateCustomSignals(handlerkey,customproducts,outlierproducts)
         elif (args[0]=='setzoom'):
-            print args
+            logger.info(repr(args))
             ifigure=int(args[1])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
-                print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
+                logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
                 return
             theviewsettings=html_viewsettings[username][ifigure]
             
@@ -1260,10 +1256,10 @@ def handle_websock_event(handlerkey,*args):
             theviewsettings['cmax']=float(args[7])
             theviewsettings['version']+=1
         elif (args[0]=='setfigparam'):
-            print args
+            logger.info(repr(args))
             ifigure=int(args[1])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
-                print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
+                logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
                 return
             theviewsettings=html_viewsettings[username][ifigure]
             theviewsettings[args[2]]=str(args[3])
@@ -1276,26 +1272,26 @@ def handle_websock_event(handlerkey,*args):
             theviewsettings['version']+=1
                 
         elif (args[0]=='deletefigure'):
-            print args
+            logger.info(repr(args))
             ifigure=int(args[1])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
-                print 'Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure)
+                logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
                 return            
             html_viewsettings[username].pop(ifigure)
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='setncols'):
-            print args
+            logger.info(repr(args))
             html_layoutsettings[username]['ncols']=int(args[1])
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='getoutlierthreshold'):
-            print args
+            logger.info(repr(args))
             send_websock_cmd('logconsole("outlierthreshold=%g'%(html_layoutsettings[username]['outlierthreshold'])+'",true,true,true)',handlerkey)
         elif (args[0]=='getoutliertime'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['getoutliertime',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1304,7 +1300,7 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
         elif (args[0]=='getflags'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['getflags',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1313,14 +1309,14 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
         elif (args[0]=='setoutlierthreshold'):
-            print args
+            logger.info(repr(args))
             html_layoutsettings[username]['outlierthreshold']=float(args[1])
         elif (args[0]=='setoutliertime'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
         elif (args[0]=='setsignals'):
-            print args
+            logger.info(repr(args))
             #decodes signals of from 1h3h to ('ant1h','ant3h')
             html_customsignals[username]=[]
             standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
@@ -1329,7 +1325,7 @@ def handle_websock_event(handlerkey,*args):
             for sig in args[1:]:
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
-                print 'signal',sig,' ==> decodedsignal',decodedsignal
+                logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
                 if (sig[:9]=='waterfall'):#creates new waterfall plot
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
@@ -1354,7 +1350,7 @@ def handle_websock_event(handlerkey,*args):
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='setflags'):
-            print args
+            logger.info(repr(args))
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
@@ -1372,19 +1368,19 @@ def handle_websock_event(handlerkey,*args):
                     client.stop()
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
                 else:
-                    print 'Unable to connect to '+opts.capture_server
+                    logger.warning('Unable to connect to '+opts.capture_server)
                     send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
             except:
-                print 'Exception occurred in setflags - set timeseries mask'
+                logger.warning('Exception occurred in setflags - set timeseries mask')
             
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
-            print args
+            logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum' or theviewsettings['figtype'][:9]=='waterfall'):
                     theviewsettings['version']+=1
         elif (args[0]=='getusers'):
-            print args
+            logger.info(repr(args))
             userstats=[]
             usrnamelist=[]
             nviewlist=[]
@@ -1408,7 +1404,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No profiles saved",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1417,7 +1413,7 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='info'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['info',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1427,7 +1423,7 @@ def handle_websock_event(handlerkey,*args):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):
-            print args
+            logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1450,7 +1446,7 @@ def handle_websock_event(handlerkey,*args):
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
         
         elif (args[0]=='DROP'):
-            print args
+            logger.info(repr(args))
             capture_server,capture_server_port_str=opts.capture_server.split(':')
             try:
                 client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
@@ -1460,14 +1456,14 @@ def handle_websock_event(handlerkey,*args):
                     ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
                     client.stop()
                     send_websock_cmd('logconsole("Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    print 'Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays'
+                    logger.info('Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays')
                 else:
-                    print 'Unable to connect to '+opts.capture_server
+                    logger.warning('Unable to connect to '+opts.capture_server)
                     send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
             except:
-                print 'Exception occurred in drop-sdisp-ip'            
+                logger.warning('Exception occurred in drop-sdisp-ip')
         elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
-            print args
+            logger.info(repr(args))
             if (args[0]=='RESTART'):
                 with RingBufferLock:
                     ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
@@ -1478,7 +1474,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
                     time.sleep(2)
                     Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
-                    print 'RESTART performed, using port=',opts.spead_port,' memusage=',opts.memusage,' datafilename=', opts.datafilename
+                    logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
                     send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
                     time.sleep(2)
                     send_websock_cmd('logconsole("Reissuing metadata.",true,true,true)',handlerkey)
@@ -1506,25 +1502,25 @@ def handle_websock_event(handlerkey,*args):
                     ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
                     client.stop()
                     send_websock_cmd('logconsole("Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    print 'Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays'
+                    logger.warning('Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays')
                 else:
-                    print 'Unable to connect to '+opts.capture_server
+                    logger.warning('Unable to connect to '+opts.capture_server)
                     send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
             except:
-                print 'Exception occurred in metadata'
+                logger.warning('Exception occurred in metadata')
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
-            print args[0],':',cmd
+            logger.info(args[0]+':'+cmd)
             ret=commands.getoutput(cmd).split('\n')
             for thisret in ret:
                 send_websock_cmd('logconsole("'+thisret+'",true,true,true)',handlerkey)
         elif (args[0]=='help'):
-            print args            
+            logger.info(repr(args))
             if (len(args)!=1 or args[1] not in helpdict):
                 for line in helpdict[args[1]]:
                     send_websock_cmd('logconsole("'+line+'",false,true,true)',handlerkey)
         elif (args[0]=='delete' and len(args)==2):#deletes specified user's settings from startup settings file as well as from server memory
-            print args
+            logger.info(repr(args))
             theusername=str(args[1])#load another user's settings
             try:
                 startupfile=open(SETTINGS_PATH+'/usersettings.json','r+')
@@ -1560,7 +1556,7 @@ def handle_websock_event(handlerkey,*args):
             send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
             send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
-            print args
+            logger.info(repr(args))
             if (len(args)==2):
                 theusername=str(args[1])#load another user's settings
             else:
@@ -1586,7 +1582,7 @@ def handle_websock_event(handlerkey,*args):
             startupfile.write(startupdictstr)
             startupfile.close()
         elif (args[0]=='load'):#loads this user's settings from startup settings file        
-            print args
+            logger.info(repr(args))
             if (len(args)==2):
                 theusername=str(args[1])#load another user's settings
             else:
@@ -1715,7 +1711,6 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         else:#only send update
             where=np.where(timeseries_fig['xdata']>lastts+0.01)[0]#next time stamp index
-            #print 'len(where)',len(where),'lastts',lastts,'new lastts',timeseries_fig['lastts']
             if (len(where)>0):
                 its=np.min(where)
                 local_yseries=np.array(timeseries_fig['ydata'])[:,:,its:]
@@ -2003,18 +1998,17 @@ def parse_websock_cmd(s, request):
             handle_websock_event(request,*args)
         
     except AttributeError:
-        print "Received invalid request: %s" % s
         logger.warning("Cannot find request method %s" % s)
 
 def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.ws_stream.send_message(binarydata,binary=True)
     except AttributeError:         # connection has gone
-        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        print "Failed to send message (%s)" % str(e)
-        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        logger.warning("Failed to send message (%s)" % str(e))
+        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
@@ -2023,12 +2017,11 @@ def send_websock_cmd(cmd, handlerkey):
         handlerkey.ws_stream.send_message(frame.decode('utf-8'))
     except AttributeError:
          # connection has gone
-        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)" % str(e))
-        print "Failed to send message (%s)" % str(e)
-        print "Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0]
+        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
 def register_websockrequest_handler(request):
@@ -2054,7 +2047,7 @@ def websock_transfer_data(request):
             line = request.ws_stream.receive_message()
             parse_websock_cmd(line,request)
         except Exception, e:
-            print "Caught exception (%s). Removing registered handler" % str(e)
+            logger.warning("Caught exception (%s). Removing registered handler" % str(e))
             deregister_websockrequest_handler(request)
             return
     
@@ -2103,7 +2096,7 @@ class htmlHandler(BaseHTTPRequestHandler):
     #intercepts commands sent from data collector processes
     def parse_request(self):
         if (self.raw_requestline[:7]=='/*cmd*/'):
-            #print 'raw request:',self.raw_requestline
+            #logger.info('raw request:'+self.raw_requestline)
             response=self.handle_command(self.raw_requestline[7:-1])
             self.wfile.write(response);
             self.command = None  
@@ -2202,6 +2195,26 @@ parser.add_argument("--capture_server", dest="capture_server", default="kat-dc1.
 
 (opts, args) = parser.parse_known_args()
 
+if len(logging.root.handlers) > 0: logging.root.removeHandler(logging.root.handlers[0])
+formatter = logging.Formatter("%(asctime)s.%(msecs)dZ - %(filename)s:%(lineno)s - %(levelname)s - %(message)s",
+                                  datefmt="%Y-%m-%d %H:%M:%S")
+sh = logging.StreamHandler()
+sh.setFormatter(formatter)
+logging.root.addHandler(sh)
+
+#disable annoying katcp warnings
+logger_katcp=logging.getLogger("katcp")
+logger_katcp.setLevel(logging.CRITICAL)
+
+logger = logging.getLogger("katsdpdisp.time_plot")
+if (opts.debug):
+    logger.setLevel(logging.DEBUG)
+else:
+    logger.setLevel(logging.INFO)
+
+#configure SPEAD to display warnings about dropped packets etc...
+#logging.getLogger('spead2').setLevel(logging.WARNING)
+
 SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
@@ -2223,16 +2236,16 @@ try:
     startupfile.close()
     startupdict=convertunicode(json.loads(startupdictstr))
     usernames=[]
-    print 'Importing saved user settings from '+SETTINGS_PATH+'/usersettings.json'
+    logger.info('Importing saved user settings from '+SETTINGS_PATH+'/usersettings.json')
     for username in startupdict['html_viewsettings']:
         html_viewsettings[username]=copy.deepcopy(startupdict['html_viewsettings'][username])
         html_customsignals[username]=copy.deepcopy(startupdict['html_customsignals'][username])
         html_collectionsignals[username]=copy.deepcopy(startupdict['html_collectionsignals'][username])
         html_layoutsettings[username]=copy.deepcopy(startupdict['html_layoutsettings'][username])
         usernames.append(username)
-    print ', '.join(usernames)
+    logger.info(', '.join(usernames))
 except:
-    print 'Unable to import saved user settings from '+SETTINGS_PATH+'/usersettings.json'
+    logger.warning('Unable to import saved user settings from '+SETTINGS_PATH+'/usersettings.json')
     pass
     
 helpdict={}
@@ -2248,18 +2261,8 @@ try:
         else:
             helpdict[curkey].append(hline)
 except:
-    print 'Unable to load help file '+SERVE_PATH+'/help.txt'
+    logger.warning('Unable to load help file '+SERVE_PATH+'/help.txt')
     pass
-
-##Disable debug warning messages that clutters the terminal, especially when streaming
-np.seterr(all='ignore')
-logging.basicConfig()
-logger = logging.getLogger()
-if (opts.debug):
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.CRITICAL)
-#    logger.setLevel(logging.WARNING)
 
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
@@ -2285,20 +2288,20 @@ signal.signal(signal.SIGTERM, graceful_exit)
 
 try:
     websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
-    print 'Started data websocket server on port ' , opts.data_port
+    logger.info('Started data websocket server on port '+str(opts.data_port))
     thread.start_new_thread(websockserver.serve_forever, ())
 except Exception, e:
-    print "Failed to create data websocket server. (%s)" % str(e)
+    logger.warning("Failed to create data websocket server. (%s)" % str(e))
     sys.exit(1)
 
 try:
     server = HTTPServer(("", opts.html_port), htmlHandler)
-    print 'Started httpserver on port ' , opts.html_port
+    logger.info('Started httpserver on port '+str(opts.html_port))
     manhole.install(oneshot_on='USR1', locals={'server':server, 'websockserver':websockserver, 'opts':opts})
      # allow remote debug connections and expose server, websockserver and opts
     server.serve_forever()
 except KeyboardInterrupt:
-    print '^C received, shutting down the web server'
+    logger.warning('^C received, shutting down the web server')
     server.socket.close()
 
 websockserver.shutdown()
