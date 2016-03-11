@@ -30,7 +30,6 @@ import signal
 from guppy import hpy
 import katcp
 
-SETTINGS_PATH='~/.katsdpdisp'
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
 np.set_printoptions(threshold=4096)
@@ -2190,8 +2189,10 @@ parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
                   help="Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
-parser.add_argument("--capture_server", dest="capture_server", default="kat-dc1.karoo.kat.ac.za:2040", type=str,
+parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
                   help="Server ip-address:port that runs kat_capture (default=%(default)s)")
+parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
+                  help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 
 (opts, args) = parser.parse_known_args()
 
@@ -2215,7 +2216,7 @@ else:
 #configure SPEAD to display warnings about dropped packets etc...
 #logging.getLogger('spead2').setLevel(logging.WARNING)
 
-SETTINGS_PATH=os.path.expanduser(SETTINGS_PATH)
+SETTINGS_PATH=os.path.expanduser(opts.config_base)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
 
