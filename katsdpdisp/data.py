@@ -722,17 +722,22 @@ class MultiStream(six.Iterator):
     """Provides an interface similar to :class:`spead2.recv.Stream` that is
     useful when a single receiver wants to receive multiple streams, one after
     the other. It transparently tears down and recreates the underlying stream
-    when an end-of-stream heap is received. Note that iterating over this
-    object will never terminate, and there is no safe way to interrupt it from
-    another thread.
+    when an end-of-stream heap is received.
 
-    It presents a subset of the interface of :class:`spead2.recv.Stream`.
+    Iterating over this object will terminate only when :meth:`stop` is
+    called.
+
+    It presents a subset of the interface of :class:`spead2.recv.Stream`. This
+    class is in general *not* thread-safe, but it is safe to call :meth:`stop`
+    from another thread.
     """
 
     def __init__(self, *args, **kwargs):
+        self._lock = threading.Lock()   # Protects _stream and _stopped
         self._construct = lambda: spead2.recv.Stream(*args, **kwargs)
         self._updaters = []
         self._stream = self._make_stream()
+        self._stopped = False
 
     def _make_stream(self):
         stream = self._construct()
@@ -748,12 +753,28 @@ class MultiStream(six.Iterator):
         return self
 
     def __next__(self):
-        while True:
-            try:
-                return six.next(self._stream)
-            except StopIteration:
-                # Stream has stopped, so start the next one and try again
+        with self._lock:
+            if self._stopped:
+                raise StopIteration
+            stream = self._stream
+        try:
+            return six.next(stream)
+        except StopIteration:
+            # Stream has stopped, so start the next one, unless
+            # stop() was called
+            with self._lock:
+                if self._stopped:
+                    raise StopIteration
                 self._stream = self._make_stream()
+            return None
+
+    def stop(self):
+        """Stop the multi-stream, and break out of the iteration. It is safe
+        to call this function from another thread while iterating over the
+        stream."""
+        with self._lock:
+            self._stopped = True
+            self._stream.stop()
 
     @classmethod
     def _add_wrapper(cls, name):
@@ -857,6 +878,9 @@ class SpeadSDReceiver(threading.Thread):
         else:
             bls_ordering_version = -1
             for heap in self.rx:
+                if (heap is None):
+                    logger.info("End of stream notification")
+                    continue
                 self.ig.update(heap)
                 self.heap_count += 1
                 try:
