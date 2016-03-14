@@ -11,6 +11,9 @@ import datetime
 import calendar
 from struct import unpack
 import gc
+import spead2
+import spead2.recv
+import six
 
 from quitter import Quitter
 
@@ -715,6 +718,54 @@ class NullReceiver(object):
         self.current_timestamp = 0
         self.last_ip = None
 
+class MultiStream(six.Iterator):
+    """Provides an interface similar to :class:`spead2.recv.Stream` that is
+    useful when a single receiver wants to receive multiple streams, one after
+    the other. It transparently tears down and recreates the underlying stream
+    when an end-of-stream heap is received. Note that iterating over this
+    object will never terminate, and there is no safe way to interrupt it from
+    another thread.
+
+    It presents a subset of the interface of :class:`spead2.recv.Stream`.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self._construct = lambda: spead2.recv.Stream(*args, **kwargs)
+        self._updaters = []
+        self._stream = self._make_stream()
+
+    def _make_stream(self):
+        stream = self._construct()
+        for func in self._updaters:
+            func(stream)
+        return stream
+
+    def _add_updater(self, func, args, kwargs):
+        self._updaters.append(lambda stream: func(stream, *args, **kwargs))
+        func(self._stream, *args, **kwargs)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while True:
+            try:
+                return six.next(self._stream)
+            except StopIteration:
+                # Stream has stopped, so start the next one and try again
+                self._stream = self._make_stream()
+
+    @classmethod
+    def _add_wrapper(cls, name):
+        wrapped = getattr(spead2.recv.Stream, name)
+        @six.wraps(wrapped)
+        def wrapper(self, *args, **kwargs):
+            self._add_updater(wrapped, args, kwargs)
+        setattr(cls, name, wrapper)
+
+for name in ['add_udp_reader', 'add_buffer_reader', 'set_memory_pool']:
+    MultiStream._add_wrapper(name)
+
 class SpeadSDReceiver(threading.Thread):
     """A class to receive signal display data via SPEAD and store it in a SignalDisplayData object.
 
@@ -732,15 +783,9 @@ class SpeadSDReceiver(threading.Thread):
     def __init__(self, port, storage, direct=False):
         self._port = port
         self.storage = storage
-        try:
-            import spead2
-            import spead2.recv
-        except Exception, e:
-            logger.warning("Failed to import SPEAD module ("+repr(e)+").\nThis receiver will not function.")
-            return
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
-        self.rx = spead2.recv.Stream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
+        self.rx = MultiStream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
         self.rx.add_udp_reader(self._port)
         self.ig = spead2.ItemGroup()
         self.heap_count = 0
