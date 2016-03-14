@@ -1462,6 +1462,7 @@ def handle_websock_event(handlerkey,*args):
             except:
                 logger.warning('Exception occurred in drop-sdisp-ip')
         elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
+            global ingest_signals
             ingest_signals={}
             logger.info(repr(args))
             if (args[0]=='RESTART'):
