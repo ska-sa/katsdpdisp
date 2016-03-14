@@ -928,7 +928,7 @@ class SpeadSDReceiver(threading.Thread):
                                 fdata = data[id].flatten()
                                 self.storage.add_data(ts, id, 0, len(fdata), fdata)
                 except Exception, e:
-                    logger.warning("Failed to add signal display frame. (" + str(e) + ")")
+                    logger.warning("Failed to add signal display frame. (" + str(e) + ")", exc_info=True)
         self.rx.stop()
 
 class SignalDisplayReceiver(threading.Thread):
