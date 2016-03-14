@@ -24,6 +24,7 @@ quitter = Quitter("exit")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("katsdpdisp.data")
+logger.setLevel(logging.INFO)
 
 try:
     import matplotlib.pyplot as pl
@@ -880,6 +881,9 @@ class SpeadSDReceiver(threading.Thread):
             for heap in self.rx:
                 if (heap is None):
                     logger.info("End of stream notification")
+                    continue
+                elif (heap.is_start_of_stream()):
+                    logger.info("Start of stream notification")
                     continue
                 self.ig.update(heap)
                 self.heap_count += 1
