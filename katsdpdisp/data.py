@@ -828,7 +828,7 @@ class SpeadSDReceiver(threading.Thread):
         """Update the table containing the center frequencies for each channels."""
         logger.info("Attempting to update center frequencies...")
         try:
-            self.center_freq = self.ig['center_freq'].value
+            self.center_freq = self.ig['center_freq'].value or 0.0
             self.channels = self.ig['n_chans'].value
             self.channel_bandwidth = self.ig['bandwidth'].value / self.channels
             self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
