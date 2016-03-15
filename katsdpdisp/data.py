@@ -828,11 +828,11 @@ class SpeadSDReceiver(threading.Thread):
         """Update the table containing the center frequencies for each channels."""
         logger.info("Attempting to update center frequencies...")
         try:
-            self.center_freq = self.ig['center_freq'].value or 0.0
+            self.center_freq = self.ig['center_freq'].value or 1284.0e6 #temporary hack because center_freq not available in AR1
             self.channels = self.ig['n_chans'].value
             self.channel_bandwidth = self.ig['bandwidth'].value / self.channels
             self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
-            self.center_freqs_mhz.reverse()
+            #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
              # channels mapped in reverse order
         except ValueError:
             logger.warning("Failed to update center frequency table due to missing metadata.")
