@@ -1146,11 +1146,15 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 
 
 ingest_signals={}
+failed_update_ingest_signals_lastts=0
 
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
-def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
+def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
+    global failed_update_ingest_signals_lastts
     global ingest_signals
+    if (failed_update_ingest_signals_lastts==lastts):
+        return
     #remove stale items
     timenow=time.time()
     changed=False
@@ -1178,6 +1182,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
             send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,true,true)',handlerkey)
             ingest_signals=revert_ingest_signals
+            failed_update_ingest_signals_lastts=lastts
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1229,7 +1234,7 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
                 customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
-            UpdateCustomSignals(handlerkey,customproducts,outlierproducts)
+            UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
             logger.info(repr(args))
             ifigure=int(args[1])
