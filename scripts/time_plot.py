@@ -1169,8 +1169,11 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
         ####set custom signals on ingest
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
-        result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals,ts=time.time()*1000.0)
-        logger.info('telstate set custom signals result:'+repr(result))
+        try:
+            result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals,ts=time.time()*1000.0)
+            logger.info('telstate set custom signals result:'+repr(result))
+        except Exception, e:
+            logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1337,16 +1340,28 @@ def handle_websock_event(handlerkey,*args):
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
+            weightedmask={}
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
-                if (weightedmask is {}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
-                else:
-                    ####set timeseries mask on ingest
+            if (weightedmask is {}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
+            else:
+                ####set timeseries mask on ingest
+                try:
                     result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask,ts=time.time()*1000)
                     logger.info('telstate setflags result'+repr(result))
-                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)            
+                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                except Exception, e:
+                    logger.warning("Exception while telstate setflags: (" + str(e) + ")", exc_info=True)
+                    send_websock_cmd('logconsole("Failed to set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                    weightedmask={}
+                    with RingBufferLock:
+                        ringbufferrequestqueue.put(['setflags','',0,0,0,0])
+                        weightedmask=ringbufferresultqueue.get()
+                    if (weightedmask is {}):#an exception occurred
+                        send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
+
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
