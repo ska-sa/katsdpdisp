@@ -1340,7 +1340,7 @@ def handle_websock_event(handlerkey,*args):
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
-                if (weightedmask=={}):#an exception occurred
+                if (weightedmask is {}):#an exception occurred
                     send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
                 else:
                     ####set timeseries mask on ingest
@@ -2242,7 +2242,7 @@ except:
     logger.warning('Unable to load help file '+SERVE_PATH+'/help.txt')
     pass
 
-telstate=katsdptelstate.TelescopeState(opts.telstate)
+telstate=opts.telstate
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
