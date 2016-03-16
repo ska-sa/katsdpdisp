@@ -2242,7 +2242,7 @@ except:
     logger.warning('Unable to load help file '+SERVE_PATH+'/help.txt')
     pass
 
-telstate=katsdptelstate.TelescopeState()
+telstate=katsdptelstate.TelescopeState(opts.telstate)
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
