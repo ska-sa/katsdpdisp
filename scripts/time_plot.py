@@ -1178,11 +1178,12 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         try:
             result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals,ts=time.time()*1000.0)
             logger.info('telstate set custom signals result:'+repr(result))
+            send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
         except Exception, e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
             send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,true,true)',handlerkey)
             ingest_signals=revert_ingest_signals
-            failed_update_ingest_signals_lastts=lastts
+            failed_update_ingest_signals_lastts=lastts            
 
 def handle_websock_event(handlerkey,*args):
     try:
