@@ -1150,9 +1150,11 @@ ingest_signals={}
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
 def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
+    global ingest_signals
     #remove stale items
     timenow=time.time()
     changed=False
+    revert_ingest_signals=copy.deepcopy(ingest_signals)
     for sig in ingest_signals.keys():
         if (timenow-ingest_signals[sig])>60.0 and (sig not in customproducts) and (sig not in outlierproducts):
             del ingest_signals[sig]
@@ -1174,6 +1176,8 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
             logger.info('telstate set custom signals result:'+repr(result))
         except Exception, e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
+            send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,true,true)',handlerkey)
+            ingest_signals=revert_ingest_signals
 
 def handle_websock_event(handlerkey,*args):
     try:
