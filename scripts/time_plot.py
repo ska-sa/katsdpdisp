@@ -193,6 +193,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (thelayoutsettings=='setflags'):
                 datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
                 datasd.storage.timeseriesmaskind,weightedmask,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
+                ringbufferresultqueue.put(weightedmask)
                 continue
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings
@@ -1166,27 +1167,10 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
         ingest_signals[sig]=time.time()
     if (changed):
         ####set custom signals on ingest
-        thecustomsignals=[str(x) for x in sorted(ingest_signals.keys())]
+        thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
-        capture_server,capture_server_port_str=opts.capture_server.split(':')
-        try:
-            client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-            client.start()
-            client.wait_connected(timeout=5)
-            if client.is_connected():
-                reply, informs = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
-                client.stop()
-                if reply.reply_ok():
-                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
-                else:
-                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+' failed on '+opts.capture_server+'",true,true,true)',handlerkey)
-                logger.info('set-custom-signals response from Ingest: '+repr(reply))
-            else:
-                logger.warning('Unable to connect to '+opts.capture_server)
-                send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
-        except:
-            logger.warning('Exception occurred in setsignals - set custom signals')
-            send_websock_cmd('logconsole("Exception occurred in setsignals - set custom signals",true,true,true)',handlerkey)
+        result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals,ts=time.time()*1000.0)
+        logger.info('telstate set custom signals result:'+repr(result))
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1355,23 +1339,14 @@ def handle_websock_event(handlerkey,*args):
                     theviewsettings['version']+=1
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
-                
-            ####set timeseries mask on ingest
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    ret = client.blocking_request(katcp.Message.request('set-timeseries-mask',','.join(args[1:])), timeout=5)
-                    client.stop()
-                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                weightedmask=ringbufferresultqueue.get()
+                if (weightedmask=={}):#an exception occurred
+                    send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
                 else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in setflags - set timeseries mask')
-            
+                    ####set timeseries mask on ingest
+                    result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask,ts=time.time()*1000)
+                    logger.info('telstate setflags result'+repr(result))
+                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)            
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
@@ -2267,6 +2242,7 @@ except:
     logger.warning('Unable to load help file '+SERVE_PATH+'/help.txt')
     pass
 
+telstate=katsdptelstate.TelescopeState()
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
