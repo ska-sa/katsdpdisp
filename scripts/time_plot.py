@@ -2196,7 +2196,7 @@ telstate=opts.telstate
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
-opts.datafilename=args[0]
+opts.datafilename='stream' if (args[0][:2] == '--') else args[0] #to allow master controller to be unchanged, still sending --capture_server:port as option
 rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue))
 rb_process.start()
 htmlrequest_handlers={}
