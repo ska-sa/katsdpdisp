@@ -28,7 +28,6 @@ import gc
 import manhole
 import signal
 from guppy import hpy
-import katcp
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
@@ -78,11 +77,14 @@ np.seterr(all='ignore')
 ######################
 # import katcp
 # 
+# logger_katcp=logging.getLogger("katcp")
+# logger_katcp.setLevel(logging.CRITICAL)
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
 # client.wait_connected(timeout=5)
 # client.is_connected()
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
+# ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip','192.168.6.110'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
 # client.stop()
 ######################
@@ -242,25 +244,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     signal=None
                     pass
                 ringbufferresultqueue.put(signal)
-                continue
-            if (thelayoutsettings=='restartspead'):
-                # objgraph.show_refs([dh],filename='objgraph_refs.png')
-                # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
-                # print 'show_most_common_types()'
-                # objgraph.show_most_common_types()
-                # print 'objgraph.show_growth(limit=3)'
-                # objgraph.show_growth(limit=3)
-                # print 'objgraph.get_leaking_objects()'
-                # roots = objgraph.get_leaking_objects()
-                # print 'objgraph.show_most_common_types(objects=roots)'
-                # objgraph.show_most_common_types(objects=roots)
-                # objgraph.show_refs(roots[:3], refcounts=True, filename='roots.png')
-                # dh.sd.stop()
-                # del dh
-                # del datasd
-                # dh=katsdpdisp.KATData()
-                # dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
-                # datasd=dh.sd                
                 continue
             if (datasd.storage.frame_count==0):
                 if (warnOnce):
@@ -1443,72 +1426,19 @@ def handle_websock_event(handlerkey,*args):
                     deregister_websockrequest_handler(thishandler)
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
-        
-        elif (args[0]=='DROP'):
+        elif (args[0]=='RESTART'):
             logger.info(repr(args))
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
-                    client.stop()
-                    send_websock_cmd('logconsole("Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    logger.info('Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays')
-                else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in drop-sdisp-ip')
-        elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
-            global ingest_signals
-            ingest_signals={}
-            logger.info(repr(args))
-            if (args[0]=='RESTART'):
-                with RingBufferLock:
-                    ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
-                    fig=ringbufferresultqueue.get()
-                if (fig=={}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
-                else:
-                    send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
-                    time.sleep(2)
-                    Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
-                    logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
-                    send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
-                    time.sleep(2)
-                    send_websock_cmd('logconsole("Reissuing metadata.",true,true,true)',handlerkey)
-            if (args[0]=='restartspead'):
-                with RingBufferLock:
-                    ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
-                    fig=ringbufferresultqueue.get()
-                if (fig=={}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
-                elif ('logconsole' in fig):
-                    send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
-                send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
-            #reissue metadata (in both cases)
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                #client = katcp.BlockingClient('192.168.193.5',2040)
-                # client.is_connected()
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
-                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
-                    ret = client.blocking_request(katcp.Message.request('add-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
-                    ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
-                    client.stop()
-                    send_websock_cmd('logconsole("Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    logger.warning('Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays')
-                else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in metadata')
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
+            else:
+                send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
+                time.sleep(2)
+                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
+                logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
+                send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             logger.info(args[0]+':'+cmd)
@@ -2204,10 +2134,6 @@ formatter = logging.Formatter("%(asctime)s.%(msecs)dZ - %(filename)s:%(lineno)s 
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 logging.root.addHandler(sh)
-
-#disable annoying katcp warnings
-logger_katcp=logging.getLogger("katcp")
-logger_katcp.setLevel(logging.CRITICAL)
 
 logger = logging.getLogger("katsdpdisp.time_plot")
 if (opts.debug):
