@@ -80,6 +80,7 @@ np.seterr(all='ignore')
 # logger_katcp=logging.getLogger("katcp")
 # logger_katcp.setLevel(logging.CRITICAL)
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
+# client.start()
 # client.wait_connected(timeout=5)
 # client.is_connected()
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
@@ -2121,8 +2122,6 @@ parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
                   help="Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
-parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
-                  help="Server ip-address:port that runs kat_capture (default=%(default)s)")
 parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
                   help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 
