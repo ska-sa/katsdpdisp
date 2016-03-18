@@ -179,7 +179,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
         try:
             dh.load_k7_data(datafilename,rows=300,startrow=0)
         except Exception,e:
-            logger.warning(" Failed to load file using k7 loader (%s)" % e)
+            logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
             dh.load_ff_data(datafilename)
         datasd=dh.sd_hist
     logger.info('Started ring buffer process')
@@ -241,7 +241,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         signal=None
                 except Exception, e:
-                    logger.warning('Exception in sendfiguredata: '+str(e))
+                    logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     signal=None
                     pass
                 ringbufferresultqueue.put(signal)
@@ -633,8 +633,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 else:                        
                     fig={}
             except Exception, e:
-                logger.warning('Exception in RingBufferProcess: '+str(e))
-                logger.warning(repr(traceback.format_exc()))
+                logger.warning('Exception in RingBufferProcess: '+str(e), exc_info=True)
                 fig={}
                 pass
             
@@ -1553,7 +1552,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
             
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
         
 def convertunicode(input):
     if isinstance(input, dict):
@@ -1665,7 +1664,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return timeseries_fig['customproducts'],timeseries_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1728,7 +1727,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return spectrum_fig['customproducts'],spectrum_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 
 
@@ -1818,7 +1817,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return waterfall_fig['customproducts'],waterfall_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 #client sends request to server; server may respond with numerous assignments of data into a datastructure on client side to address request
 #datastructure transmitted in binary to client
@@ -1939,7 +1938,7 @@ def send_websock_data(binarydata, handlerkey):
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e))
+        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
@@ -1952,7 +1951,7 @@ def send_websock_cmd(cmd, handlerkey):
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e))
+        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
