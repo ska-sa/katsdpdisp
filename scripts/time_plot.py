@@ -1159,7 +1159,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
-            result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals,ts=time.time()*1000.0)
+            result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
             logger.info('telstate set custom signals result:'+repr(result))
             send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,true,true)',handlerkey)
         except Exception, e:
@@ -1337,12 +1337,12 @@ def handle_websock_event(handlerkey,*args):
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
-            if (weightedmask is {}):#an exception occurred
+            if (weightedmask == {}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
             else:
                 ####set timeseries mask on ingest
                 try:
-                    result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask,ts=time.time()*1000)
+                    result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
                     logger.info('telstate setflags result'+repr(result))
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
                 except Exception, e:
@@ -1352,7 +1352,7 @@ def handle_websock_event(handlerkey,*args):
                     with RingBufferLock:
                         ringbufferrequestqueue.put(['setflags','',0,0,0,0])
                         weightedmask=ringbufferresultqueue.get()
-                    if (weightedmask is {}):#an exception occurred
+                    if (weightedmask == {}):#an exception occurred
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
 
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
@@ -2121,6 +2121,8 @@ parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
                   help="Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
+parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
+                  help="DEPRECIATED Server ip-address:port that runs kat_capture (default=%(default)s)")
 parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
                   help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 
@@ -2195,7 +2197,6 @@ telstate=opts.telstate
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
-opts.datafilename='stream' if (args[0][:2] == '--') else args[0] #to allow master controller to be unchanged, still sending --capture_server:port as option
 rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue))
 rb_process.start()
 htmlrequest_handlers={}
