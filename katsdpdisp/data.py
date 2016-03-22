@@ -3189,51 +3189,50 @@ def parse_timeseries_mask(maskstr,spectrum_width):
     spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
     spectrum_flag0=[]
     spectrum_flag1=[]
-    if (spectrum_width<1):
-        return [],[],[]
-    try:
-        args=maskstr.split(',')
-        for c in range(len(args)):
-            rng=args[c].split('..');
-            if (len(rng)==1):
-                if (args[c]!=''):
-                    chan=int(args[c])
-                    spectrum_flag0.append(chan)
-                    spectrum_flag1.append(chan+1)
-                    spectrum_flagmask[chan]=0
-            elif (len(rng)==2):
-                if (rng[0]==''):
-                    chan0=0
-                else:
-                    chan0=int(rng[0])
-                if (rng[1]==''):
-                    chan1=spectrum_width-1
-                else:
-                    chan1=int(rng[1])
-                if (chan0<0):
-                    chan0=spectrum_width+chan0
+    if (spectrum_width>=1):
+        try:
+            args=maskstr.split(',')
+            for c in range(len(args)):
+                rng=args[c].split('..');
+                if (len(rng)==1):
+                    if (args[c]!=''):
+                        chan=int(args[c])
+                        spectrum_flag0.append(chan)
+                        spectrum_flag1.append(chan+1)
+                        spectrum_flagmask[chan]=0
+                elif (len(rng)==2):
+                    if (rng[0]==''):
+                        chan0=0
+                    else:
+                        chan0=int(rng[0])
+                    if (rng[1]==''):
+                        chan1=spectrum_width-1
+                    else:
+                        chan1=int(rng[1])
                     if (chan0<0):
-                        chan0=0;
-                elif (chan0>=spectrum_width):
-                    chan0=spectrum_width-1
-                if (chan1<0):
-                    chan1=spectrum_width+chan1
+                        chan0=spectrum_width+chan0
+                        if (chan0<0):
+                            chan0=0;
+                    elif (chan0>=spectrum_width):
+                        chan0=spectrum_width-1
                     if (chan1<0):
-                        chan1=0;
-                elif (chan1>=spectrum_width):
-                    chan1=spectrum_width-1;
-                if (chan0>chan1):
-                    tmp=chan0
-                    chan0=chan1
-                    chan1=tmp
-                spectrum_flag0.append(chan0)
-                spectrum_flag1.append(chan1)
-                spectrum_flagmask[chan0:(chan1+1)]=0
-    except Exception, e:#clears flags if exception occurred during parsing
-        spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
-        spectrum_flag0=[]
-        spectrum_flag1=[]
-        pass
+                        chan1=spectrum_width+chan1
+                        if (chan1<0):
+                            chan1=0;
+                    elif (chan1>=spectrum_width):
+                        chan1=spectrum_width-1;
+                    if (chan0>chan1):
+                        tmp=chan0
+                        chan0=chan1
+                        chan1=tmp
+                    spectrum_flag0.append(chan0)
+                    spectrum_flag1.append(chan1)
+                    spectrum_flagmask[chan0:(chan1+1)]=0
+        except Exception, e:#clears flags if exception occurred during parsing
+            spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
+            spectrum_flag0=[]
+            spectrum_flag1=[]
+            pass
     timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
     weightedmask=spectrum_flagmask/len(timeseriesmaskind)
     return timeseriesmaskind,weightedmask,spectrum_flag0,spectrum_flag1
