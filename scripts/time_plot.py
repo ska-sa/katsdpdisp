@@ -1160,7 +1160,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
             result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
-            logger.info('telstate set custom signals result:'+repr(result))
+            logger.info('telstate set custom signals result: '+repr(result))
             send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,true,true)',handlerkey)
         except Exception, e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
@@ -1337,13 +1337,13 @@ def handle_websock_event(handlerkey,*args):
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
-            if (weightedmask == {}):#an exception occurred
+            if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
             else:
                 ####set timeseries mask on ingest
                 try:
                     result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
-                    logger.info('telstate setflags result'+repr(result))
+                    logger.info('telstate setflags result: '+repr(result))
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
                 except Exception, e:
                     logger.warning("Exception while telstate setflags: (" + str(e) + ")", exc_info=True)
@@ -1352,7 +1352,7 @@ def handle_websock_event(handlerkey,*args):
                     with RingBufferLock:
                         ringbufferrequestqueue.put(['setflags','',0,0,0,0])
                         weightedmask=ringbufferresultqueue.get()
-                    if (weightedmask == {}):#an exception occurred
+                    if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
 
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
@@ -1600,6 +1600,21 @@ def decodecustomsignal(signalstr):
 def printablesignal(product):
     return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]    
 
+def getsensordata(sensorname='testsensor', start_time=0, end_time=-120, include_ts=False):
+    if telstate is None or sensorname not in telstate.keys():
+        return [0]
+    if (end_time>=0):
+        values=telstate.get_range(sensorname,st=start_time,et=end_time) 
+    else:
+        values=telstate.get_range(sensorname,st=end_time)
+    if (type(values)!=list or len(values)<1):
+        return [0]
+    sensorvalues=np.array([val[0] for val in values])
+    if (include_ts):
+        timestamps=np.array([val[1] for val in values])
+        return [timestamps,sensorvalues]
+    return sensorvalues
+
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
         with RingBufferLock:
@@ -1624,12 +1639,14 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             
         if ('sensor' in theviewsettings):
             local_yseries=(timeseries_fig['ydata'])[:]
-            print 'local_yseries[0] shape',local_yseries[0].shape
-            print 'xdata shape',timeseries_fig['xdata'].shape
-            sensor=np.zeros(local_yseries[0].shape)+np.random.randn(len(timeseries_fig['xdata'])).reshape([1,len(timeseries_fig['xdata'])])+3.0
-            print 'sensor shape',sensor.shape
+            sensorsignal = getsensordata(sensorname='testsensor', start_time=ts[0], end_time=ts[-1], include_ts=False)
+            if (len(timeseries_fig['xdata'])!=len(sensorsignal)):
+                print 'len(timeseries_fig[xdata]),',len(timeseries_fig['xdata']),'len(sensorsignal)',len(sensorsignal)
+                sensor=np.zeros(local_yseries[0].shape)+np.random.randn(len(timeseries_fig['xdata'])).reshape([1,len(timeseries_fig['xdata'])])+3.0
+            else:    
+                sensor=np.zeros(local_yseries[0].shape)+sensorsignal.reshape([1,len(sensorsignal)])
             timeseries_fig['ydata'].append(sensor)
-            timeseries_fig['yunit'].append('')
+            timeseries_fig['yunit'].append('sensorunit')
             timeseries_fig['ylabel'].append(theviewsettings['sensor'])
 
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
