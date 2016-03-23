@@ -1639,6 +1639,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             
         if ('sensor' in theviewsettings):
             local_yseries=(timeseries_fig['ydata'])[:]
+            ts=timeseries_fig['xdata']
             sensorsignal = getsensordata(sensorname='testsensor', start_time=ts[0], end_time=ts[-1], include_ts=False)
             if (len(timeseries_fig['xdata'])!=len(sensorsignal)):
                 print 'len(timeseries_fig[xdata]),',len(timeseries_fig['xdata']),'len(sensorsignal)',len(sensorsignal)
