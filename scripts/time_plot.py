@@ -1623,6 +1623,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             return [],[]
             
         if ('sensor' in theviewsettings):
+            local_yseries=(timeseries_fig['ydata'])[:]
             print 'local_yseries shape',local_yseries.shape
             print 'xdata shape',timeseries_fig['xdata'].shape
             sensor=np.random.randn(len(timeseries_fig['xdata'])).reshape([1,len(timeseries_fig['xdata'])])+3.0
