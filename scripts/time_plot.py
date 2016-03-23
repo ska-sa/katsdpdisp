@@ -1337,7 +1337,7 @@ def handle_websock_event(handlerkey,*args):
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
-            if (weightedmask == {}):#an exception occurred
+            if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
             else:
                 ####set timeseries mask on ingest
@@ -1352,7 +1352,7 @@ def handle_websock_event(handlerkey,*args):
                     with RingBufferLock:
                         ringbufferrequestqueue.put(['setflags','',0,0,0,0])
                         weightedmask=ringbufferresultqueue.get()
-                    if (weightedmask == {}):#an exception occurred
+                    if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
 
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
