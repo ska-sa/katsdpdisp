@@ -38,10 +38,7 @@ loop - displays a list of different profiles in a loop
 
 Advanced user commands:
 console - shows,  hides or clears the console
-DROP - Drops this ip from list of signal displays
-metadata - re-issue metadata, may be useful when starting up timeplot server while an observation is running
-restartspead - experimental, shows debug info
-RESTART - exits spead receiver process and restarts it, then re-issue metadata
+RESTART - exits spead receiver process and restarts it
 memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
@@ -155,14 +152,8 @@ Displays a list of inputs available in current spead stream.
 [info]
 Displays information about the current observation
 
-[metadata]
-This command ensures that the default signal display servers are included in kat-capture's list of spead receivers, and re-issue metadata.
-
 [memoryleak]
 Prints out counts of new objects stored in memory.
-
-[restartspead]
-This command stops, deletes and restarts the spead receiver. Note that historic data is deleted. The metadata command is also executed afterwards.
 
 [ncols]
 Change the number of columns, and recalculate figure sizes accordingly.

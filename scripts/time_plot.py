@@ -28,7 +28,6 @@ import gc
 import manhole
 import signal
 from guppy import hpy
-import katcp
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
@@ -78,11 +77,15 @@ np.seterr(all='ignore')
 ######################
 # import katcp
 # 
+# logger_katcp=logging.getLogger("katcp")
+# logger_katcp.setLevel(logging.CRITICAL)
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
+# client.start()
 # client.wait_connected(timeout=5)
 # client.is_connected()
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
+# ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip','192.168.6.110'), timeout=5)
 # ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
 # client.stop()
 ######################
@@ -176,7 +179,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
         try:
             dh.load_k7_data(datafilename,rows=300,startrow=0)
         except Exception,e:
-            logger.warning(" Failed to load file using k7 loader (%s)" % e)
+            logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
             dh.load_ff_data(datafilename)
         datasd=dh.sd_hist
     logger.info('Started ring buffer process')
@@ -193,6 +196,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (thelayoutsettings=='setflags'):
                 datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
                 datasd.storage.timeseriesmaskind,weightedmask,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
+                ringbufferresultqueue.put(weightedmask)
                 continue
             if (thelayoutsettings=='setoutliertime'):
                 datasd.storage.outliertime=theviewsettings
@@ -237,29 +241,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         signal=None
                 except Exception, e:
-                    logger.warning('Exception in sendfiguredata: '+str(e))
+                    logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     signal=None
                     pass
                 ringbufferresultqueue.put(signal)
-                continue
-            if (thelayoutsettings=='restartspead'):
-                # objgraph.show_refs([dh],filename='objgraph_refs.png')
-                # objgraph.show_backrefs([dh],filename='objgraph_backrefs.png')
-                # print 'show_most_common_types()'
-                # objgraph.show_most_common_types()
-                # print 'objgraph.show_growth(limit=3)'
-                # objgraph.show_growth(limit=3)
-                # print 'objgraph.get_leaking_objects()'
-                # roots = objgraph.get_leaking_objects()
-                # print 'objgraph.show_most_common_types(objects=roots)'
-                # objgraph.show_most_common_types(objects=roots)
-                # objgraph.show_refs(roots[:3], refcounts=True, filename='roots.png')
-                # dh.sd.stop()
-                # del dh
-                # del datasd
-                # dh=katsdpdisp.KATData()
-                # dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
-                # datasd=dh.sd                
                 continue
             if (datasd.storage.frame_count==0):
                 if (warnOnce):
@@ -648,8 +633,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 else:                        
                     fig={}
             except Exception, e:
-                logger.warning('Exception in RingBufferProcess: '+str(e))
-                logger.warning(repr(traceback.format_exc()))
+                logger.warning('Exception in RingBufferProcess: '+str(e), exc_info=True)
                 fig={}
                 pass
             
@@ -1145,13 +1129,19 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 
 
 ingest_signals={}
+failed_update_ingest_signals_lastts=0
 
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
-def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
+def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
+    global failed_update_ingest_signals_lastts
+    global ingest_signals
+    if (failed_update_ingest_signals_lastts==lastts):
+        return
     #remove stale items
     timenow=time.time()
     changed=False
+    revert_ingest_signals=copy.deepcopy(ingest_signals)
     for sig in ingest_signals.keys():
         if (timenow-ingest_signals[sig])>60.0 and (sig not in customproducts) and (sig not in outlierproducts):
             del ingest_signals[sig]
@@ -1166,27 +1156,17 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts):
         ingest_signals[sig]=time.time()
     if (changed):
         ####set custom signals on ingest
-        thecustomsignals=[str(x) for x in sorted(ingest_signals.keys())]
+        thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
-        capture_server,capture_server_port_str=opts.capture_server.split(':')
         try:
-            client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-            client.start()
-            client.wait_connected(timeout=5)
-            if client.is_connected():
-                reply, informs = client.blocking_request(katcp.Message.request('set-custom-signals',','.join(thecustomsignals)), timeout=5)
-                client.stop()
-                if reply.reply_ok():
-                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+'",true,true,true)',handlerkey)
-                else:
-                    send_websock_cmd('logconsole("Set custom signals to '+','.join(thecustomsignals)+' failed on '+opts.capture_server+'",true,true,true)',handlerkey)
-                logger.info('set-custom-signals response from Ingest: '+repr(reply))
-            else:
-                logger.warning('Unable to connect to '+opts.capture_server)
-                send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)
-        except:
-            logger.warning('Exception occurred in setsignals - set custom signals')
-            send_websock_cmd('logconsole("Exception occurred in setsignals - set custom signals",true,true,true)',handlerkey)
+            result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
+            logger.info('telstate set custom signals result:'+repr(result))
+            send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,true,true)',handlerkey)
+        except Exception, e:
+            logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
+            send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,true,true)',handlerkey)
+            ingest_signals=revert_ingest_signals
+            failed_update_ingest_signals_lastts=lastts            
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -1238,7 +1218,7 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
                 customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
-            UpdateCustomSignals(handlerkey,customproducts,outlierproducts)
+            UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
             logger.info(repr(args))
             ifigure=int(args[1])
@@ -1353,25 +1333,28 @@ def handle_websock_event(handlerkey,*args):
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
+            weightedmask={}
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
-                
-            ####set timeseries mask on ingest
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    ret = client.blocking_request(katcp.Message.request('set-timeseries-mask',','.join(args[1:])), timeout=5)
-                    client.stop()
+                weightedmask=ringbufferresultqueue.get()
+            if (weightedmask == {}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
+            else:
+                ####set timeseries mask on ingest
+                try:
+                    result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
+                    logger.info('telstate setflags result'+repr(result))
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
-                else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in setflags - set timeseries mask')
-            
+                except Exception, e:
+                    logger.warning("Exception while telstate setflags: (" + str(e) + ")", exc_info=True)
+                    send_websock_cmd('logconsole("Failed to set timeseries mask to '+','.join(args[1:])+'",true,true,true)',handlerkey)
+                    weightedmask={}
+                    with RingBufferLock:
+                        ringbufferrequestqueue.put(['setflags','',0,0,0,0])
+                        weightedmask=ringbufferresultqueue.get()
+                    if (weightedmask == {}):#an exception occurred
+                        send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
+
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
@@ -1443,72 +1426,19 @@ def handle_websock_event(handlerkey,*args):
                     deregister_websockrequest_handler(thishandler)
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
                 #extramsg=str(repr(websockrequest_username))+str(repr(websockrequest_username.keys()))
-        
-        elif (args[0]=='DROP'):
+        elif (args[0]=='RESTART'):
             logger.info(repr(args))
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    ret = client.blocking_request(katcp.Message.request('drop-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
-                    client.stop()
-                    send_websock_cmd('logconsole("Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    logger.info('Dropped '+client._sock.getsockname()[0]+' from '+opts.capture_server+' list of signal displays')
-                else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in drop-sdisp-ip')
-        elif (args[0]=='RESTART' or args[0]=='restartspead' or args[0]=='metadata'):
-            global ingest_signals
-            ingest_signals={}
-            logger.info(repr(args))
-            if (args[0]=='RESTART'):
-                with RingBufferLock:
-                    ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
-                    fig=ringbufferresultqueue.get()
-                if (fig=={}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
-                else:
-                    send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
-                    time.sleep(2)
-                    Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
-                    logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
-                    send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
-                    time.sleep(2)
-                    send_websock_cmd('logconsole("Reissuing metadata.",true,true,true)',handlerkey)
-            if (args[0]=='restartspead'):
-                with RingBufferLock:
-                    ringbufferrequestqueue.put(['restartspead',0,0,0,0,0])
-                    fig=ringbufferresultqueue.get()
-                if (fig=={}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating restartspead",true,true,true)',handlerkey)
-                elif ('logconsole' in fig):
-                    send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
-                send_websock_cmd('logconsole("Reset performed. Now issue metadata instruction",true,true,true)',handlerkey)
-            #reissue metadata (in both cases)
-            capture_server,capture_server_port_str=opts.capture_server.split(':')
-            try:
-                client = katcp.BlockingClient(capture_server,int(capture_server_port_str))
-                #client = katcp.BlockingClient('192.168.193.5',2040)
-                # client.is_connected()
-                client.start()
-                client.wait_connected(timeout=5)
-                if client.is_connected():
-                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.193.7'), timeout=5)
-                    # ret = client.blocking_request(katcp.Message.request('add-sdisp-ip','192.168.6.110'), timeout=5)
-                    ret = client.blocking_request(katcp.Message.request('add-sdisp-ip',client._sock.getsockname()[0]), timeout=5)            
-                    ret = client.blocking_request(katcp.Message.request('sd-metadata-issue'), timeout=5)
-                    client.stop()
-                    send_websock_cmd('logconsole("Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays ",true,true,true)',handlerkey)
-                    logger.warning('Added '+client._sock.getsockname()[0]+' to '+opts.capture_server+' list of signal displays')
-                else:
-                    logger.warning('Unable to connect to '+opts.capture_server)
-                    send_websock_cmd('logconsole("Unable to connect to '+opts.capture_server+'",true,true,true)',handlerkey)                
-            except:
-                logger.warning('Exception occurred in metadata')
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['RESTART',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating RESTART",true,true,true)',handlerkey)
+            else:
+                send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
+                time.sleep(2)
+                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
+                logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
+                send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
             logger.info(args[0]+':'+cmd)
@@ -1622,7 +1552,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
             
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
         
 def convertunicode(input):
     if isinstance(input, dict):
@@ -1734,7 +1664,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return timeseries_fig['customproducts'],timeseries_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1797,7 +1727,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return spectrum_fig['customproducts'],spectrum_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 
 
@@ -1887,7 +1817,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return waterfall_fig['customproducts'],waterfall_fig['outlierproducts']
     except Exception, e:
-        logger.warning("User event exception %s" % str(e))
+        logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
 #client sends request to server; server may respond with numerous assignments of data into a datastructure on client side to address request
 #datastructure transmitted in binary to client
@@ -2008,7 +1938,7 @@ def send_websock_data(binarydata, handlerkey):
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e))
+        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
@@ -2021,7 +1951,7 @@ def send_websock_cmd(cmd, handlerkey):
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e))
+        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
@@ -2192,7 +2122,7 @@ parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
 parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
-                  help="Server ip-address:port that runs kat_capture (default=%(default)s)")
+                  help="DEPRECATED Server ip-address:port that runs kat_capture (default=%(default)s)")
 parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
                   help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 
@@ -2204,10 +2134,6 @@ formatter = logging.Formatter("%(asctime)s.%(msecs)dZ - %(filename)s:%(lineno)s 
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 logging.root.addHandler(sh)
-
-#disable annoying katcp warnings
-logger_katcp=logging.getLogger("katcp")
-logger_katcp.setLevel(logging.CRITICAL)
 
 logger = logging.getLogger("katsdpdisp.time_plot")
 if (opts.debug):
@@ -2266,6 +2192,10 @@ try:
 except:
     logger.warning('Unable to load help file '+SERVE_PATH+'/help.txt')
     pass
+
+telstate=opts.telstate
+if (telstate is None):
+    logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
 
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()

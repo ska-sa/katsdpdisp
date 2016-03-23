@@ -3,7 +3,6 @@ Cython
 funcsigs
 guppy==0.1.10
 h5py
-katcp
 linecache2
 manhole
 matplotlib==1.4.3
