@@ -1407,7 +1407,16 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='telstate'):
             logger.info(repr(args))
             if (telstate is not None):
-                send_websock_cmd('logconsole("'+repr(telstate.keys())+'",true,true,true)',handlerkey)
+                if (len(args)>1):
+                    thekey=str(args[1])
+                    if (thekey in telstate.keys()):
+                        send_websock_cmd('logconsole("'+repr(telstate[thekey])+'",true,true,true)',handlerkey)
+                    else:
+                        send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("'+repr(telstate.keys())+'",true,true,true)',handlerkey)
+            else:
+                send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
             with RingBufferLock:
