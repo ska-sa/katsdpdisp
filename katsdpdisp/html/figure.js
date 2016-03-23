@@ -359,6 +359,83 @@ function drawMetricLinearAtPt(context, viewmin, viewmax, pixspan, pixx, pixy, un
 	context.closePath();
 }
 
+function getminmax(datalist,istart,iend)
+{
+    if (datalist.length==0) return [NaN,NaN]
+	mn=datalist[0][0]
+	mx=mn
+	if (typeof(mn)=="undefined")//so it is just a vector, not a vector of vector
+	{
+	    mn=Math.min.apply(Math, datalist)
+	    mx=Math.max.apply(Math, datalist)
+        if (!isFinite(mn) || !isFinite(mx))
+        {
+            mn=NaN
+            mx=NaN
+			for (iel=istart;iel<iend;iel++)
+			{
+				if (isFinite(datalist[iel]))
+				{
+					if (!isFinite(mn))
+					{
+						mn=datalist[iel];
+						mx=datalist[iel];
+					}else if (mn>datalist[iel])
+					{
+						mn=datalist[iel];
+					}else if (mx<datalist[iel])
+					{
+						mx=datalist[iel];
+					}
+				}
+			}
+        }
+	    return [mn,mx]
+    }
+	for (iline=0;iline<datalist.length;iline++)
+	{
+	    try
+        {
+            thismin=Math.min.apply(Math, datalist[iline])
+        } catch(err)
+        {
+            ret_str = "user command failed: " + err;
+        }
+
+		thismin=Math.min.apply(Math, datalist[iline])
+		thismax=Math.max.apply(Math, datalist[iline])
+		mn=Math.min(thismin,mn)
+		mx=Math.max(thismax,mx)
+	}
+	if (!isFinite(mn) || !isFinite(mx))
+	{
+		mn=NaN
+		mx=NaN
+		for (iline=0;iline<datalist.length;iline++)
+		{
+			theline=datalist[iline]
+			for (iel=istart;iel<iend;iel++)
+			{
+				if (isFinite(theline[iel]))
+				{
+					if (!isFinite(mn))
+					{
+						mn=theline[iel];
+						mx=theline[iel];
+					}else if (mn>theline[iel])
+					{
+						mn=theline[iel];
+					}else if (mx<theline[iel])
+					{
+						mx=theline[iel];
+					}
+				}
+			}
+		}
+	}
+	return [mn,mx]
+}
+
 function getminmax(datalist)
 {
     if (datalist.length==0) return [NaN,NaN]
@@ -509,11 +586,12 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
 		{
 			yviewmin[itwin]=-60
 			yviewmax[itwin]=20
-			minmax=getminmax(dataylist[itwin])
+            if (itwin<1)  minmax=getminmax(dataylist[itwin])
+            else minmax=getminmax(dataylist[itwin],ixstart,ixend)
 			span=minmax[1]-minmax[0]
-			if (!isNaN(ymin)) yviewmin[itwin]=ymin
+			if (itwin<1 && !isNaN(ymin)) yviewmin[itwin]=ymin
 			else yviewmin[itwin]=minmax[0]-span*0.05
-			if (!isNaN(ymax)) yviewmax[itwin]=ymax
+			if (itwin<1 && !isNaN(ymax)) yviewmax[itwin]=ymax
 			else yviewmax[itwin]=minmax[1]+span*0.05
 			if (yviewmax[itwin]==yviewmin[itwin])
 			{
@@ -633,7 +711,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,title,xlabe
     			{
     			    legendfontHeight=labelfontHeight*0.9
     				figcontext.font=""+legendfontHeight+"px sans-serif";
-    				x=axisposh+axiscanvas.width+((ylabel.length>1)?(dotickneg*majorticklength)+((numberpos==0)*tickfontHeight)+(labelpos==0)*legendfontHeight:0)+legendfontHeight/4
+                    x=figcanvas.width-75
     				for (iline=0,y=axisposv+legendfontHeight;iline<legend.length && y<axisposv+axiscanvas.height-legendfontHeight/5;iline++,y+=legendfontHeight)
     				{	
     				    if (corrlinepoly[clrlist[iline][3]])
@@ -1477,6 +1555,12 @@ function setaxiscanvasrect(ifig)
         	_width=figcanvas.width-80-_left
         else
         	_width=figcanvas.width-7-_left
+        if (RG_fig[ifig].ydata.length>1)//twinaxis, extra
+        {
+            _width-=30
+            if (RG_fig[ifig].showylabel=='on')
+                _width-=20
+        }
         if (RG_fig[ifig].showxlabel=='on')
         	_height=figcanvas.height-55-_top;
         else

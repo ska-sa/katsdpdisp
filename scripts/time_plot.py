@@ -1410,6 +1410,10 @@ def handle_websock_event(handlerkey,*args):
                 if (len(args)>1):
                     thekey=str(args[1])
                     if (thekey in telstate.keys()):
+                        html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
+                        for thishandler in websockrequest_username.keys():
+                            if (websockrequest_username[thishandler]==username):
+                                send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                         send_websock_cmd('logconsole("'+repr(telstate[thekey])+'",true,true,true)',handlerkey)
                     else:
                         send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
@@ -1618,6 +1622,14 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             return [],[]
             
+        if ('sensor' in theviewsettings):
+            print 'local_yseries shape',local_yseries.shape
+            print 'xdata shape',timeseries_fig['xdata'].shape
+            sensor=np.random.randn(len(timeseries_fig['xdata'])).reshape([1,len(timeseries_fig['xdata'])])+3.0
+            timeseries_fig['ydata'].append(sensor)
+            timeseries_fig['yunit'].append('')
+            timeseries_fig['ylabel'].append(theviewsettings['sensor'])
+
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
@@ -1649,7 +1661,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'H'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),timeseries_fig['spancolor'],'b'),handlerkey);count+=1;
             for itwin,twinplotyseries in enumerate(local_yseries):
-                for iline,linedata in enumerate(twinplotyseries):              
+                for iline,linedata in enumerate(twinplotyseries):
                     send_websock_data(pack_binarydata_msg('fig[%d].ydata[%d][%d]'%(ifigure,itwin,iline),linedata,'H'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
