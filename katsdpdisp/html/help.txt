@@ -43,6 +43,7 @@ memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
+telstate - displays telescope state keys
 
 [auto]
 Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh as well as vv auto correlation products. This collection excludes hv auto correlation products.
@@ -235,6 +236,9 @@ and so forth
 'server top' - Prints out to the console the load and process summary of the server.
 
 'server ps' - Prints out to the console the process usage of the signal display processes.
+
+[telstate]
+'telstate' - Prints out telescope state keys, which includes available sensors.
 
 [users]
 Prints the list of named user profiles that the server is currently maintaining, to the console. The profiles that are saved persistently are shown. A count is also provided next to each active user profile showing how many user pages are currently logged into the respective profiles.

@@ -1404,6 +1404,10 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+        elif (args[0]=='telstate'):
+            logger.info(repr(args))
+            if (telstate is not None):
+                send_websock_cmd('logconsole("'+repr(telstate.keys())+'",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
             with RingBufferLock:

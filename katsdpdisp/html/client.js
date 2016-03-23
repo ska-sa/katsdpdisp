@@ -276,6 +276,9 @@ function setsignals(){
     }else if (signaltext=='info')
 	{
 		handle_data_user_event('info');
+    }else if (signaltext=='telstate')
+	{
+		handle_data_user_event('telstate');
 	}else if (signaltext=='memoryleak')
 	{
 		handle_data_user_event('memoryleak');
