@@ -1418,7 +1418,15 @@ def handle_websock_event(handlerkey,*args):
                     else:
                         send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
                 else:
-                    send_websock_cmd('logconsole("'+repr(telstate.keys())+'",true,true,true)',handlerkey)
+                    immut=[]
+                    sens=[]
+                    for key in telstate.keys():
+                        if telstate.is_immutable(key):
+                            immut.append(key)
+                        else:
+                            sens.append(key)
+                    send_websock_cmd('logconsole("Immutable keys in telstate: '+repr(immut)+'",true,true,true)',handlerkey)
+                    send_websock_cmd('logconsole("Sensor keys in telstate: '+repr(sens)+'",true,true,true)',handlerkey)
             else:
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
@@ -1600,20 +1608,22 @@ def decodecustomsignal(signalstr):
 def printablesignal(product):
     return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]    
 
-def getsensordata(sensorname='testsensor', start_time=0, end_time=-120, include_ts=False):
+def getsensordata(sensorname, start_time=0, end_time=-120):
     if telstate is None or sensorname not in telstate.keys():
-        return [0]
+        return [np.array([]),np.array([])]
     if (end_time>=0):
-        values=telstate.get_range(sensorname,st=start_time,et=end_time) 
+        values=telstate.get_range(sensorname,st=start_time,et=end_time,include_previous=True) 
     else:
-        values=telstate.get_range(sensorname,st=end_time)
-    if (type(values)!=list or len(values)<1):
-        return [0]
-    sensorvalues=np.array([val[0] for val in values])
-    if (include_ts):
+        values=telstate.get_range(sensorname,st=end_time,include_previous=True)# typical values=[(25.0, 1458820419.843372)]
+    if (not isinstance(values,list) or len(values)<1 or not isinstance(values[0][0], (int, long, float))):
+        return [np.array([]),np.array([])]
+    if (len(values)==1):
+        sensorvalues=np.array([values[0][0],values[0][0]])
+        timestamps=np.array([start_time,end_time])
+    else:    
+        sensorvalues=np.array([val[0] for val in values])
         timestamps=np.array([val[1] for val in values])
-        return [timestamps,sensorvalues]
-    return sensorvalues
+    return [timestamps,sensorvalues]
 
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
@@ -1637,18 +1647,23 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             return [],[]
             
+        sensorsignal=[]
+        sensorts=[]
+        sensorname=''
         if ('sensor' in theviewsettings):
             local_yseries=(timeseries_fig['ydata'])[:]
             ts=timeseries_fig['xdata']
-            sensorsignal = getsensordata(sensorname='testsensor', start_time=ts[0], end_time=ts[-1], include_ts=False)
-            if (len(timeseries_fig['xdata'])!=len(sensorsignal)):
-                print 'len(timeseries_fig[xdata]),',len(timeseries_fig['xdata']),'len(sensorsignal)',len(sensorsignal)
-                sensor=np.zeros(local_yseries[0].shape)+np.random.randn(len(timeseries_fig['xdata'])).reshape([1,len(timeseries_fig['xdata'])])+3.0
-            else:    
-                sensor=np.zeros(local_yseries[0].shape)+sensorsignal.reshape([1,len(sensorsignal)])
-            timeseries_fig['ydata'].append(sensor)
-            timeseries_fig['yunit'].append('sensorunit')
-            timeseries_fig['ylabel'].append(theviewsettings['sensor'])
+            try:
+                sensorts,sensorsignal = getsensordata(sensorname=theviewsettings['sensor'], start_time=ts[0], end_time=ts[-1])
+                # print 'ts',ts[0],ts[-1],sensorts-sensorts[0]
+                sensorsignal=sensorsignal
+                sensorts=sensorts
+                sensorname=theviewsettings['sensor']
+            except Exception, e:
+                sensorsignal=[]
+                sensorts=[]
+                sensorname=''
+                #logger.warning("Exception evaluating sensor %s: %s" % (theviewsettings['sensor'],str(e)), exc_info=True)
 
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
@@ -1677,6 +1692,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].sensorname'%(ifigure),sensorname,'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xsensor'%(ifigure),sensorts,'I'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ysensor'%(ifigure),sensorsignal,'H'),handlerkey);count+=1;
             for ispan,span in enumerate(timeseries_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
                 send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'H'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),timeseries_fig['spancolor'],'b'),handlerkey);count+=1;
@@ -1699,6 +1717,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].sensorname'%(ifigure),sensorname,'s'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].xsensor'%(ifigure),sensorts,'I'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].ysensor'%(ifigure),sensorsignal,'H'),handlerkey);count+=1;
                 for itwin,twinplotyseries in enumerate(local_yseries):
                     for iline,linedata in enumerate(twinplotyseries):
                         send_websock_data(pack_binarydata_msg('fig[%d].ydata[%d][%d]'%(ifigure,itwin,iline),linedata,'H'),handlerkey);count+=1;
