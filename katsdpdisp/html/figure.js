@@ -1619,7 +1619,7 @@ function setaxiscanvasrect(ifig)
         	_width=figcanvas.width-80-_left
         else
         	_width=figcanvas.width-7-_left
-        if (RG_fig[ifig].ydata.length>1)//twinaxis, extra
+        if ((RG_fig[ifig].figtype=='timeseries') && (RG_fig[ifig].sensorname.length >0))//twinaxis, extra
         {
             _width-=30
             if (RG_fig[ifig].showylabel=='on')
