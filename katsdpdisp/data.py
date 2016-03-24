@@ -352,7 +352,7 @@ class SignalDisplayStore2(object):
     def __init__(self, n_ants=2, capacity=0.2):
         try:
             import psutil
-            self.mem_cap = int(psutil.phymem_usage()[0] * capacity)
+            self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
         except ImportError:
             self.mem_cap = 1024*1024*128
              # default to 128 megabytes if we cannot determine system memory
@@ -500,7 +500,7 @@ class SignalDisplayStore(object):
     def __init__(self, n_ants=2, capacity=0.2):
         try:
             import psutil
-            self.mem_cap = int(psutil.phymem_usage()[0] * capacity)
+            self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
         except ImportError:
             self.mem_cap = 1024*1024*128
              # default to 128 megabytes if we cannot determine system memory
