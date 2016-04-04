@@ -3233,7 +3233,7 @@ def parse_timeseries_mask(maskstr,spectrum_width):
             spectrum_flag0=[]
             spectrum_flag1=[]
             pass
-    timeseriesmaskind=np.nonzero(spectrum_flagmask[1:])[0]+1 #note channel 0 is timeseries
+    timeseriesmaskind=np.nonzero(spectrum_flagmask)[0]
     weightedmask=spectrum_flagmask/len(timeseriesmaskind)
     return timeseriesmaskind,weightedmask,spectrum_flag0,spectrum_flag1
 
