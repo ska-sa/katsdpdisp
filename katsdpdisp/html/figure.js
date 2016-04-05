@@ -523,8 +523,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xmin
         if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
         for (itwin=0;itwin<dataylist.length;itwin++)
         {
-            yviewmin[itwin]=-60
-            yviewmax[itwin]=20
             if (itwin<1)  minmax=getminmax(dataylist[itwin])
             else minmax=getminmax(dataylist[itwin],ixstart,ixend)
             span=minmax[1]-minmax[0]
@@ -607,8 +605,6 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xmin
             if (x>1)ixstart=x-2;else ixstart=0;
             for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
             if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
-            yviewmin[itwin]=-60
-            yviewmax[itwin]=20
             minmax=getminmax(ysensor,ixstart,ixend)
             span=minmax[1]-minmax[0]
             yviewmin[itwin]=minmax[0]-span*0.05
@@ -820,8 +816,6 @@ function drawRelationFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,tit
         if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
         for (itwin=0;itwin<dataylist.length;itwin++)
         {
-            yviewmin[itwin]=-60
-            yviewmax[itwin]=20
             minmax=getminmax(dataylist[itwin])
             span=minmax[1]-minmax[0]
             if (!isNaN(ymin)) yviewmin[itwin]=ymin

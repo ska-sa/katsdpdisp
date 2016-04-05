@@ -27,6 +27,7 @@ import resource
 import gc
 import manhole
 import signal
+import numbers
 from guppy import hpy
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
@@ -1423,7 +1424,7 @@ def handle_websock_event(handlerkey,*args):
             if (telstate is not None):
                 if (len(args)>1):
                     thekey=str(args[1])
-                    if (thekey in telstate.keys()):
+                    if (thekey in telstate):
                         html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
                         for thishandler in websockrequest_username.keys():
                             if (websockrequest_username[thishandler]==username):
@@ -1629,7 +1630,7 @@ def getsensordata(sensorname, start_time=0, end_time=-120):
         values=telstate.get_range(sensorname,st=start_time,et=end_time,include_previous=True) 
     else:
         values=telstate.get_range(sensorname,st=end_time,include_previous=True)# typical values=[(25.0, 1458820419.843372)]
-    if (not isinstance(values,list) or len(values)<1 or not isinstance(values[0][0], (int, long, float))):
+    if (not isinstance(values,list) or len(values)<1 or not isinstance(values[0][0], numbers.Real)):
         return [np.array([]),np.array([])]
     if (len(values)==1):
         sensorvalues=np.array([values[0][0],values[0][0]])
