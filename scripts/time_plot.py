@@ -1418,7 +1418,7 @@ def handle_websock_event(handlerkey,*args):
                     if (websockrequest_username[thishandler]==theusername):
                         nusers+=1
                         send_websock_cmd('document.write("You have been kicked off by '+username+' at '+time.strftime("%Y-%m-%d %H:%M")+'. Reload the page to re-connect. Message: '+message+'");',thishandler)
-                send_websock_cmd('logconsole("Kicked off '+str(nusers)+'users with username '+theusername+'",true,true,true)',handlerkey)
+                send_websock_cmd('logconsole("Kicked off '+str(nusers)+' users with username '+theusername+'",true,true,true)',handlerkey)
         elif (args[0]=='telstate'):
             logger.info(repr(args))
             if (telstate is not None):
