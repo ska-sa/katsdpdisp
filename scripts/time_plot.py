@@ -1404,6 +1404,20 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+        elif (args[0]=='kick'):
+            logger.info(repr(args))
+            if (len(args)==1):
+                send_websock_cmd('logconsole("No username specified to kick",true,true,true)',handlerkey)
+            elif (len(args)==2):
+                splitarg=str(args[1]).split(' ')
+                theusername=splitarg[0]
+                message=' '.join(splitarg[1:])
+                nusers=0
+                for thishandler in websockrequest_username.keys():
+                    if (websockrequest_username[thishandler]==theusername):
+                        nusers+=1
+                        send_websock_cmd('document.write("You have been kicked off by '+username+' at '+time.strftime("%Y-%m-%d %H:%M")+'. Reload the page to re-connect. Message: '+message+'");',thishandler)
+                send_websock_cmd('logconsole("Kicked off '+str(nusers)+'users with username '+theusername+'",true,true,true)',handlerkey)
         elif (args[0]=='telstate'):
             logger.info(repr(args))
             if (telstate is not None):

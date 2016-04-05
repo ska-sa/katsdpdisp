@@ -276,6 +276,12 @@ function setsignals(){
     }else if (signaltext=='info')
 	{
 		handle_data_user_event('info');
+    }else if (signaltext.slice(0,4)=='kick')
+	{
+        if (signaltext.length>4)
+            handle_data_user_event('kick,'+signaltext.slice(5));
+        else
+            handle_data_user_event('kick');
     }else if (signaltext.slice(0,8)=='telstate')
 	{
         if (signaltext.length>8)

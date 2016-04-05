@@ -35,6 +35,7 @@ load - loads saved user view profile settings
 save - save user view profile settings
 delete - delete a user's view profile settings
 loop - displays a list of different profiles in a loop
+kick - kicks a user off the system
 
 Advanced user commands:
 console - shows,  hides or clears the console
@@ -131,6 +132,12 @@ Sets the loop delay time.
 'looptime=5' sets the delay between each change in profile view to 5 seconds when using the loop feature
 
 See also loop.
+
+[kick]
+
+'kick name' - kicks user named 'name' off the system, replacing the web page.
+'kick name message' - kicks user named 'name' off the system, replacing the web page and displaying an optional message.
+
 
 [flags]
 The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which specifies which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
