@@ -35,6 +35,7 @@ load - loads saved user view profile settings
 save - save user view profile settings
 delete - delete a user's view profile settings
 loop - displays a list of different profiles in a loop
+kick - kicks a user off the system
 
 Advanced user commands:
 console - shows,  hides or clears the console
@@ -43,6 +44,7 @@ memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
+telstate - displays telescope state keys
 
 [auto]
 Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh as well as vv auto correlation products. This collection excludes hv auto correlation products.
@@ -130,6 +132,12 @@ Sets the loop delay time.
 'looptime=5' sets the delay between each change in profile view to 5 seconds when using the loop feature
 
 See also loop.
+
+[kick]
+
+'kick name' - kicks user named 'name' off the system, replacing the web page.
+'kick name message' - kicks user named 'name' off the system, replacing the web page and displaying an optional message.
+
 
 [flags]
 The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which specifies which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
@@ -235,6 +243,10 @@ and so forth
 'server top' - Prints out to the console the load and process summary of the server.
 
 'server ps' - Prints out to the console the process usage of the signal display processes.
+
+[telstate]
+'telstate' - Prints out telescope state keys, which includes available sensors.
+'telstate key' - Prints out the value for given key in telstate
 
 [users]
 Prints the list of named user profiles that the server is currently maintaining, to the console. The profiles that are saved persistently are shown. A count is also provided next to each active user profile showing how many user pages are currently logged into the respective profiles.
