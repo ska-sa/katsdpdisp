@@ -366,8 +366,15 @@ function getminmax(datalist,istart,iend)
     mx=mn
     if (typeof(mn)=="undefined")//so it is just a vector, not a vector of vector
     {
-        mn=Math.min.apply(Math, datalist)
-        mx=Math.max.apply(Math, datalist)
+        if (istart===undefined && iend===undefined)
+        {
+            mn=Math.min.apply(Math, datalist)
+            mx=Math.max.apply(Math, datalist)
+        }else
+        {
+            mn=Math.min.apply(Math, datalist.slice(istart,iend))
+            mx=Math.max.apply(Math, datalist.slice(istart,iend))
+        }
         if (!isFinite(mn) || !isFinite(mx))
         {
             mn=NaN
