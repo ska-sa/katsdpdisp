@@ -623,24 +623,16 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xmin
             }
             yscale=yspan/(yviewmax[itwin]-yviewmin[itwin])
             yoff=yspan+yviewmin[itwin]*yscale
-            for (iline=0;iline<ysensor.length;iline++)
+            context.beginPath();
+            context.lineWidth=1
+            context.strokeStyle = "rgb(0,0,0)";
+            context.moveTo(xoff+xscale*localdatax[ixstart],yoff-yscale*ysensor[ixstart]);
+            for (x=ixstart+1;x<ixend;x++)
             {
-                    context.beginPath();
-                    if (ixend-ixstart<=1024)
-                    {
-                        context.lineWidth=1//corrlinewidth[clrlist[iline][3]]
-                        //context.setLineDash(corrlinedash[clrlist[iline][3]])
-                    }
-                    context.strokeStyle = "rgb(0,0,0)";
-                    // context.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
-                    context.moveTo(xoff+xscale*localdatax[ixstart],yoff-yscale*ysensor[ixstart]);
-                    for (x=ixstart+1;x<ixend;x++)
-                    {
-                        context.lineTo(xoff+xscale*localdatax[x],yoff-yscale*ysensor[x]);
-                    }
-                    context.stroke();
-                    context.closePath();
+                context.lineTo(xoff+xscale*localdatax[x],yoff-yscale*ysensor[x]);
             }
+            context.stroke();
+            context.closePath();
         }
             context.lineWidth=oldlinewidth;
             //context.setLineDash([0])
