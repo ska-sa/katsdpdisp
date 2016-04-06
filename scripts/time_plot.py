@@ -1267,9 +1267,6 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)                    
-                elif (len(decodedsignal)):
-                    if (decodedsignal not in html_customsignals[username]):
-                        html_customsignals[username].append(decodedsignal)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
@@ -1285,7 +1282,9 @@ def handle_websock_event(handlerkey,*args):
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
                             send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                    
+                elif (len(decodedsignal)):
+                    if (decodedsignal not in html_customsignals[username]):
+                        html_customsignals[username].append(decodedsignal)                    
         elif (args[0]=='setflags'):
             print args
             for theviewsettings in html_viewsettings[username]:
