@@ -1434,13 +1434,17 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
                 else:
                     immut=[]
+                    unreal=[]
                     sens=[]
                     for key in telstate.keys():
                         if telstate.is_immutable(key):
                             immut.append(key)
-                        else:
+                        elif(isinstance(telstate[key],numbers.Real)):
                             sens.append(key)
+                        else:
+                            unreal.append(key)
                     send_websock_cmd('logconsole("Immutable keys in telstate: '+repr(immut)+'",true,true,true)',handlerkey)
+                    send_websock_cmd('logconsole("Non-real valued keys in telstate: '+repr(unreal)+'",true,true,true)',handlerkey)
                     send_websock_cmd('logconsole("Sensor keys in telstate: '+repr(sens)+'",true,true,true)',handlerkey)
             else:
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
