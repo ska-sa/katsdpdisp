@@ -1425,11 +1425,16 @@ def handle_websock_event(handlerkey,*args):
                 if (len(args)>1):
                     thekey=str(args[1])
                     if (thekey in telstate):
-                        html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
-                        for thishandler in websockrequest_username.keys():
-                            if (websockrequest_username[thishandler]==username):
-                                send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                        send_websock_cmd('logconsole("'+repr(telstate[thekey])+'",true,true,true)',handlerkey)
+                        if telstate.is_immutable(key):
+                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
+                        elif(isinstance(telstate[key],numbers.Real)):
+                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
+                        else:
+                            html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
+                            for thishandler in websockrequest_username.keys():
+                                if (websockrequest_username[thishandler]==username):
+                                    send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+'",true,true,true)',handlerkey)
                     else:
                         send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
                 else:
