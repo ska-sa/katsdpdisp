@@ -1425,9 +1425,9 @@ def handle_websock_event(handlerkey,*args):
                 if (len(args)>1):
                     thekey=str(args[1])
                     if (thekey in telstate):
-                        if telstate.is_immutable(key):
+                        if telstate.is_immutable(thekey):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
-                        elif(isinstance(telstate[key],numbers.Real)):
+                        elif(isinstance(telstate[thekey],numbers.Real)):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
                         else:
                             html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
@@ -1441,13 +1441,13 @@ def handle_websock_event(handlerkey,*args):
                     immut=[]
                     unreal=[]
                     sens=[]
-                    for key in telstate.keys():
-                        if telstate.is_immutable(key):
-                            immut.append(key)
-                        elif(isinstance(telstate[key],numbers.Real)):
-                            sens.append(key)
+                    for thekey in telstate.keys():
+                        if telstate.is_immutable(thekey):
+                            immut.append(thekey)
+                        elif(isinstance(telstate[thekey],numbers.Real)):
+                            sens.append(thekey)
                         else:
-                            unreal.append(key)
+                            unreal.append(thekey)
                     send_websock_cmd('logconsole("Immutable keys in telstate: '+repr(immut)+'",true,true,true)',handlerkey)
                     send_websock_cmd('logconsole("Non-real valued keys in telstate: '+repr(unreal)+'",true,true,true)',handlerkey)
                     send_websock_cmd('logconsole("Sensor keys in telstate: '+repr(sens)+'",true,true,true)',handlerkey)
