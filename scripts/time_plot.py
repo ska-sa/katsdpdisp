@@ -2155,6 +2155,9 @@ class htmlHandler(BaseHTTPRequestHandler):
             if self.path.endswith(".html"):
                 mimetype='text/html'
                 sendReply = True
+            if self.path.endswith(".ico"):
+                mimetype='image/x-icon'
+                sendReply = True
             if self.path.endswith(".png"):
                 mimetype='image/png'
                 sendReply = True
