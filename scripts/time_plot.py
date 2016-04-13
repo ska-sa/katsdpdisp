@@ -1695,7 +1695,8 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 # print 'ts',ts[0],ts[-1],sensorts-sensorts[0]
                 sensorsignal=sensorsignal
                 sensorts=sensorts
-                sensorname=theviewsettings['sensor']
+                sensorname='sensor value'
+                timeseries_fig['title']=theviewsettings['sensor'].replace('_',' ')
             except Exception, e:
                 sensorsignal=[]
                 sensorts=[]
