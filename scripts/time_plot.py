@@ -1427,7 +1427,7 @@ def handle_websock_event(handlerkey,*args):
                     if (thekey in telstate):
                         if telstate.is_immutable(thekey):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
-                        elif(isinstance(telstate[thekey],numbers.Real)):
+                        elif(not isinstance(telstate[thekey],numbers.Real)):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
                         else:
                             html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
