@@ -1446,9 +1446,10 @@ def handle_websock_event(handlerkey,*args):
                                     break
                             if (match):
                                 foundkeys.append(telkey)
-                        send_websock_cmd('logconsole("'+thekey+' not in telstate. Suggestions: '+repr(foundkeys)+'",true,true,true)',handlerkey)
                         if (len(foundkeys)==1):
                             send_websock_cmd('var txtinput=document.getElementById("signaltext");txtinput.value="telstate '+str(foundkeys[0])+'";txtinput.setSelectionRange(9,'+str(9+len(foundkeys[0]))+');txtinput.focus();',handlerkey)
+                        else:
+                            send_websock_cmd('logconsole("'+thekey+' not in telstate. Suggestions: '+repr(foundkeys)+'",true,true,true)',handlerkey)
                 else:
                     immut=[]
                     unreal=[]
