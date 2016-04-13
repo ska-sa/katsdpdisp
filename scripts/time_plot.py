@@ -1436,7 +1436,19 @@ def handle_websock_event(handlerkey,*args):
                                     send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+'",true,true,true)',handlerkey)
                     else:
-                        send_websock_cmd('logconsole("'+thekey+' not in telstate",true,true,true)',handlerkey)
+                        splitkeys=thekey.split(' ')
+                        foundkeys=[]
+                        for telkey in telstate.keys():
+                            match=True
+                            for splitkey in splitkeys:
+                                if splitkey not in telkey:
+                                    match=False
+                                    break
+                            if (match):
+                                foundkeys.append(telkey)
+                        send_websock_cmd('logconsole("'+thekey+' not in telstate. Suggestions: '+repr(foundkeys)+'",true,true,true)',handlerkey)
+                        if (len(foundkeys)==1):
+                            send_websock_cmd('var txtinput=document.getElementById("signaltext");txtinput.value="telstate '+str(foundkeys[0])+'";txtinput.setSelectionRange(9,'+str(9+len(foundkeys[0]))+');txtinput.focus();',handlerkey)
                 else:
                     immut=[]
                     unreal=[]
