@@ -1426,9 +1426,10 @@ def handle_websock_event(handlerkey,*args):
                     thekey=str(args[1])
                     if (thekey in telstate):
                         if (thekey=='obs_params'):
-                            for entry in telstate.get_range('obs_params',0):
-                                splitentry=entry[0].split(' ')
-                                send_websock_cmd('logconsole("'+splitentry[0]+': '+' '.join(splitentry[1:])+'",true,true,true)',handlerkey)
+                            entries=telstate.get_range('obs_params',0)
+                            obs_params=dict(entry[0].split(' ', 1) for entry in entries)
+                            for obskey,obsvalue in obs_params.iteritems():
+                                send_websock_cmd('logconsole("'+obskey+': '+obsvalue+'",true,true,true)',handlerkey)
                         elif telstate.is_immutable(thekey):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
                         elif(not isinstance(telstate[thekey],numbers.Real)):
