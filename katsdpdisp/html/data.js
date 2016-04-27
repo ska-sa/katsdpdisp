@@ -160,6 +160,7 @@ function handle_data_user_event(arg_string)
         }else
         {
             logconsole('Websocket state is '+datasocket.readyState+'. Command forfeited: '+arg_string,true,false,true)
+			restore_data()
         }
       } catch (err) {}
  } 
