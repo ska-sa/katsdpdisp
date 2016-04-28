@@ -164,14 +164,14 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
 #import objgraph
 
 #idea is to store the averaged time series profile in channel 0
-def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue):
+def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue):
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
     hp = hpy()
     hpbefore = hp.heap()
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
-        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,store2=True)
+        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,notifyqueue=ringbuffernotifyqueue,store2=True)
         datasd=dh.sd
     elif (datafilename=='k7simulator'):
         dh.start_direct_spead_receiver(capacity=memusage/100.0,store2=True)
@@ -1618,6 +1618,28 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
             
+        try:
+            global scriptname
+            notification=ringbuffernotifyqueue.get(False)
+            if (notification=='end of stream'):
+                scriptname='completed '+scriptname
+                for thishandler in websockrequest_username.keys():
+                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+            elif (notification=='start of stream'):
+                try:
+                    entries=telstate.get_range('obs_params',0)
+                    obs_params=dict(entry[0].split(' ', 1) for entry in entries)
+                    scriptname=obs_params['script_name'][1:-1].split('/')[-1]
+                except Exception, e:
+                    logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
+                    scriptname='undisclosed script'
+                for thishandler in websockrequest_username.keys():
+                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+            else:
+                logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
+        except: #ringbuffernotifyqueue.get(False) raise Empty if queue is empty
+            pass
+
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
         
@@ -2188,7 +2210,7 @@ class htmlHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 filetext=f.read()
                 if (self.path=="/index.html"):
-                    filetext=filetext.replace('<!--data_port-->',str(opts.data_port))
+                    filetext=filetext.replace('<!--data_port-->',str(opts.data_port)).replace('<!--scriptname_text-->',scriptname)
                 
                 self.wfile.write(filetext)
                 f.close()
@@ -2256,6 +2278,7 @@ else:
 #configure SPEAD to display warnings about dropped packets etc...
 #logging.getLogger('spead2').setLevel(logging.WARNING)
 
+scriptname='No script active'
 SETTINGS_PATH=os.path.expanduser(opts.config_base)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
@@ -2312,8 +2335,9 @@ if (telstate is None):
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
+ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
-rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue))
+rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
 htmlrequest_handlers={}
 

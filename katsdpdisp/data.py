@@ -802,7 +802,7 @@ class SpeadSDReceiver(threading.Thread):
     direct : boolean
         If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, direct=False):
+    def __init__(self, port, storage, notifyqueue=None, direct=False):
         self._port = port
         self.storage = storage
         self.cpref = CorrProdRef()
@@ -819,6 +819,7 @@ class SpeadSDReceiver(threading.Thread):
         self.direct = direct
         self._direct_meta_required = ['sync_time','scale_factor_timestamp','n_chans','center_freq','bandwidth','bls_ordering']
         self._direct_meta = {}
+        self.notifyqueue = notifyqueue
         threading.Thread.__init__(self)
 
     def stop(self):
@@ -880,9 +881,13 @@ class SpeadSDReceiver(threading.Thread):
             bls_ordering_version = -1
             for heap in self.rx:
                 if (heap is None):
+                    if (self.notifyqueue):
+                        self.notifyqueue.put('end of stream')
                     logger.info("End of stream notification")
                     continue
                 elif (heap.is_start_of_stream()):
+                    if (self.notifyqueue):
+                        self.notifyqueue.put('start of stream')
                     logger.info("Start of stream notification")
                     continue
                 self.ig.update(heap)
@@ -2814,7 +2819,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2, store2=False):
+    def start_spead_receiver(self, port=7149, capacity=0.2, notifyqueue=None, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -2834,7 +2839,7 @@ class KATData(object):
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
         st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
-        r = SpeadSDReceiver(port,st)
+        r = SpeadSDReceiver(port,st,notifyqueue)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
