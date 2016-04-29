@@ -1403,7 +1403,7 @@ def handle_websock_event(handlerkey,*args):
                         zombie.append(usrname)
                         zombiecount.append(1)
             if (len(zombie)>0):
-                send_websock_cmd('logconsole("Zombie: '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
+                send_websock_cmd('logconsole("Zombie (use memoryleak to remove): '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
             send_websock_cmd('logconsole("Inactive: '+','.join(inactive)+'",true,true,true)',handlerkey)
             send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
             for iz in range(len(active)):
