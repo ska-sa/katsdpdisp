@@ -1364,14 +1364,6 @@ def handle_websock_event(handlerkey,*args):
                     theviewsettings['version']+=1
         elif (args[0]=='getusers'):
             logger.info(repr(args))
-            userstats=[]
-            usrnamelist=[]
-            nviewlist=[]
-            for thisusrname in html_viewsettings.keys():
-                usrnamelist.append(thisusrname)
-                nviewlist.append(int(sum([thisusrname==usrname for usrname in websockrequest_username.values()])))
-            for ind in np.argsort(nviewlist)[::-1]:
-                userstats.append(usrnamelist[ind]+':'+str(nviewlist[ind]))
             try:
                 startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
                 startupdictstr=startupfile.read()
@@ -1385,7 +1377,37 @@ def handle_websock_event(handlerkey,*args):
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
                 send_websock_cmd('logconsole("No profiles saved",true,false,false)',handlerkey)
-            send_websock_cmd('logconsole("'+','.join(userstats)+'",true,true,true)',handlerkey)
+            inactive=[]
+            zombie=[]
+            zombiecount=[]
+            active=[]
+            activetime=[]
+            nactive=0
+            for usrname in html_viewsettings.keys():
+                if (usrname not in websockrequest_username.values()):
+                    inactive.append(usrname)
+            for thishandler in websockrequest_username.keys():
+                usrname=websockrequest_username[thishandler]
+                timedelay=(time.time()-websockrequest_time[thishandler])
+                if (timedelay<60):
+                    nactive+=1
+                    if (usrname in active):
+                        activetime[active.index(usrname)].append(timedelay)
+                    else:
+                        active.append(usrname)
+                        activetime.append([timedelay])
+                else:
+                    if (usrname in zombie):
+                        zombiecount[zombie.index(usrname)]+=1
+                    else:
+                        zombie.append(usrname)
+                        zombiecount.append(1)
+            if (len(zombie)>0):
+                send_websock_cmd('logconsole("Zombie: '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Inactive: '+','.join(inactive)+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
+            for iz in range(len(active)):
+                send_websock_cmd('logconsole("'+active[iz]+':'+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
             logger.info(repr(args))
             with RingBufferLock:
