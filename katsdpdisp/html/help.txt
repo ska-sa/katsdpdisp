@@ -18,6 +18,7 @@ auto - draws percentile plots for a collection of auto correlation signals
 cross - draws percentile plots for a collection of cross correlation signals
 envelope - draws envelope of a collection of signals
 clear - remove percentile collection plots from figures
+blmx - adds a baseline matrix figure
 
 outlierthreshold - specify which outliers to detect and display automatically
 outliertime - specify which outliers to detect and display automatically
@@ -51,6 +52,24 @@ Adds a percentile collection plot to timeseries and spectrum figures for the col
 
 See also:
 autohh,autovv,autohv,cross
+
+[blmx]
+blmxhh - adds a hh pol baseline matrix figure
+blmxhv - adds a hv pol baseline matrix figure
+blmxvh - adds a vh pol baseline matrix figure
+blmxvv - adds a vv pol baseline matrix figure
+
+[blmxhh]
+Adds a hh pol baseline matrix figure
+
+[blmxhv]
+Adds a hv pol baseline matrix figure
+
+[blmxvh]
+Adds a vh pol baseline matrix figure
+
+[blmxvv]
+Adds a vv pol baseline matrix figure
 
 [clear]
 Removes percentile collection plots from figures.

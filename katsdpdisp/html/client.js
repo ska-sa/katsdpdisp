@@ -10,6 +10,7 @@ var looptimer= null
 var looptime=5
 var loopusernames=[]
 
+var thispagefiguretypes=[]
 
 function setsignals(){
     signaltext = document.getElementById("signaltext").value;
@@ -19,8 +20,7 @@ function setsignals(){
         if (ncols<1 || ncols>7)
         {
             alert('Number of columns must be between 1 and 7');
-        }
-        else
+        }else
         {
             handle_data_user_event('setncols,'+signaltext.slice(6));
         }
@@ -30,7 +30,7 @@ function setsignals(){
     }else if (signaltext.slice(0,13)=='figureaspect=')
     {
         figureaspect=parseFloat(signaltext.slice(13))
-        ApplyViewLayout(nfigures,nfigcolumns)
+        ApplyViewLayout(thispagefiguretypes,nfigcolumns)
     }
     else if (signaltext=='outlierthreshold')
     {
@@ -276,6 +276,9 @@ function setsignals(){
     }else if (signaltext=='info')
 	{
 		handle_data_user_event('info');
+    }else if (signaltext=='blmxhh' || signaltext=='blmxvh' || signaltext=='blmxhv' || signaltext=='blmxvv')
+	{
+        handle_data_user_event('blmx,'+signaltext.slice(4));
     }else if (signaltext.slice(0,4)=='kick')
 	{
         if (signaltext.length>4)
@@ -395,9 +398,10 @@ function loopfunction(usernames,iusername)
 }
 
 //FIGURE LAYOUT FUNCTIONS================================================================
-function ApplyViewLayout(nfig,nfigcols)
-{        
-    nfigures=nfig
+function ApplyViewLayout(figuretypes,nfigcols)
+{
+    thispagefiguretypes=figuretypes
+    nfigures=figuretypes.length
     nfigcolumns=nfigcols
     var listoffigures = document.getElementById("listoffigures")
     var consolectl=document.getElementById("consoletext")
@@ -414,7 +418,7 @@ function ApplyViewLayout(nfig,nfigcols)
     {
         figheight=figwidth*figureaspect
     }
-    for (ifig=0;ifig<nfig;ifig++)
+    for (ifig=0;ifig<nfigures;ifig++)
     {
         if (ifig%nfigcols==0)
         {
@@ -426,6 +430,10 @@ function ApplyViewLayout(nfig,nfigcols)
         RG_fig[ifig].version=-1
         RG_fig[ifig].viewwidth=parseInt(figwidth)
         RG_fig[ifig].figureupdated=true
+        if (figuretypes[ifig].slice(0,4)=='blmx')
+            thisfigheight=figwidth*0.9
+        else
+            thisfigheight=figheight
         menuname='figmenu'+ifig
         thismenu = { attributes: "attr_ifig,attr_type,attr_xtype,cond" ,
 
@@ -472,8 +480,8 @@ function ApplyViewLayout(nfig,nfigcols)
                             onclick:function() {handle_data_user_event('deletefigure,[attr_ifig]')} }
                          ]
                  };
-        innerHTML+='<td valign="top"><div id="myfigurediv'+ifig+'" context="'+menuname+'" attr_ifig="'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+figheight+';">'+
-        '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+figheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
+        innerHTML+='<td valign="top"><div id="myfigurediv'+ifig+'" context="'+menuname+'" attr_ifig="'+ifig+'" attr_type="" attr_xtype="" style="z-index: 2; position: relative ; width: '+figwidth+'; height: '+thisfigheight+';">'+
+        '<canvas id="myfigurecanvas'+ifig+'"  width="'+figwidth+'" height= "'+thisfigheight+'" style="z-index: 2; position: absolute; left:0; top:0"></canvas>'+
         '<canvas id="myaxiscanvas'+ifig+'"  width="0" height= "0" style="z-index: 1; position: absolute; left:0; top:0"></canvas>'+
         '</div></td>'
         if (ifig%nfigcols==nfigcols-1)

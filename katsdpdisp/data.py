@@ -184,6 +184,7 @@ class CorrProdRef(object):
         self.autos = []
         self.inputs = []
         self.ant_pol_autos = []
+        self._pol_ids = dict([(pol,[]) for pol in self._pol_dict])
         self._id_to_real = {}
         self._id_to_real_long = {}
         for i,bls in enumerate(self.bls_ordering):
@@ -196,6 +197,9 @@ class CorrProdRef(object):
                 self.inputs.append(a)
             self._id_to_real[i] = a + " * " + b
             self._id_to_real_long[i] = "%s %s * %s %s" % (a[:-1].replace("ant","Antenna "),a[-1],b[:-1].replace("ant","Antenna "),b[-1])
+            pol=a[-1]+b[-1]
+            if (pol in self._pol_ids):
+                self._pol_ids[pol].append(i)
 
     def get_default_bl_map(self, n_ants, no_bls):
         """Return a default baseline mapping by replacing inputs with proper antenna names."""
@@ -381,6 +385,7 @@ class SignalDisplayStore2(object):
         self.blmxslots = 256
         self.blmxn_chans = 32 #256
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
+        self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
         self.blmxroll_point = 0
         self.outliertime=  5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
@@ -478,6 +483,26 @@ class SignalDisplayStore2(object):
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
+                #blmx calculation
+                if (blmxflags is None):
+                    self.blmxvalue = np.std(blmxdata,axis=1) # for now but should improve, perhaps std of diff, and phase is number of wraps
+                else:
+                    for iprod in range(blmxdata.shape[0]):
+                        valid=np.nonzero(blmxflags[iprod,:]==0)[0]
+                        absdata=np.abs(blmxdata[iprod,valid])
+                        meanabs=np.mean(absdata)
+                        diffabs=np.diff(absdata)
+                        stddiffabs=np.std(diffabs)
+                        diffangle=np.diff(np.angle(blmxdata[iprod,valid]))
+                        stddiffangle=np.std(diffangle)
+                        if (stddiffangle==0):
+                            self.blmxvalue[iprod]=meanabs/stddiffabs
+                        else:
+                            meandiffangle=np.mean(diffangle)
+                            validangle=np.nonzero(np.abs(diffangle-meandiffangle)<stddiffangle)[0]
+                            #filtered_anglestd=np.std(diffangle[validangle])
+                            filtered_anglemean=np.mean(diffangle[validangle])
+                            self.blmxvalue[iprod]=meanabs/stddiffabs+1j*filtered_anglemean
 
             if (data_index is not None):
                 if (flags is not None):
@@ -930,7 +955,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
-                                                        self.ig['sd_blmxflags'].value.astype(np.uint8))
+                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1))
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
@@ -2074,6 +2099,13 @@ class DataHandler(object):
             if include_flags:
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
             return frames
+
+    #pol can be any of 'hh','hv','vh','vv'
+    def select_blxvalue(self,pol='hh'):
+        with datalock:
+            if (pol in self.cpref._pol_ids):
+                return np.real(self.storage.blmxvalue[self.cpref._pol_ids[pol]]),np.imag(self.storage.blmxvalue[self.cpref._pol_ids[pol]])
+        return []
 
     def select_blmxdata(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:

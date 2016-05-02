@@ -631,7 +631,54 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]
                     else:
                         fig['customproducts']=[]
-                else:                        
+                elif (theviewsettings['figtype'][:4]=='blmx'):
+                    polstr = theviewsettings['figtype'][4:]
+                    mxdata,phdata = datasd.select_blxvalue(pol=polstr)
+                    if (theviewsettings['type']=='pow'):
+                        mxdata=10.0*np.log10(mxdata)
+                        fig['clabel']='Power'
+                        fig['cunit']='dB'
+                    elif (thetype=='mag'):
+                        fig['clabel']='Amplitude'
+                        fig['cunit']='counts'
+                    else:
+                        fig['clabel']='Phase'
+                        fig['cunit']='rad'
+                    fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
+                    fig['yunit']='s'
+                    fig['mxdata']=mxdata
+                    fig['phdata']=phdata
+                    fig['ydata']=[]
+                    fig['xdata']=np.array([0,1])
+                    fig['outlierhash']=0
+                    fig['color']=[]
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    fig['title']='Baseline matrix '+polstr
+                    legendx=[]
+                    legendy=[]
+                    for inp in datasd.cpref.inputs:
+                        if (inp[-1]==polstr[0]):
+                            legendx.append(str(int(inp[1:-1]))+inp[-1])
+                        if (inp[-1]==polstr[-1]):
+                            legendy.append(str(int(inp[1:-1]))+inp[-1])
+                    fig['legendx']=legendx
+                    fig['legendy']=legendy
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['showtitle']=theviewsettings['showtitle']
+                    fig['showlegend']=theviewsettings['showlegend']
+                    fig['showxlabel']=theviewsettings['showxlabel']
+                    fig['showylabel']=theviewsettings['showylabel']
+                    fig['showxticklabel']=theviewsettings['showxticklabel']
+                    fig['showyticklabel']=theviewsettings['showyticklabel']
+                    fig['xdata']=[]
+                    fig['xlabel']=''
+                    fig['xunit']=''
+                    fig['outlierproducts']=[]
+                    fig['customproducts']=[]
+                else:
                     fig={}
             except Exception, e:
                 logger.warning('Exception in RingBufferProcess: '+str(e), exc_info=True)
@@ -1183,7 +1230,7 @@ def handle_websock_event(handlerkey,*args):
                 html_collectionsignals[args[1]]=copy.deepcopy(html_collectionsignals['default'])
             if (args[1] not in html_layoutsettings):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
-            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[args[1]]))+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
+            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[args[1]]])+'"]'+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
         elif (username not in html_viewsettings):
             logger.info('Warning: unrecognised username:'+username)
         elif (args[0]=='sendfiguredata'):
@@ -1219,6 +1266,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
                 customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'][:4]=='blmx'):
+                customproducts,outlierproducts=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
             logger.info(repr(args))
@@ -1260,13 +1309,13 @@ def handle_websock_event(handlerkey,*args):
             html_viewsettings[username].pop(ifigure)
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
-                    send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='setncols'):
             logger.info(repr(args))
             html_layoutsettings[username]['ncols']=int(args[1])
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
-                    send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='getoutlierthreshold'):
             logger.info(repr(args))
             send_websock_cmd('logconsole("outlierthreshold=%g'%(html_layoutsettings[username]['outlierthreshold'])+'",true,true,true)',handlerkey)
@@ -1295,6 +1344,12 @@ def handle_websock_event(handlerkey,*args):
             logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
+        elif (args[0]=='blmx'):
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':'blmx'+str(args[1]) ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='setsignals'):
             logger.info(repr(args))
             #decodes signals of from 1h3h to ('ant1h','ant3h')
@@ -1310,7 +1365,7 @@ def handle_websock_event(handlerkey,*args):
                     html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
@@ -1320,12 +1375,12 @@ def handle_websock_event(handlerkey,*args):
                     html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (sig=='spectrum'):#creates new spectrum plot
                     html_viewsettings[username].append({'figtype':'spectrum'  ,'type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
                     for thishandler in websockrequest_username.keys():
                         if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (len(decodedsignal)):
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
@@ -1460,7 +1515,7 @@ def handle_websock_event(handlerkey,*args):
                             html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0,'sensor':thekey})
                             for thishandler in websockrequest_username.keys():
                                 if (websockrequest_username[thishandler]==username):
-                                    send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+'",true,true,true)',handlerkey)
                     else:
                         splitkeys=thekey.split(' ')
@@ -1625,7 +1680,7 @@ def handle_websock_event(handlerkey,*args):
                 html_layoutsettings[username]=copy.deepcopy(startupdict['html_layoutsettings'][theusername])
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
-                        send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                        send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             elif (theusername in html_viewsettings):
                 html_viewsettings[username]=copy.deepcopy(html_viewsettings[theusername])
                 html_customsignals[username]=copy.deepcopy(html_customsignals[theusername])
@@ -1634,7 +1689,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("'+theusername+' not found in startup settings file, but copied from active process instead",true,false,true)',handlerkey)
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
-                        send_websock_cmd('ApplyViewLayout('+str(len(html_viewsettings[username]))+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                        send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             else:
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
                 send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
@@ -1972,6 +2027,67 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
+
+def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    try:
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            blmx_fig=ringbufferresultqueue.get()
+        count=0
+        if (blmx_fig=={}):#an exception occurred
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
+            return [],[]
+        elif ('logconsole' in blmx_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+blmx_fig['logconsole']+'",true,false,true)',handlerkey)
+            return [],[]
+        elif ('logignore' in blmx_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return [],[]
+        if (lastrecalc<blmx_fig['version'] or blmx_fig['lastts']>lastts+0.01):
+            send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),blmx_fig['version'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),blmx_fig['lastts'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),blmx_fig['lastdt'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),blmx_fig['showtitle'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),blmx_fig['showlegend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),blmx_fig['showxlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),blmx_fig['showylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),blmx_fig['showxticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),blmx_fig['showyticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),blmx_fig['title'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].clabel'%(ifigure),blmx_fig['clabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xlabel'%(ifigure),blmx_fig['xlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),blmx_fig['ylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cunit'%(ifigure),blmx_fig['cunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),blmx_fig['xunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),blmx_fig['yunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legendx'%(ifigure),blmx_fig['legendx'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legendy'%(ifigure),blmx_fig['legendy'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),blmx_fig['outlierhash'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),blmx_fig['xdata'],'I'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].type'%(ifigure),theviewsettings['type'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xtype'%(ifigure),theviewsettings['xtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].mxdata'%(ifigure),(blmx_fig['mxdata'])[:],'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].phdata'%(ifigure),(blmx_fig['phdata'])[:],'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        else:#nothing new
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return blmx_fig['customproducts'],blmx_fig['outlierproducts']
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e), exc_info=True)
+    return [],[]
+
 #client sends request to server; server may respond with numerous assignments of data into a datastructure on client side to address request
 #datastructure transmitted in binary to client
 #keep an indexible list of elements rather than individual arrays

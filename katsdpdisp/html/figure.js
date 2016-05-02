@@ -1196,6 +1196,178 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
         RG_fig[ifig].ymax_eval=vviewmax;
 }
 
+function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
+{
+            if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdata=="undefined")
+            {
+                return;
+            }
+          var axiscanvas = document.getElementById('myaxiscanvas'+ifig);
+          var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+          axisposx=axiscanvas.offsetLeft
+          axisposy=axiscanvas.offsetTop
+          var figcontext = figcanvas.getContext('2d');
+          cdata=new Array(legendx.length)
+          var hviewmin=0
+          var hviewmax=legendx.length
+          var vviewmin=0
+          var vviewmax=legendy.length
+          var dataxmin=0
+          var dataxmax=legendx.length
+          var dataymin=0
+          var dataymax=legendy.length
+          for (var i=0;i<legendx.length;i++)
+          {
+              cdata[i]=new Array(legendy.length);
+              cdata[i][i]=mxdata[i];
+          }
+          var c=legendx.length;
+          for (var i=0;i<legendx.length;i++)
+          {
+              for (var j=i+1;j<legendy.length;j++)
+              {
+                  cdata[i][j]=mxdata[c];
+                  cdata[j][i]=phdata[c];
+                  c++;
+              }
+          }
+          if (figcontext){
+                    figcontext.fillStyle = "#FFFFFF";
+                    figcontext.clearRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
+                    figcontext.fillRect(0, 0, axisposx, figcanvas.height);
+                    figcontext.fillRect(axisposx+axiscanvas.width, 0, figcanvas.width-(axisposx+axiscanvas.width), figcanvas.height);
+                    figcontext.fillRect(0, 0, figcanvas.width, axisposy);
+                    figcontext.fillRect(0, axisposy+axiscanvas.height, figcanvas.width, figcanvas.height-(axisposy+axiscanvas.height));
+                    figcontext.fillStyle = "#000000";
+          }
+           var context = axiscanvas.getContext('2d');
+            ixstart=0;ixend=0;
+            if (context){
+                oldlinewidth=context.lineWidth
+                context.fillStyle = "#FFFFFF";
+                context.fillRect(0, 0, axiscanvas.width, axiscanvas.height);
+                context.fillStyle = "#000000";
+                xscale=axiscanvas.width/(hviewmax-hviewmin)
+                xoff=-hviewmin*xscale;
+                    cviewmin=-60
+                    cviewmax=20
+                    minmax=getminmax(cdata)
+                    if (!isNaN(cmin)) cviewmin=cmin
+                    else cviewmin=minmax[0]
+                    if (!isNaN(cmax)) cviewmax=cmax
+                    else cviewmax=minmax[1]
+                    if (cviewmax==cviewmin)
+                    {
+                        cviewmax+=0.5;
+                        cviewmin-=0.5;
+                    }
+                    cscale=255.0/(cviewmax-cviewmin)
+
+                    var imgdata = context.getImageData(0,0,axiscanvas.width,axiscanvas.height);
+                    var imgdatalen = imgdata.data.length;
+                    rowscale=(cdata.length)/(dataymax-dataymin)
+                    colscale=(cdata[0].length)/(dataxmax-dataxmin)
+
+                    if (1)//xunit=='')
+                    for(var i=0;i<imgdatalen-4;i+=4)
+                    {
+//                      imgdata.data[i+3] = 255;//A
+                        ih=(i/4)/axiscanvas.width
+                        iw=(i/4)%axiscanvas.width
+                        irow=Math.floor(((ih/axiscanvas.height)*(vviewmax-vviewmin)+vviewmin-dataymin)*rowscale)
+                        if (irow>=0 && irow<cdata.length)
+                        {
+                            icol=Math.floor(((iw/axiscanvas.width)*(hviewmax-hviewmin)+hviewmin-dataxmin)*colscale)
+                            if (icol>=0 && icol<cdata[irow].length)
+                            {
+                                c256=Math.floor((cdata[irow][icol]-cviewmin)*cscale);
+                                if (c256<0)c256=0
+                                else if (c256>255)c256=255
+                                imgdata.data.set(jetRGB256[c256],i)
+                            }
+                        }
+                    }//for
+                    context.putImageData(imgdata,0,0);
+            }
+            if (figcontext){
+                figcontext.font=""+titlefontHeight+"px sans-serif";
+                figcontext.strokeStyle = "#000000";
+
+                if (RG_fig[ifig].showtitle=='on')
+                {
+                    sz=figcontext.measureText(title)
+                    //fillText by default draws at this height ___ and starts at start of string
+                    figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
+                }
+                figcontext.font=""+tickfont2Height+"px sans-serif";
+                for (i=0;i<legendy.length;i++)
+                {
+                    sz=figcontext.measureText(legendy[i])
+                    figcontext.fillText(legendy[i],axisposx-sz.width-2,axisposy+tickfont2Height/2+(i+0.5)*axiscanvas.height/legendy.length)
+                }
+                figcontext.save();
+                figcontext.rotate(-Math.PI/2);
+                figcontext.font=""+tickfont2Height+"px sans-serif";
+                for (i=0;i<legendx.length;i++)
+                {
+                    sz=figcontext.measureText(legendx[i])
+                    figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendy.length)
+                }
+                roundScreen=0
+                dotickmajor=1
+                dotickminor=1
+                dotickpos=0
+                dotickneg=1
+                doprefix=0
+                if (RG_fig[ifig].showlegend=='on')
+                {
+                    units=cunit
+                    dovertical=1
+                    numberpos=0
+                    labelpos=0
+                    dotickpos=0
+                    dotickneg=1
+                    doprefix=1
+                    doticklabel=1
+                    timelabel=(units=='s')?clabel:''
+                    displaxisc={viewmin:cviewmin,viewmax:cviewmax,pixspan:axiscanvas.height};
+                    colorbaroff=titlefontHeightspace*2;
+                    colorbarwidth=titlefontHeight;
+
+                    drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+                }
+                figcontext.restore();
+
+                figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
+                // draw colorbar
+                if (RG_fig[ifig].showlegend=='on')
+                {
+                    var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+                    var imgdatalen = imgdata.data.length;
+
+                    for(var i=0;i<imgdatalen-4;i+=4)
+                    {
+                        ih=(i/4)/colorbarwidth;//height
+                        c256=Math.floor(((axiscanvas.height-ih)/axiscanvas.height)*255)
+                        if (c256<0)c256=0
+                        else if (c256>255)c256=255
+                        imgdata.data.set(jetRGB256[c256],i)
+                        //RGB=jetRGB256[c256]
+                        //imgdata.data[i] = RGB[0];//R
+                        //imgdata.data[i+1] = RGB[1];//G
+                        //imgdata.data[i+2] = RGB[2];//B
+                        //imgdata.data[i+3] = 255;//A
+                    }
+                    figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy);
+                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+                }
+        }
+        RG_fig[ifig].xmin_eval=hviewmin;
+        RG_fig[ifig].xmax_eval=hviewmax;
+        RG_fig[ifig].ymin_eval=vviewmin;
+        RG_fig[ifig].ymax_eval=vviewmax;
+}
+
 function saveFigure(ifig){
     var canvas = document.getElementById("myfigurecanvas"+ifig);
     var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
@@ -1296,8 +1468,8 @@ function onFigureMouseUp(event){
         newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
         // newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
         // newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
-        if (newsizex<300)newsizex=300;
-        if (newsizey<300)newsizey=300;
+        if (newsizex<200)newsizex=200;
+        if (newsizey<200)newsizey=200;
         figurediv.style.width = newsizex + 'px';
         figurediv.style.height = newsizey + 'px';
         figurediv.offsetWidth=newsizex
@@ -1566,6 +1738,14 @@ function setaxiscanvasrect(ifig)
         else
             _height+=30
     }
+    if (RG_fig[ifig]!=undefined && RG_fig[ifig].mxdata!=undefined)
+    {
+        if (_width>_height)
+        {
+            _left+=(_width-_height)/2.0;
+            _width=_height;
+        }
+    }
     if (axiscanvas.style.left!=_left)
         axiscanvas.style.left = _left + 'px';
     if (axiscanvas.style.top!=_top)
@@ -1598,11 +1778,17 @@ function redrawfigure(ifig)
     if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
     if (RG_fig[ifig].cdata==undefined)
     {
-        if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
-            drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-        else if (RG_fig[ifig].figtype=='timeseries')
-            drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xsensor,RG_fig[ifig].ysensor,RG_fig[ifig].sensorname,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-        else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,[],[],[],RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+        if (RG_fig[ifig].mxdata==undefined)
+        {
+            if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
+                drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+            else if (RG_fig[ifig].figtype=='timeseries')
+                drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xsensor,RG_fig[ifig].ysensor,RG_fig[ifig].sensorname,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+            else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,[],[],[],RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+        }else
+        {
+            drawMatrixFigure(ifig,RG_fig[ifig].mxdata,RG_fig[ifig].phdata,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel)
+        }
     }else
         drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
 
