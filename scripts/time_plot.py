@@ -1216,6 +1216,54 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             ingest_signals=revert_ingest_signals
             failed_update_ingest_signals_lastts=lastts            
 
+def logusers(handlerkey):
+    try:
+        startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
+        startupdictstr=startupfile.read()
+        startupfile.close()
+    except:
+        startupdictstr=''
+        pass
+    if (len(startupdictstr)>0):
+        startupdict=convertunicode(json.loads(startupdictstr))
+        send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+    else:
+        startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
+        send_websock_cmd('logconsole("0 saved",true,false,false)',handlerkey)
+    inactive=[]
+    zombie=[]
+    zombiecount=[]
+    active=[]
+    activetime=[]
+    nactive=0
+    for usrname in html_viewsettings.keys():
+        if (usrname not in websockrequest_username.values()):
+            inactive.append(usrname)
+    for thishandler in websockrequest_username.keys():
+        usrname=websockrequest_username[thishandler]
+        timedelay=(time.time()-websockrequest_time[thishandler])
+        if (timedelay<60):
+            nactive+=1
+            if (usrname in active):
+                activetime[active.index(usrname)].append(timedelay)
+            else:
+                active.append(usrname)
+                activetime.append([timedelay])
+        else:
+            if (usrname in zombie):
+                zombiecount[zombie.index(usrname)]+=1
+            else:
+                zombie.append(usrname)
+                zombiecount.append(1)
+    send_websock_cmd('logconsole("'+str(len(inactive))+' inactive: '+','.join(inactive)+'",true,true,true)',handlerkey)
+    if (len(zombie)>0):
+        send_websock_cmd('logconsole("'+str(np.sum(zombiecount))+' zombie (use memoryleak to remove): '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
+    else:
+        send_websock_cmd('logconsole("0 zombie",true,true,true)',handlerkey)
+    send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
+    for iz in range(len(active)):
+        send_websock_cmd('logconsole("'+active[iz]+': '+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
+
 def handle_websock_event(handlerkey,*args):
     try:
         username=websockrequest_username[handlerkey]
@@ -1419,50 +1467,7 @@ def handle_websock_event(handlerkey,*args):
                     theviewsettings['version']+=1
         elif (args[0]=='getusers'):
             logger.info(repr(args))
-            try:
-                startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
-                startupdictstr=startupfile.read()
-                startupfile.close()
-            except:
-                startupdictstr=''
-                pass
-            if (len(startupdictstr)>0):
-                startupdict=convertunicode(json.loads(startupdictstr))
-                send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
-            else:
-                startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
-                send_websock_cmd('logconsole("No profiles saved",true,false,false)',handlerkey)
-            inactive=[]
-            zombie=[]
-            zombiecount=[]
-            active=[]
-            activetime=[]
-            nactive=0
-            for usrname in html_viewsettings.keys():
-                if (usrname not in websockrequest_username.values()):
-                    inactive.append(usrname)
-            for thishandler in websockrequest_username.keys():
-                usrname=websockrequest_username[thishandler]
-                timedelay=(time.time()-websockrequest_time[thishandler])
-                if (timedelay<60):
-                    nactive+=1
-                    if (usrname in active):
-                        activetime[active.index(usrname)].append(timedelay)
-                    else:
-                        active.append(usrname)
-                        activetime.append([timedelay])
-                else:
-                    if (usrname in zombie):
-                        zombiecount[zombie.index(usrname)]+=1
-                    else:
-                        zombie.append(usrname)
-                        zombiecount.append(1)
-            if (len(zombie)>0):
-                send_websock_cmd('logconsole("Zombie (use memoryleak to remove): '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
-            send_websock_cmd('logconsole("Inactive: '+','.join(inactive)+'",true,true,true)',handlerkey)
-            send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
-            for iz in range(len(active)):
-                send_websock_cmd('logconsole("'+active[iz]+':'+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
+            logusers(handlerkey)
         elif (args[0]=='inputs'):
             logger.info(repr(args))
             with RingBufferLock:
@@ -1628,8 +1633,7 @@ def handle_websock_event(handlerkey,*args):
                 html_collectionsignals.pop(theusername)
                 html_layoutsettings.pop(theusername)
                 send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,false,false)',handlerkey)
-            send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
-            send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
+                logusers(handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             logger.info(repr(args))
             if (len(args)==2):
@@ -1656,6 +1660,19 @@ def handle_websock_event(handlerkey,*args):
             startupfile.truncate(0)
             startupfile.write(startupdictstr)
             startupfile.close()
+            try:
+                startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
+                startupdictstr=startupfile.read()
+                startupfile.close()
+            except:
+                startupdictstr=''
+                pass
+            if (len(startupdictstr)>0):
+                startupdict=convertunicode(json.loads(startupdictstr))
+                send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+            else:
+                startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
+                send_websock_cmd('logconsole("0 saved",true,false,false)',handlerkey)
         elif (args[0]=='load'):#loads this user's settings from startup settings file        
             logger.info(repr(args))
             if (len(args)==2):
@@ -1692,9 +1709,7 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             else:
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
-                send_websock_cmd('logconsole("Saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
-                send_websock_cmd('logconsole("Active: '+','.join(html_viewsettings.keys())+'",true,true,true)',handlerkey)
-            
+                logusers(handlerkey)
         try:
             global scriptname
             notification=ringbuffernotifyqueue.get(False)
