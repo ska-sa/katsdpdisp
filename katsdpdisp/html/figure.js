@@ -1559,14 +1559,25 @@ function onFigureKeyUp(event){
 function onFigureDblclick(event){
     var axiscanvas = document.getElementById("myaxiscanvas"+ifigure);
     if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop && event.layerY<axiscanvas.offsetTop+axiscanvas.height)
-    {//double click in central plot area - unzoom all
-        RG_fig[ifigure].xmin=NaN
-        RG_fig[ifigure].xmax=NaN
-        RG_fig[ifigure].ymin=NaN
-        RG_fig[ifigure].ymax=NaN
-        RG_fig[ifigure].overridelimit=1;
-        redrawfigure(ifigure)
-        handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
+    {//double click in central plot area
+        if (RG_fig[ifigure].figtype.slice(0,4)=='blmx')//make waterfall plot of selected product
+        {
+            ix=Math.floor(RG_fig[ifigure].legendx.length*(event.layerX-axiscanvas.offsetLeft)/axiscanvas.width);
+            iy=Math.floor(RG_fig[ifigure].legendy.length*(event.layerY-axiscanvas.offsetTop)/axiscanvas.height);
+            if (iy<=ix)//abs
+                handle_data_user_event('setsignals,waterfall'+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[5])
+            else//phase
+                handle_data_user_event('setsignals,waterfallphase'+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[5])
+        }else//unzoom all
+        {
+            RG_fig[ifigure].xmin=NaN
+            RG_fig[ifigure].xmax=NaN
+            RG_fig[ifigure].ymin=NaN
+            RG_fig[ifigure].ymax=NaN
+            RG_fig[ifigure].overridelimit=1;
+            redrawfigure(ifigure)
+            handle_data_user_event('setzoom,'+ifigure+','+RG_fig[ifigure].xmin+','+RG_fig[ifigure].xmax+','+RG_fig[ifigure].ymin+','+RG_fig[ifigure].ymax+','+RG_fig[ifigure].cmin+','+RG_fig[ifigure].cmax)
+        }
     }else if (event.layerX>axiscanvas.offsetLeft && event.layerX<axiscanvas.offsetLeft+axiscanvas.width && event.layerY>axiscanvas.offsetTop+axiscanvas.height && event.layerY<axiscanvas.offsetTop+axiscanvas.height+majorticklength+tickfontHeight+tickfont2Height+tickfont2Heightspace)
     {
         if (swapaxes && (RG_fig[ifigure].figtype=='timeseries'))

@@ -54,22 +54,24 @@ See also:
 autohh,autovv,autohv,cross
 
 [blmx]
+Adds a baseline matrix using one of the following commands. Double click a matrix item to generate a waterfall plot for corresponding signal.
+
 blmxhh - adds a hh pol baseline matrix figure
 blmxhv - adds a hv pol baseline matrix figure
 blmxvh - adds a vh pol baseline matrix figure
 blmxvv - adds a vv pol baseline matrix figure
 
 [blmxhh]
-Adds a hh pol baseline matrix figure
+Adds a hh pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 [blmxhv]
-Adds a hv pol baseline matrix figure
+Adds a hv pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 [blmxvh]
-Adds a vh pol baseline matrix figure
+Adds a vh pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 [blmxvv]
-Adds a vv pol baseline matrix figure
+Adds a vv pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 [clear]
 Removes percentile collection plots from figures.
