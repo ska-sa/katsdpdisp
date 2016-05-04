@@ -647,7 +647,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['mxdata']=mxdata
-                    fig['phdata']=phdata
+                    fig['phdata']=phdata*180.0/np.pi
                     fig['ydata']=[]
                     fig['xdata']=np.array([0,1])
                     fig['outlierhash']=0

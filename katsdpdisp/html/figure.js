@@ -1198,6 +1198,10 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 
 function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
 {
+    var cmin=NaN,cmax=NaN,pmin=NaN,pmax=NaN;
+    for(var i=0;i<phdata.length;i++)
+        phdata[i]=Math.abs(phdata[i]);
+
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdata=="undefined")
             {
                 return;
@@ -1251,7 +1255,7 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                 xoff=-hviewmin*xscale;
                     cviewmin=-60
                     cviewmax=20
-                    minmax=getminmax(cdata)
+                    minmax=getminmax(mxdata)
                     if (!isNaN(cmin)) cviewmin=cmin
                     else cviewmin=minmax[0]
                     if (!isNaN(cmax)) cviewmax=cmax
@@ -1262,6 +1266,20 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                         cviewmin-=0.5;
                     }
                     cscale=255.0/(cviewmax-cviewmin)
+
+                    pviewmin=-60
+                    pviewmax=20
+                    minmax=getminmax(phdata)
+                    if (!isNaN(pmin)) pviewmin=pmin
+                    else pviewmin=minmax[0]
+                        if (!isNaN(pmax)) pviewmax=pmax
+                    else pviewmax=minmax[1]
+                    if (pviewmax==pviewmin)
+                    {
+                        pviewmax+=0.5;
+                        pviewmin-=0.5;
+                    }
+                    pscale=255.0/(pviewmax-pviewmin)
 
                     var imgdata = context.getImageData(0,0,axiscanvas.width,axiscanvas.height);
                     var imgdatalen = imgdata.data.length;
@@ -1280,10 +1298,19 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                             icol=Math.floor(((iw/axiscanvas.width)*(hviewmax-hviewmin)+hviewmin-dataxmin)*colscale)
                             if (icol>=0 && icol<cdata[irow].length)
                             {
-                                c256=Math.floor((cdata[irow][icol]-cviewmin)*cscale);
-                                if (c256<0)c256=0
-                                else if (c256>255)c256=255
-                                imgdata.data.set(jetRGB256[c256],i)
+                                if (icol<irow)
+                                {
+                                    c256=Math.floor((cdata[irow][icol]-pviewmin)*pscale);
+                                    if (c256<0)c256=0
+                                    else if (c256>255)c256=255
+                                    imgdata.data.set(jetRGB256[c256],i)
+                                }else
+                                {
+                                    c256=Math.floor((cdata[irow][icol]-cviewmin)*cscale);
+                                    if (c256<0)c256=0
+                                    else if (c256>255)c256=255
+                                    imgdata.data.set(jetRGB256[c256],i)
+                                }
                             }
                         }
                     }//for
@@ -1319,9 +1346,10 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                 dotickpos=0
                 dotickneg=1
                 doprefix=0
+                halfgap=titlefontHeightspace
                 if (RG_fig[ifig].showlegend=='on')
                 {
-                    units=cunit
+                    units=cunit//power
                     dovertical=1
                     numberpos=0
                     labelpos=0
@@ -1330,11 +1358,27 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                     doprefix=1
                     doticklabel=1
                     timelabel=(units=='s')?clabel:''
-                    displaxisc={viewmin:cviewmin,viewmax:cviewmax,pixspan:axiscanvas.height};
+                    displaxisc={viewmin:cviewmin,viewmax:cviewmax,pixspan:axiscanvas.height/2.0-halfgap};
                     colorbaroff=titlefontHeightspace*2;
                     colorbarwidth=titlefontHeight;
 
-                    drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+                    drawMetricLinearAtPt(figcontext, cviewmin, cviewmax, axiscanvas.height/2.0-halfgap, -(axisposy+axiscanvas.height/2.0-halfgap),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
+
+                    clabel='Phase'
+                    units=''
+                    dovertical=1
+                    numberpos=0
+                    labelpos=0
+                    dotickpos=0
+                    dotickneg=1
+                    doprefix=1
+                    doticklabel=1
+                    timelabel=(units=='s')?clabel:''
+                    displaxisc={viewmin:pviewmin,viewmax:pviewmax,pixspan:axiscanvas.height/2.0-halfgap};
+                    colorbaroff=titlefontHeightspace*2;
+                    colorbarwidth=titlefontHeight;
+
+                    drawMetricLinearAtPt(figcontext, pviewmin, pviewmax, axiscanvas.height/2.0-halfgap, -(axisposy+axiscanvas.height),colorbaroff+colorbarwidth+axisposx+axiscanvas.width, units, clabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
                 }
                 figcontext.restore();
 
@@ -1342,13 +1386,13 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                 // draw colorbar
                 if (RG_fig[ifig].showlegend=='on')
                 {
-                    var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+                    var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height/2.0-halfgap);
                     var imgdatalen = imgdata.data.length;
 
                     for(var i=0;i<imgdatalen-4;i+=4)
                     {
                         ih=(i/4)/colorbarwidth;//height
-                        c256=Math.floor(((axiscanvas.height-ih)/axiscanvas.height)*255)
+                        c256=Math.floor((((axiscanvas.height/2-halfgap)-ih)/(axiscanvas.height/2-halfgap))*255)
                         if (c256<0)c256=0
                         else if (c256>255)c256=255
                         imgdata.data.set(jetRGB256[c256],i)
@@ -1359,7 +1403,26 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
                         //imgdata.data[i+3] = 255;//A
                     }
                     figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy);
-                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
+                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height/2-halfgap);
+
+                    imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap, colorbarwidth, axiscanvas.height/2.0-halfgap);
+                    imgdatalen = imgdata.data.length;
+
+                    for(var i=0;i<imgdatalen-4;i+=4)
+                    {
+                        ih=(i/4)/colorbarwidth;//height
+                        c256=Math.floor((((axiscanvas.height/2-halfgap)-ih)/(axiscanvas.height/2-halfgap))*255)
+                        if (c256<0)c256=0
+                        else if (c256>255)c256=255
+                        imgdata.data.set(jetRGB256[c256],i)
+                        //RGB=jetRGB256[c256]
+                        //imgdata.data[i] = RGB[0];//R
+                        //imgdata.data[i+1] = RGB[1];//G
+                        //imgdata.data[i+2] = RGB[2];//B
+                        //imgdata.data[i+3] = 255;//A
+                    }
+                    figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap);
+                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap, colorbarwidth, axiscanvas.height/2-halfgap);
                 }
         }
         RG_fig[ifig].xmin_eval=hviewmin;
