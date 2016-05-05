@@ -387,6 +387,9 @@ function setsignals(){
     {
         document.getElementById("consoletext").style.display = 'block'
         handle_data_user_event('help,'+signaltext.slice(5))
+    }else if (signaltext=='timeseries' || signaltext=='spectrum' || signaltext.slice(0,9)=='waterfall')
+    {
+        handle_data_user_event(signaltext);
     }else handle_data_user_event('setsignals,'+signaltext);
 }
 

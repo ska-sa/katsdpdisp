@@ -1398,10 +1398,29 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:9]=='waterfall'):#creates new waterfall plot
+            print args
+            if (args[0][:14]=='waterfallphase'):
+                html_viewsettings[username].append({'figtype':'waterfall'+str(args[0][14:]),'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            else:
+                html_viewsettings[username].append({'figtype':str(args[0]),'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='timeseries'):#creates new timeseries plot
+            print args
+            html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='spectrum'):#creates new spectrum plot
+            print args
+            html_viewsettings[username].append({'figtype':'spectrum','type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='setsignals'):
             logger.info(repr(args))
-            #decodes signals of from 1h3h to ('ant1h','ant3h')
-            html_customsignals[username]=[]
             standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
             for theviewsettings in html_viewsettings[username]:
                 theviewsettings['version']+=1
@@ -1409,29 +1428,11 @@ def handle_websock_event(handlerkey,*args):
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
                 logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
-                if (sig[:9]=='waterfall'):#creates new waterfall plot
-                    if (sig[:14]=='waterfallphase'):
-                        html_viewsettings[username].append({'figtype':'waterfall'+sig[14:] ,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    else:
-                        html_viewsettings[username].append({'figtype':sig ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    for thishandler in websockrequest_username.keys():
-                        if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
                     html_customsignals[username]=[]
                     html_collectionsignals[username]=[]
-                elif (sig=='timeseries'):#creates new timeseries plot
-                    html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    for thishandler in websockrequest_username.keys():
-                        if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                elif (sig=='spectrum'):#creates new spectrum plot
-                    html_viewsettings[username].append({'figtype':'spectrum'  ,'type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
-                    for thishandler in websockrequest_username.keys():
-                        if (websockrequest_username[thishandler]==username):
-                            send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
                 elif (len(decodedsignal)):
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
