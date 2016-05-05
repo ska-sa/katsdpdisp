@@ -9,6 +9,7 @@ To add new figures to the page, refer to the commands below:
 timeseries
 spectrum
 waterfall
+blmx
 
 Right click the figures to choose viewing options.
 
@@ -18,7 +19,6 @@ auto - draws percentile plots for a collection of auto correlation signals
 cross - draws percentile plots for a collection of cross correlation signals
 envelope - draws envelope of a collection of signals
 clear - remove percentile collection plots from figures
-blmx - adds a baseline matrix figure
 
 outlierthreshold - specify which outliers to detect and display automatically
 outliertime - specify which outliers to detect and display automatically
