@@ -1428,7 +1428,7 @@ def handle_websock_event(handlerkey,*args):
                 sig=str(sig)
                 decodedsignal=decodecustomsignal(sig)
                 logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
-                elif (sig in standardcollections and sig not in html_collectionsignals[username]):
+                if (sig in standardcollections and sig not in html_collectionsignals[username]):
                     html_collectionsignals[username].append(sig)
                 elif (sig=='clear'):
                     html_customsignals[username]=[]
