@@ -390,7 +390,7 @@ function setsignals(){
       //handle_data_user_event('server,'+'ssh kat@obs.kat7.karoo \"python -c \'import katuilib; k7w=katuilib.build_client(\\\"k7w\\\",\\\"192.168.193.5\\\",2040,controlled=True); k7w.req.add_sdisp_ip(\\\"192.168.6.54\\\"); k7w.req.add_sdisp_ip(\\\"192.168.193.7\\\"); k7w.req.add_sdisp_ip(\\\"192.168.6.110\\\"); k7w.req.sd_metadata_issue();\'\"');
       handle_data_user_event('metadata');
       //'ssh kat@obs.kat7.karoo \"python -c \'import socket;rv=socket.gethostbyaddr(\\\"kat-dp2\\\");print rv[2];\'\"'
-    }else if (signaltext=='timeseries' || signaltext=='spectrum' || signaltext.split(0,9)=='waterfall')
+    }else if (signaltext=='timeseries' || signaltext=='spectrum' || signaltext.slice(0,9)=='waterfall')
     {
         handle_data_user_event(signaltext);
     }
