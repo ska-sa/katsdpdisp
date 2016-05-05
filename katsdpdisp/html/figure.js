@@ -1628,9 +1628,9 @@ function onFigureDblclick(event){
             ix=Math.floor(RG_fig[ifigure].legendx.length*(event.layerX-axiscanvas.offsetLeft)/axiscanvas.width);
             iy=Math.floor(RG_fig[ifigure].legendy.length*(event.layerY-axiscanvas.offsetTop)/axiscanvas.height);
             if (iy<=ix)//abs
-                handle_data_user_event('setsignals,waterfall'+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[5])
+                handle_data_user_event('waterfall'+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[5])
             else//phase
-                handle_data_user_event('setsignals,waterfallphase'+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[5])
+                handle_data_user_event('waterfallphase'+RG_fig[ifigure].legendx[ix].slice(0,-1)+RG_fig[ifigure].figtype[4]+RG_fig[ifigure].legendy[iy].slice(0,-1)+RG_fig[ifigure].figtype[5])
         }else//unzoom all
         {
             RG_fig[ifigure].xmin=NaN
