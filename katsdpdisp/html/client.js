@@ -279,6 +279,9 @@ function setsignals(){
     }else if (signaltext=='blmxhh' || signaltext=='blmxvh' || signaltext=='blmxhv' || signaltext=='blmxvv')
 	{
         handle_data_user_event('blmx,'+signaltext.slice(4));
+    }else if (signaltext.slice(0,5)=='wmxhh' || signaltext.slice(0,5)=='wmxvh' || signaltext.slice(0,5)=='wmxhv' || signaltext.slice(0,5)=='wmxvv')
+	{
+        handle_data_user_event(signaltext.slice(0,5)+','+signaltext.slice(5));
     }else if (signaltext.slice(0,4)=='kick')
 	{
         if (signaltext.length>4)

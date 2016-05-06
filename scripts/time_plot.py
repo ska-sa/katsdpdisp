@@ -1398,6 +1398,42 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:3]=='wmx' and (args[0][:5]=='wmxhh' or args[0][:5]=='wmxhv' or args[0][:5]=='wmxvh' or args[0][:5]=='wmxvv')):
+            logger.info(repr(args))
+            antnumbers=[]
+            if (len(args)==1 or (len(args)==2 and not args[1].replace(' ','').isdigit())):#determine available inputs
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+                    fig=ringbufferresultqueue.get()
+                if (fig=={}):#an exception occurred
+                    send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
+                elif ('logconsole' in fig):
+                    for antname in fig['logconsole'].split(','):
+                        antnumberstr=antname[1:-1]
+                        if antnumberstr.isdigit() and (int(antnumberstr) not in antnumbers):
+                            antnumbers.append(int(antnumberstr))
+            else:#use supplied inputs
+                for antnumberstr in args[1:]:
+                    if antnumberstr.replace(' ','').isdigit() and (int(antnumberstr) not in antnumbers):
+                        antnumbers.append(int(antnumberstr))
+            if (len(antnumbers)==0):
+                send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
+            elif (len(antnumbers)>7):
+                send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs found or specified. Specify fewer than 8.",true,true,true)',handlerkey)
+            else:
+                html_customsignals[username]=[]
+                html_collectionsignals[username]=[]
+                html_viewsettings[username]=[]
+                html_layoutsettings[username]={'ncols':len(antnumbers),'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
+                for jant in antnumbers:
+                    for iant in antnumbers:
+                        if (iant>=jant):
+                            html_viewsettings[username].append({'figtype':'waterfall'+str(jant)+str(args[0][-2])+str(iant)+str(args[0][-1]),'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0})
+                        else:
+                            html_viewsettings[username].append({'figtype':'waterfall'+str(iant)+str(args[0][-2])+str(jant)+str(args[0][-1]),'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'off','version':0})
+                for thishandler in websockrequest_username.keys():
+                    if (websockrequest_username[thishandler]==username):
+                        send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0][:9]=='waterfall'):#creates new waterfall plot
             logger.info(repr(args))
             if (args[0][:14]=='waterfallphase'):

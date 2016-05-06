@@ -10,6 +10,7 @@ timeseries
 spectrum
 waterfall
 blmx
+wmx
 
 Right click the figures to choose viewing options.
 
@@ -259,6 +260,38 @@ Examples:
 
 'waterfallautohhmin' - waterfall plot of minimum of hh auto correlation products.
 and so forth
+
+[wmx]
+Generate a waterfall matrix page using one of the following commands
+
+wmxhh - hh polarisation waterfall matrix
+wmxhv - hv polarisation waterfall matrix
+wmxvh - vh polarisation waterfall matrix
+wmxvv - vv polarisation waterfall matrix
+
+[wmxhh]
+Generates a waterfall matrix page with hh polarisation.
+
+wmxhh - generates a hh polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxhh 1,2,3,4 - generates a hh polarisation waterfall matrix for antennas 1,2,3,4 only
+
+[wmxhv]
+Generates a waterfall matrix page with hv polarisation.
+
+wmxhv - generates a hv polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxhv 1,2,3,4 - generates a hv polarisation waterfall matrix for antennas 1,2,3,4 only
+
+[wmxvh]
+Generates a waterfall matrix page with vh polarisation.
+
+wmxvh - generates a vh polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxvh 1,2,3,4 - generates a vh polarisation waterfall matrix for antennas 1,2,3,4 only
+
+[wmxvv]
+Generates a waterfall matrix page with vv polarisation.
+
+wmxvv - generates a vv polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxvv 1,2,3,4 - generates a vv polarisation waterfall matrix for antennas 1,2,3,4 only
 
 [server]
 'server top' - Prints out to the console the load and process summary of the server.
