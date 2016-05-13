@@ -1033,17 +1033,78 @@ def handle_websock_event(handlerkey,*args):
                 elif (len(decodedsignal)):
                     if (decodedsignal not in html_customsignals[username]):
                         html_customsignals[username].append(decodedsignal)
+        elif (args[0]=='saveflags'):
+            logger.info(repr(args))
+            if (len(args)==1):
+                send_websock_cmd('logconsole("Please specify flagname",true,true,true)',handlerkey)
+            else:
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['getflags',0,0,0,0,0])
+                    fig=ringbufferresultqueue.get()
+                if (fig=={}):#an exception occurred
+                    send_websock_cmd('logconsole("Server exception occurred evaluating getflags",true,true,true)',handlerkey)
+                elif ('logconsole' in fig):
+                    theflagstr=fig['logconsole']
+                    flagname=str(args[1])
+                    try:
+                        flagfile=open(SETTINGS_PATH+'/userflags.json','r+')
+                        flagdictstr=startupfile.read()
+                    except:
+                        flagfile=open(SETTINGS_PATH+'/userflags.json','w+')
+                        flagdictstr=''
+                        pass
+                    if (len(flagdictstr)>0):
+                        flagdict=convertunicode(json.loads(flagdictstr))
+                    else:
+                        flagdict={}
+                    flagdict[flagname]=theflagstr
+                    flagdictstr=json.dumps(flagdict)
+                    flagfile.seek(0)
+                    flagfile.truncate(0)
+                    flagfile.write(flagdictstr)
+                    flagfile.close()
+                try:
+                    flagfile=open(SETTINGS_PATH+'/userflags.json','r')
+                    flagdictstr=flagfile.read()
+                    flagfile.close()
+                except:
+                    flagdictstr=''
+                    pass
+                if (len(flagdictstr)>0):
+                    flagdict=convertunicode(json.loads(flagdictstr))
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
         elif (args[0]=='setflags'):
             logger.info(repr(args))
+            try:
+                flagfile=open(SETTINGS_PATH+'/userflags.json','r+')
+                flagdictstr=startupfile.read()
+            except:
+                flagfile=open(SETTINGS_PATH+'/userflags.json','w+')
+                flagdictstr=''
+                pass
+            if (len(flagdictstr)>0):
+                flagdict=convertunicode(json.loads(flagdictstr))
+            else:
+                flagdict={}
             for theviewsettings in html_viewsettings[username]:
                 if (theviewsettings['figtype']=='spectrum'):
                     theviewsettings['version']+=1
             weightedmask={}
             with RingBufferLock:
-                ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
+                if (len(args)>1 and args[1] in flagdict):
+                    ringbufferrequestqueue.put(['setflags',flagdict[args[1]],0,0,0,0])
+                else:
+                    ringbufferrequestqueue.put(['setflags',args[1:],0,0,0,0])
                 weightedmask=ringbufferresultqueue.get()
             if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(args[1:])+'",true,true,true)',handlerkey)
+                if (len(flagdictstr)>0):
+                    flagdict=convertunicode(json.loads(flagdictstr))
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
             else:
                 ####set timeseries mask on ingest
                 try:
@@ -1059,7 +1120,11 @@ def handle_websock_event(handlerkey,*args):
                         weightedmask=ringbufferresultqueue.get()
                     if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
-
+                    if (len(flagdictstr)>0):
+                        flagdict=convertunicode(json.loads(flagdictstr))
+                        send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                    else:
+                        send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]

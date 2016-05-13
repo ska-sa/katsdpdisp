@@ -59,11 +59,14 @@ function setsignals(){
         else
         {
             handle_data_user_event('setoutliertime,'+outliertime);
-        }		
-	}else if (signaltext=='flags')
+        }
+	}else if (signaltext.slice(0,11)=='flags save ')
+    {
+        handle_data_user_event('saveflags,'+signaltext.slice(11));
+    }else if (signaltext=='flags')
     {
         handle_data_user_event('getflags');
-    }else if (signaltext.slice(0,6)=='flags=')
+    }else if (signaltext.slice(0,6)=='flags=' || signaltext.slice(0,6)=='flags ')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
     }else if (signaltext=='RESTART')
