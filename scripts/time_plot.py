@@ -450,7 +450,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         chanwidth=len(thech)-1
                         flagstart=0
                         flagstop=0
-                        halfchanwidthmhz=-abs(ch[0]-ch[1])/2.0
+                        halfchanwidthmhz=abs(ch[0]-ch[1])/2.0
                         while (flagstop<chanwidth):
                             flagstart=flagstop
                             while (flagstart<chanwidth and flags[flagstart]==0):
