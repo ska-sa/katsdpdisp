@@ -165,13 +165,16 @@ See also loop.
 The flags command sets the spectrum flags (indicated as shaded red regions on spectrum plots) which specifies which channels are ignored when calculating time series data plots. New flag settings are not re-applied to historic data and is only applied to future data.
 
 A few examples:
-'flags' prints the current flags to the console
+'flags' prints the current flags to the console, also listing any saved flags
 'flags=' clears all flags
 'flags=500' flags channel 500
 'flags=..200' flags the first 200 channels
 'flags=-200..' flags the last 200 channels
 'flags=300..350' flags channels 300 to 350
 'flags=..200,300..350,500,-200..' flags the first and last 200 channels, as well as channels 300 to 350, and channel 500
+
+'flags save name' saves the flags to name
+'flags name' loads flags that was saved to name
 
 'flags on' shows the current flags for all the figures on the page
 'flags off' hides the current flags for all the figures on the page

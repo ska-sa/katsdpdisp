@@ -60,7 +60,14 @@ function setsignals(){
         {
             handle_data_user_event('setoutliertime,'+outliertime);
         }
-	}else if (signaltext.slice(0,11)=='flags save ')
+	}else if (signaltext=='flags off')
+    {
+        handle_data_user_event('showflags,off');
+    }
+    else if (signaltext=='flags on')
+    {
+        handle_data_user_event('showflags,on');
+    }else if (signaltext.slice(0,11)=='flags save ')
     {
         handle_data_user_event('saveflags,'+signaltext.slice(11));
     }else if (signaltext=='flags')
@@ -72,14 +79,6 @@ function setsignals(){
     }else if (signaltext=='RESTART')
     {
         handle_data_user_event('RESTART');        
-    }
-    else if (signaltext=='flags off')
-    {
-        handle_data_user_event('showflags,off');
-    }
-    else if (signaltext=='flags on')
-    {
-        handle_data_user_event('showflags,on');
     }else if (signaltext=='onlineflags off')
     {
         handle_data_user_event('showonlineflags,off');
