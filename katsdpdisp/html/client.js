@@ -70,6 +70,9 @@ function setsignals(){
     }else if (signaltext.slice(0,11)=='flags save ')
     {
         handle_data_user_event('saveflags,'+signaltext.slice(11));
+    }else if (signaltext.slice(0,13)=='flags delete ')
+    {
+        handle_data_user_event('deleteflags,'+signaltext.slice(13));
     }else if (signaltext=='flags')
     {
         handle_data_user_event('getflags');

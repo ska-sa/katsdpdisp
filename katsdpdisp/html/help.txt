@@ -175,6 +175,7 @@ A few examples:
 
 'flags save name' saves the current flags to 'name'
 'flags load name' loads flags that was saved to 'name'
+'flags delete name' deletes flags named 'name'
 'flags name' loads flags that was saved to 'name'. This is a short version of 'flags load name'
 
 'flags on' shows the current flags for all the figures on the page

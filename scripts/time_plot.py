@@ -1089,6 +1089,42 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+        elif (args[0]=='deleteflags'):
+            logger.info(repr(args))
+            if (len(args)==1):
+                send_websock_cmd('logconsole("Please specify flagname",true,true,true)',handlerkey)
+            else:
+                flagname=str(args[1])
+                try:
+                    flagfile=open(SETTINGS_PATH+'/userflags.json','r+')
+                    flagdictstr=flagfile.read()
+                except:
+                    flagfile=open(SETTINGS_PATH+'/userflags.json','w+')
+                    flagdictstr=''
+                    pass
+                if (len(flagdictstr)>0):
+                    flagdict=convertunicode(json.loads(flagdictstr))
+                else:
+                    flagdict={}
+                if (flagname in flagdict):
+                    flagdict.pop(flagname)
+                flagdictstr=json.dumps(flagdict)
+                flagfile.seek(0)
+                flagfile.truncate(0)
+                flagfile.write(flagdictstr)
+                flagfile.close()
+                try:
+                    flagfile=open(SETTINGS_PATH+'/userflags.json','r')
+                    flagdictstr=flagfile.read()
+                    flagfile.close()
+                except:
+                    flagdictstr=''
+                    pass
+                if (len(flagdictstr)>0):
+                    flagdict=convertunicode(json.loads(flagdictstr))
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                else:
+                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
         elif (args[0]=='setflags'):
             logger.info(repr(args))
             try:
