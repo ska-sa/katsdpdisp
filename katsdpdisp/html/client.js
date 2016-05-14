@@ -73,6 +73,9 @@ function setsignals(){
     }else if (signaltext=='flags')
     {
         handle_data_user_event('getflags');
+    }else if (signaltext.slice(0,11)=='flags load ')
+    {
+        handle_data_user_event('setflags,'+signaltext.slice(11));
     }else if (signaltext.slice(0,6)=='flags=' || signaltext.slice(0,6)=='flags ')
     {
         handle_data_user_event('setflags,'+signaltext.slice(6));
