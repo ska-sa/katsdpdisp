@@ -359,7 +359,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['xdata']=ts
                     fig['ydata']=[ydata]
                     fig['color']=np.array(color)
-                    fig['legend']=legend                    
+                    fig['legend']=legend
                     fig['outlierhash']=outlierhash
                     fig['title']='Timeseries'
                     fig['lastts']=ts[-1]
@@ -376,9 +376,76 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['spancolor']=[]
                     fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
                     fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
+                elif (theviewsettings['figtype'][:11]=='periodogram'):
+                    if (theviewsettings['figtype'][11:].isdigit()):
+                        datalength=int(theviewsettings['figtype'][11:])
+                    else:
+                        datalength=60
+                    ydata=[]
+                    color=[]
+                    legend=[]
+                    outlierproducts=[]
+                    customproducts=[]
+                    for product in customsignals:
+                        if (list(product) in datasd.cpref.bls_ordering):
+                            customproducts.append(product)
+                            signal = datasd.select_data(dtype=thetype, product=tuple(product), start_time=0, end_time=-datalength, include_ts=False, start_channel=0, stop_channel=1)
+                            signal=np.array(signal).reshape(-1)
+                            if (len(signal)<datalength):
+                                signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
+                        else:
+                            signal=np.tile(np.nan,datalength)
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(printablesignal(product))
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
+                    outlierhash=0
+                    for ipr,product in enumerate(outlierproducts):
+                        outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
+                        signal = datasd.select_data(dtype=thetype, product=product, start_time=0, end_time=-datalength, include_ts=False, start_channel=0, stop_channel=1)
+                        signal=np.array(signal).reshape(-1)
+                        if (len(signal)<datalength):
+                            signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
+                    if (len(ydata)==0):
+                        ydata=[np.tile(np.nan,datalength)]
+                        color=[np.array([255,255,255,0])]
+                    if (theviewsettings['type']=='pow'):
+                        ydata=[10.0*np.log10(np.abs(np.fft.fft(yd))) for yd in ydata]
+                        fig['ylabel']=['Power']
+                        fig['yunit']=['dB']
+                    elif (thetype=='mag'):
+                        ydata=[np.abs(np.fft.fft(yd)) for yd in ydata]
+                        fig['ylabel']=['Amplitude']
+                        fig['yunit']=['counts']
+                    else:
+                        fig['ylabel']=['Phase']
+                        fig['yunit']=['rad']
+                    fig['xunit']=''
+                    fig['xdata']=np.arange(datalength)
+                    fig['ydata']=[ydata]
+                    fig['color']=np.array(color)
+                    fig['legend']=legend
+                    fig['outlierhash']=outlierhash
+                    fig['title']='Periodogram at '+time.asctime(time.localtime(ts[-1]))
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['showtitle']=theviewsettings['showtitle']
+                    fig['showlegend']=theviewsettings['showlegend']
+                    fig['showxlabel']=theviewsettings['showxlabel']
+                    fig['showylabel']=theviewsettings['showylabel']
+                    fig['showxticklabel']=theviewsettings['showxticklabel']
+                    fig['showyticklabel']=theviewsettings['showyticklabel']
+                    fig['xlabel']='Cycles'
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
                 elif (theviewsettings['figtype'][:8]=='spectrum'):
                     #nchannels=datasd.receiver.channels
-                    if (theviewsettings['figtype'][8:].replace(' ','').isdigit()):
+                    if (theviewsettings['figtype'][8:].isdigit()):
                         navgsamples=int(theviewsettings['figtype'][8:])
                     else:
                         navgsamples=1
@@ -878,6 +945,8 @@ def handle_websock_event(handlerkey,*args):
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
                 customproducts,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'][:11]=='periodogram'):
+                customproducts,outlierproducts=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:8]=='spectrum'):
                 customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
@@ -1027,14 +1096,24 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='timeseries'):#creates new timeseries plot
             logger.info(repr(args))
-            html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:11]=='periodogram'):#creates new periodogram plot
+            logger.info(repr(args))
+            if (args[0][11:].replace(' ','').isdigit()):
+                figtype='periodogram%d'%(int(args[0][11:].replace(' ','')))
+            else:
+                figtype='periodogram'
+            html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0][:8]=='spectrum'):#creates new spectrum plot
             logger.info(repr(args))
             if (args[0][8:].replace(' ','').isdigit()):
-                figtype=str(args[0])
+                figtype='spectrum%d'%(int(args[0][8:].replace(' ','')))
             else:
                 figtype='spectrum'
             html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
@@ -1622,6 +1701,71 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[]
+
+
+def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    try:
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            periodogram_fig=ringbufferresultqueue.get()
+        count=0
+        if (periodogram_fig=={}):#an exception occurred
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
+            return [],[]
+        elif ('logconsole' in periodogram_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+periodogram_fig['logconsole']+'",true,false,true)',handlerkey)
+            return [],[]
+        elif ('logignore' in periodogram_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return [],[]
+        if (lastrecalc<periodogram_fig['version'] or periodogram_fig['lastts']>lastts+0.01):
+            local_yseries=(periodogram_fig['ydata'])[:]
+            send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),periodogram_fig['version'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),periodogram_fig['lastts'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),periodogram_fig['lastdt'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),periodogram_fig['showtitle'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),periodogram_fig['showlegend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),periodogram_fig['showxlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),periodogram_fig['showylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),periodogram_fig['showxticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),periodogram_fig['showyticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),periodogram_fig['title'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xlabel'%(ifigure),periodogram_fig['xlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),periodogram_fig['ylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),periodogram_fig['xunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),periodogram_fig['yunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),periodogram_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),periodogram_fig['outlierhash'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),periodogram_fig['xdata'],'m'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),periodogram_fig['color'],'b'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].type'%(ifigure),theviewsettings['type'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xtype'%(ifigure),theviewsettings['xtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            for ispan,span in enumerate(periodogram_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(periodogram_fig['span'][ispan]),'H'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),periodogram_fig['spancolor'],'b'),handlerkey);count+=1;
+            for itwin,twinplotyseries in enumerate(local_yseries):
+                for iline,linedata in enumerate(twinplotyseries):
+                    send_websock_data(pack_binarydata_msg('fig[%d].ydata[%d][%d]'%(ifigure,itwin,iline),linedata,'H'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        else:#nothing new
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return periodogram_fig['customproducts'],periodogram_fig['outlierproducts']
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e), exc_info=True)
+    return [],[]
+
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:

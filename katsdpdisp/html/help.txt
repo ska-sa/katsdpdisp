@@ -7,6 +7,7 @@ To get help on a particular command, type 'help' followed by a Space and the com
 
 To add new figures to the page, refer to the commands below:
 timeseries
+periodogram
 spectrum
 waterfall
 blmx
@@ -235,6 +236,11 @@ The update command provides the advanced user with useful debugging information 
 
 [timeseries]
 Adds a new time series figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
+
+[periodogram]
+Adds a new periodogram figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
+
+periodogram 60 - adds a periodogram using 60 timeseries samples
 
 [spectrum]
 Adds a new spectrum plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel.
