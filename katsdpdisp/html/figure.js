@@ -5,6 +5,7 @@ var tickfont2Heightspace=tickfont2Height/5
 var titlefontHeight=20;
 var titlefontHeightspace=titlefontHeight/5
 var labelfontHeight=18;
+var labelfontHeightspace=labelfontHeight/5
 var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
@@ -460,7 +461,7 @@ function getminmax(datalist,istart,iend)
 }
 
 
-function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
+function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtextsensor,textsensor,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
 {
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
     {
@@ -633,6 +634,58 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xmin
             }
             context.stroke();
             context.closePath();
+        }
+        if (typeof(textsensor)!="undefined" && textsensor.length>0)
+        {
+            var localdatax
+            if (xtextsensor.length==2 && textsensor.length>2)
+            {
+                localdatax=new Array(textsensor.length)
+                if ((xunit=='s'))
+                    for (i=0;i<localdatax.length;i++)
+                        localdatax[i]=xtextsensor[0]-datax[datax.length-1]+(xtextsensor[1]-xtextsensor[0])*i/(localdatax.length-1)
+                else
+                    for (i=0;i<localdatax.length;i++)
+                        localdatax[i]=xtextsensor[0]+(xtextsensor[1]-xtextsensor[0])*i/(localdatax.length-1)
+            }else
+            {
+                localdatax=new Array(xtextsensor.length)
+                if ((xunit=='s'))
+                    for (i=0;i<localdatax.length;i++)
+                        localdatax[i]=xtextsensor[i]-datax[datax.length-1]
+                else
+                    for (i=0;i<localdatax.length;i++)
+                        localdatax[i]=xtextsensor[i]
+            }
+            ixstart=0;ixend=0;
+            xscale=xspan/(xviewmax-xviewmin)
+            xoff=-xviewmin*xscale;
+            for (x=0;x<localdatax.length && (xoff+xscale*localdatax[x])<0;x++);
+            if (x>1)ixstart=x-2;else ixstart=0;
+            for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
+            if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+
+            context.rotate(-Math.PI/2);
+            context.strokeStyle = "#000000";
+            context.fillStyle = "rgba(0,0,0,0.5)";
+            context.font=""+labelfontHeight+"px sans-serif";
+            xlast=1e100
+            //plot text from right to left, ensuring rightmost (latest) entry is plotted, continue plotting ensuring no overlap
+            for (x=textsensor.length-1;x>=0;x--)
+            {
+                sz=context.measureText(textsensor[x]);
+                xhere=(xoff+xscale*localdatax[x])+labelfontHeight;
+                if (xhere<labelfontHeight)//ensures there is text showing targetname if zoomed in, part 1
+                    xhere=labelfontHeight
+                if (xhere<xlast-labelfontHeight)
+                {
+                    context.fillText(textsensor[x],-sz.width-labelfontHeightspace,xhere);
+                    xlast=xhere;
+                }
+                if (xhere<=labelfontHeight)break;//ensures there is text showing targetname if zoomed in, part 2
+            }
+            context.rotate(Math.PI/2);
+            context.fillStyle = "#000000";
         }
             context.lineWidth=oldlinewidth;
             //context.setLineDash([0])
@@ -1857,8 +1910,8 @@ function redrawfigure(ifig)
             if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
                 drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
             else if (RG_fig[ifig].figtype=='timeseries')
-                drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xsensor,RG_fig[ifig].ysensor,RG_fig[ifig].sensorname,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
-            else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,[],[],[],RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+                drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xsensor,RG_fig[ifig].ysensor,RG_fig[ifig].sensorname,RG_fig[ifig].xtextsensor,RG_fig[ifig].textsensor,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
+            else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,[],[],[],[],[],RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
         }else
         {
             drawMatrixFigure(ifig,RG_fig[ifig].mxdata,RG_fig[ifig].phdata,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel)
