@@ -2013,10 +2013,13 @@ class DataHandler(object):
                 frames = np.angle(frames)
             if avg_axis is not None:
                 frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+                if include_flags: flags = flags if len(flags.shape) < 2 else np.sum(flags, avg_axis)
             if sum_axis is not None:
                 frames = np.sum(frames, sum_axis)
+                if include_flags: flags = flags if len(flags.shape) < 2 else np.sum(flags, sum_axis)
             if reverse_order:
                 frames = frames[::-1,...]
+                if include_flags: flags = flags[::-1,...]
             if include_ts:
                 frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
                 if reverse_order: frames[0] = frames[0][::-1]
@@ -2089,10 +2092,13 @@ class DataHandler(object):
                 frames = np.angle(frames)
             if avg_axis is not None:
                 frames = frames if len(frames.shape) < 2 else np.average(frames, avg_axis)
+                if include_flags: flags = flags if len(flags.shape) < 2 else np.sum(flags, avg_axis)
             if sum_axis is not None:
                 frames = np.sum(frames, sum_axis)
+                if include_flags: flags = flags if len(flags.shape) < 2 else np.sum(flags, sum_axis)
             if reverse_order:
                 frames = frames[::-1,...]
+                if include_flags: flags = flags[::-1,...]
             if include_ts:
                 frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
                 if reverse_order: frames[0] = frames[0][::-1]

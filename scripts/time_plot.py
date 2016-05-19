@@ -376,8 +376,12 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['spancolor']=[]
                     fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
                     fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
-                elif (theviewsettings['figtype']=='spectrum'):
+                elif (theviewsettings['figtype'][:8]=='spectrum'):
                     #nchannels=datasd.receiver.channels
+                    if (theviewsettings['figtype'][8:].replace(' ','').isdigit()):
+                        navgsamples=int(theviewsettings['figtype'][8:])
+                    else:
+                        navgsamples=1
                     ydata=[]
                     color=[]
                     legend=[]
@@ -399,7 +403,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(2):
                                     product=icolprod*5+iprod
-                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-navgsamples, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr,avg_axis=(0 if (navgsamples>1) else None))
                                     flags=np.logical_or(flags,theflags.reshape(-1))
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod[8:])
@@ -417,7 +421,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
-                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                    signal,theflags = datasd.select_data_collection(dtype=thetype, product=product, end_time=-navgsamples, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr,avg_axis=(0 if (navgsamples>1) else None))
                                     flags=np.logical_or(flags,theflags.reshape(-1))
                                     ydata.append(signal.reshape(-1))
                                     legend.append(colprod)
@@ -428,7 +432,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal,theflags = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            signal,theflags = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-navgsamples, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr,avg_axis=(0 if (navgsamples>1) else None))
                             flags=np.logical_or(flags,theflags.reshape(-1))
                             signal=np.array(signal).reshape(-1)
                         else:
@@ -437,7 +441,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         legend.append(printablesignal(product))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     for product in outlierproducts:
-                        signal,theflags = datasd.select_data(dtype=thetype, product=product, end_time=-1, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        signal,theflags = datasd.select_data(dtype=thetype, product=product, end_time=-navgsamples, include_ts=False,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr,avg_axis=(0 if (navgsamples>1) else None))
                         flags=np.logical_or(flags,theflags.reshape(-1))
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
@@ -484,7 +488,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['color']=np.array(color)
                     fig['legend']=legend
                     fig['outlierhash']=0
-                    fig['title']='Spectrum at '+time.asctime(time.localtime(ts[-1]))
+                    if (navgsamples>1):
+                        fig['title']='Spectrum (avg %d) at '%(navgsamples)+time.asctime(time.localtime(ts[-1]))
+                    else:
+                        fig['title']='Spectrum at '+time.asctime(time.localtime(ts[-1]))
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
@@ -871,7 +878,7 @@ def handle_websock_event(handlerkey,*args):
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
                 customproducts,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
-            elif (theviewsettings['figtype']=='spectrum'):
+            elif (theviewsettings['figtype'][:8]=='spectrum'):
                 customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
                 customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
@@ -1024,9 +1031,13 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-        elif (args[0]=='spectrum'):#creates new spectrum plot
+        elif (args[0][:8]=='spectrum'):#creates new spectrum plot
             logger.info(repr(args))
-            html_viewsettings[username].append({'figtype':'spectrum','type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
+            if (args[0][8:].replace(' ','').isdigit()):
+                figtype=str(args[0])
+            else:
+                figtype='spectrum'
+            html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
@@ -1139,7 +1150,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 flagdict={}
             for theviewsettings in html_viewsettings[username]:
-                if (theviewsettings['figtype']=='spectrum'):
+                if (theviewsettings['figtype'][:8]=='spectrum'):
                     theviewsettings['version']+=1
             weightedmask={}
             newflagstrlist=flagdict[args[1]].split(',') if (len(args)>1 and args[1] in flagdict) else args[1:]
@@ -1177,7 +1188,7 @@ def handle_websock_event(handlerkey,*args):
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
             for theviewsettings in html_viewsettings[username]:
-                if (theviewsettings['figtype']=='spectrum' or theviewsettings['figtype'][:9]=='waterfall'):
+                if (theviewsettings['figtype'][:8]=='spectrum' or theviewsettings['figtype'][:9]=='waterfall'):
                     theviewsettings['version']+=1
         elif (args[0]=='getusers'):
             logger.info(repr(args))

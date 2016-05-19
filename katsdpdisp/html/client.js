@@ -199,7 +199,7 @@ function setsignals(){
     else if (signaltext.slice(0,5)=='cmin=' || signaltext.slice(0,5)=='cmax=')
     {
         for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='ch' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
+            if (RG_fig[ifig].xtype=='ch' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='cmin=')
         		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
@@ -213,7 +213,7 @@ function setsignals(){
     else if (signaltext.slice(0,5)=='fmin=' || signaltext.slice(0,5)=='fmax=')
     {
         for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='mhz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
+            if (RG_fig[ifig].xtype=='mhz' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='fmin=')
         		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
@@ -227,7 +227,7 @@ function setsignals(){
     else if (signaltext.slice(0,5)=='Fmin=' || signaltext.slice(0,5)=='Fmax=')
     {
         for (ifig=0;ifig<nfigures;ifig++)
-            if (RG_fig[ifig].xtype=='ghz' && (RG_fig[ifig].figtype=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
+            if (RG_fig[ifig].xtype=='ghz' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='Fmin=')
         		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
@@ -243,7 +243,7 @@ function setsignals(){
         for (ifig=0;ifig<nfigures;ifig++)
             if (RG_fig[ifig].type=='pow')
             {
-        		if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype=='spectrum')
+        		if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype.slice(0,8)=='spectrum')
         		{
                     if (signaltext.slice(0,5)=='pmin=')
             		    RG_fig[ifig].ymin=parseFloat(signaltext.slice(5))
@@ -398,7 +398,7 @@ function setsignals(){
     {
         document.getElementById("consoletext").style.display = 'block'
         handle_data_user_event('help,'+signaltext.slice(5))
-    }else if (signaltext=='timeseries' || signaltext=='spectrum' || signaltext.slice(0,9)=='waterfall')
+    }else if (signaltext=='timeseries' || signaltext.slice(0,8)=='spectrum' || signaltext.slice(0,9)=='waterfall')
     {
         handle_data_user_event(signaltext);
     }else handle_data_user_event('setsignals,'+signaltext);

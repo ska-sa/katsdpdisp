@@ -239,6 +239,8 @@ Adds a new time series figure to the current view. Right click the figure to cha
 [spectrum]
 Adds a new spectrum plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel.
 
+spectrum 5 - adds a spectrum with 5 sample averaging (in time).
+
 [waterfall]
 Adds a new waterfall plot to the current view. Right click the figure to change, for example, the type to power, magnitude or phase, or the x-axis from MHz to GHz or channel. A further specification of baseline data product is required. 
 
