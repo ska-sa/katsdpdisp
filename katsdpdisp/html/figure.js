@@ -665,24 +665,42 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
             for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
             if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
 
+            textsensorfontheight=labelfontHeight;
+            for (x=0;x<textsensor.length-1;x++)
+            {
+                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight)
+                {
+                    textsensorfontheight=tickfontHeight;
+                    break;
+                }
+            }
+            for (x=0;x<textsensor.length-1;x++)
+            {
+                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight)
+                {
+                    textsensorfontheight=tickfont2Height;
+                    break;
+                }
+            }
+            textsensorfontheightspace=textsensorfontheight/5
             context.rotate(-Math.PI/2);
             context.strokeStyle = "#000000";
             context.fillStyle = "rgba(0,0,0,0.5)";
-            context.font=""+labelfontHeight+"px sans-serif";
+            context.font=""+textsensorfontheight+"px sans-serif";
             xlast=1e100
             //plot text from right to left, ensuring rightmost (latest) entry is plotted, continue plotting ensuring no overlap
             for (x=textsensor.length-1;x>=0;x--)
             {
                 sz=context.measureText(textsensor[x]);
-                xhere=(xoff+xscale*localdatax[x])+labelfontHeight;
-                if (xhere<labelfontHeight)//ensures there is text showing targetname if zoomed in, part 1
-                    xhere=labelfontHeight
-                if (xhere<xlast-labelfontHeight)
+                xhere=(xoff+xscale*localdatax[x])+textsensorfontheight;
+                if (xhere<textsensorfontheight)//ensures there is text showing targetname if zoomed in, part 1
+                    xhere=textsensorfontheight
+                if (xhere<xlast-textsensorfontheight)
                 {
-                    context.fillText(textsensor[x],-sz.width-labelfontHeightspace,xhere);
+                    context.fillText(textsensor[x],-sz.width-textsensorfontheightspace,xhere);
                     xlast=xhere;
                 }
-                if (xhere<=labelfontHeight)break;//ensures there is text showing targetname if zoomed in, part 2
+                if (xhere<=textsensorfontheight)break;//ensures there is text showing targetname if zoomed in, part 2
             }
             context.rotate(Math.PI/2);
             context.fillStyle = "#000000";
