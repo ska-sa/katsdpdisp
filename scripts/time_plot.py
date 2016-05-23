@@ -1385,6 +1385,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
+            logger.info(repr(telstate_data_target))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1663,8 +1664,6 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
         textsensor=[]
         textsensorts=[]
         if (len(telstate_data_target)>0):
-            if (ifigure==2):
-                logger.info(repr(telstate_data_target))
             for idata in range(len(telstate_data_target))[::-1]:#skip ahead
                 if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
                     break
