@@ -193,7 +193,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             #datasd.cpref.inputs=['ant1h','ant1v','ant2h','ant2v','ant3h','ant3v','ant4h','ant4v','ant5h','ant5v','ant6h','ant6v']
             #ts[0] # [  1.37959922e+09   1.37959922e+09]
             [thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels]=ringbufferrequestqueue.get()
-
+            startproctime=time.time()
             if (thelayoutsettings=='setflags'):
                 datasd.storage.timeseriesmaskstr=str(','.join(theviewsettings))
                 datasd.storage.timeseriesmaskind,weightedmask,datasd.storage.spectrum_flag0,datasd.storage.spectrum_flag1=sdispdata.parse_timeseries_mask(datasd.storage.timeseriesmaskstr,datasd.storage.n_chans)
@@ -774,6 +774,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 logger.warning('Exception in RingBufferProcess: '+str(e), exc_info=True)
                 fig={}
                 pass
+            if (fig!={}):
+                fig['processtime']=time.time()-startproctime
             
             ringbufferresultqueue.put(fig)
             
@@ -885,6 +887,7 @@ def logusers(handlerkey):
     zombie=[]
     zombiecount=[]
     active=[]
+    activeproctime=[]
     activetime=[]
     nactive=0
     for usrname in html_viewsettings.keys():
@@ -893,12 +896,17 @@ def logusers(handlerkey):
     for thishandler in websockrequest_username.keys():
         usrname=websockrequest_username[thishandler]
         timedelay=(time.time()-websockrequest_time[thishandler])
+        proctime=0
+        for fig in html_viewsettings[usrname]:
+            proctime+=fig['processtime']
         if (timedelay<60):
             nactive+=1
             if (usrname in active):
+                activeproctime[active.index(usrname)]+=proctime
                 activetime[active.index(usrname)].append(timedelay)
             else:
                 active.append(usrname)
+                activeproctime.append(proctime)
                 activetime.append([timedelay])
         else:
             if (usrname in zombie):
@@ -913,7 +921,7 @@ def logusers(handlerkey):
         send_websock_cmd('logconsole("0 zombie",true,true,true)',handlerkey)
     send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
     for iz in range(len(active)):
-        send_websock_cmd('logconsole("'+active[iz]+': '+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
+        send_websock_cmd('logconsole("'+active[iz]+' [proc %.1fms]'%(activeproctime[iz]*1000.0)+': '+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -960,15 +968,16 @@ def handle_websock_event(handlerkey,*args):
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
             if (theviewsettings['figtype']=='timeseries'):
-                customproducts,outlierproducts=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts,processtime=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:11]=='periodogram'):
-                customproducts,outlierproducts=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts,processtime=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:8]=='spectrum'):
-                customproducts,outlierproducts=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts,processtime=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
-                customproducts,outlierproducts=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts,processtime=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:4]=='blmx'):
-                customproducts,outlierproducts=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+                customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            html_viewsettings[username][ifigure]['processtime']=processtime
             UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
             logger.info(repr(args))
@@ -1616,20 +1625,23 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             timeseries_fig=ringbufferresultqueue.get()
 
         count=0
+        processtime=0
         if (timeseries_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],processtime
         elif ('logconsole' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+timeseries_fig['logconsole']+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],processtime
         elif ('logignore' in timeseries_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return [],[]
+            return [],[],processtime
+        if ('processtime' in timeseries_fig):
+            processtime=timeseries_fig['processtime']
             
         sensorsignal=[]
         sensorts=[]
@@ -1726,10 +1738,10 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return timeseries_fig['customproducts'],timeseries_fig['outlierproducts']
+        return timeseries_fig['customproducts'],timeseries_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[]
+    return [],[],processtime
 
 
 def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1738,20 +1750,23 @@ def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,las
             ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
             periodogram_fig=ringbufferresultqueue.get()
         count=0
+        processtime=0
         if (periodogram_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logconsole' in periodogram_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+periodogram_fig['logconsole']+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logignore' in periodogram_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return [],[]
+            return [],[],0
+        if ('processtime' in periodogram_fig):
+            processtime=periodogram_fig['processtime']
         if (lastrecalc<periodogram_fig['version'] or periodogram_fig['lastts']>lastts+0.01):
             local_yseries=(periodogram_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),periodogram_fig['version'],'i'),handlerkey);count+=1;
@@ -1790,10 +1805,10 @@ def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,las
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return periodogram_fig['customproducts'],periodogram_fig['outlierproducts']
+        return periodogram_fig['customproducts'],periodogram_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[]
+    return [],[],processtime
 
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1802,20 +1817,23 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
             spectrum_fig=ringbufferresultqueue.get()
         count=0
+        processtime=0
         if (spectrum_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logconsole' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+spectrum_fig['logconsole']+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logignore' in spectrum_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return [],[]
+            return [],[],0
+        if ('processtime' in spectrum_fig):
+            processtime=spectrum_fig['processtime']
         if (lastrecalc<spectrum_fig['version'] or spectrum_fig['lastts']>lastts+0.01):
             local_yseries=(spectrum_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),spectrum_fig['version'],'i'),handlerkey);count+=1;
@@ -1854,10 +1872,10 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return spectrum_fig['customproducts'],spectrum_fig['outlierproducts']
+        return spectrum_fig['customproducts'],spectrum_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[]
+    return [],[],processtime
 
 
 def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1867,20 +1885,23 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             waterfall_fig=ringbufferresultqueue.get()
             
         count=0
+        processtime=0
         if (waterfall_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logconsole' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+waterfall_fig['logconsole']+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logignore' in waterfall_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return [],[]
+            return [],[],0
+        if ('processtime' in waterfall_fig):
+            processtime=waterfall_fig['processtime']
         if (lastrecalc<waterfall_fig['version']):
             local_cseries=(waterfall_fig['cdata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),waterfall_fig['version'],'i'),handlerkey);count+=1;
@@ -1944,10 +1965,10 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return waterfall_fig['customproducts'],waterfall_fig['outlierproducts']
+        return waterfall_fig['customproducts'],waterfall_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[]
+    return [],[],processtime
 
 def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
@@ -1955,20 +1976,23 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
             blmx_fig=ringbufferresultqueue.get()
         count=0
+        processtime=0
         if (blmx_fig=={}):#an exception occurred
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logconsole' in blmx_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
             send_websock_cmd('logconsole("'+blmx_fig['logconsole']+'",true,false,true)',handlerkey)
-            return [],[]
+            return [],[],0
         elif ('logignore' in blmx_fig):
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-            return [],[]
+            return [],[],0
+        if ('processtime' in blmx_fig):
+            processtime=blmx_fig['processtime']
         if (lastrecalc<blmx_fig['version'] or blmx_fig['lastts']>lastts+0.01):
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),blmx_fig['version'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),blmx_fig['lastts'],'d'),handlerkey);count+=1;
@@ -2004,10 +2028,10 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return blmx_fig['customproducts'],blmx_fig['outlierproducts']
+        return blmx_fig['customproducts'],blmx_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[]
+    return [],[],processtime
 
 #client sends request to server; server may respond with numerous assignments of data into a datastructure on client side to address request
 #datastructure transmitted in binary to client
