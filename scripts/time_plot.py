@@ -1636,7 +1636,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
         for idata in range(len(telstate_data_target))[::-1]:#skip ahead
             if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
                 break
-        for idata in range(idata+1)[::-1]:#includes preceding target too
+        for idata in range(idata+1 if (len(telstate_data_target)>idata) else idata)[::-1]:#includes preceding target too
             textsensor.append(telstate_data_target[idata][0])
             textsensorts.append(telstate_data_target[idata][1])
             if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
