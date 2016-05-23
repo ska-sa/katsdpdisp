@@ -920,8 +920,8 @@ def logusers(handlerkey):
     else:
         send_websock_cmd('logconsole("0 zombie",true,true,true)',handlerkey)
     send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
-    for iz in range(len(active)):
-        send_websock_cmd('logconsole("'+active[iz]+' [proc %.1fms]'%(activeproctime[iz]*1000.0)+': '+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+'",true,true,true)',handlerkey)
+    for iz in np.argsort(activeproctime)[::-1]:
+        send_websock_cmd('logconsole("'+'[proc %.1fms] %s:'%(activeproctime[iz]*1000.0,active[iz])+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+' ago",true,true,true)',handlerkey)
 
 def handle_websock_event(handlerkey,*args):
     try:
