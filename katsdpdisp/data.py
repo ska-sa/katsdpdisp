@@ -933,10 +933,12 @@ class SpeadSDReceiver(threading.Thread):
                             logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
                     if self.ig['bls_ordering'].version != bls_ordering_version:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value] != self.bls_ordering:
+                            logger.info("Previous bls ordering: {}".format(self.bls_ordering))
                             self.bls_ordering = [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value]
                             self.cpref.bls_ordering = self.bls_ordering
                             self.cpref.precompute()
                             logger.info("Signal display store data purged due to changed baseline ordering...")
+                            logger.info("New bls ordering: {}".format(self.bls_ordering))
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
                                 self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))

@@ -668,7 +668,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
             textsensorfontheight=labelfontHeight;
             for (x=0;x<textsensor.length-1;x++)
             {
-                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight)
+                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight*2)
                 {
                     textsensorfontheight=tickfontHeight;
                     break;
@@ -676,7 +676,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
             }
             for (x=0;x<textsensor.length-1;x++)
             {
-                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight)
+                if (xscale*(localdatax[x+1]-localdatax[x])<textsensorfontheight*2)
                 {
                     textsensorfontheight=tickfont2Height;
                     break;

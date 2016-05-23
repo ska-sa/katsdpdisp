@@ -1069,8 +1069,8 @@ def handle_websock_event(handlerkey,*args):
                         antnumbers.append(int(antnumberstr))
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
-            elif (len(antnumbers)>7):
-                send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs found or specified. Specify fewer than 8.",true,true,true)',handlerkey)
+            elif (len(antnumbers)>8):
+                send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs found or specified. Specify 8 or fewer.",true,true,true)',handlerkey)
             else:
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
@@ -1514,27 +1514,35 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
                 logusers(handlerkey)
-        try:
-            global scriptname
-            notification=ringbuffernotifyqueue.get(False)
-            if (notification=='end of stream'):
-                scriptname='completed '+scriptname
-                for thishandler in websockrequest_username.keys():
-                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
-            elif (notification=='start of stream'):
-                try:
-                    entries=telstate.get_range('obs_params',0)
-                    obs_params=dict(entry[0].split(' ', 1) for entry in entries)
-                    scriptname=obs_params['script_name'][1:-1].split('/')[-1]
-                except Exception, e:
-                    logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
-                    scriptname='undisclosed script'
-                for thishandler in websockrequest_username.keys():
-                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
-            else:
-                logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
-        except: #ringbuffernotifyqueue.get(False) raise Empty if queue is empty
-            pass
+        global poll_telstate_lasttime
+        if (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0):#don't check more than once a second
+            poll_telstate_lasttime=websockrequest_time[handlerkey]
+            try:
+                global telstate_data_target
+                global scriptname
+                if ('data_target' in telstate):
+                    data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
+                    for thisdata_target in data_target:
+                        telstate_data_target.append((thisdata_target[0].split(',')[0].split(' |')[0].split('|')[0],thisdata_target[1]))
+                notification=ringbuffernotifyqueue.get(False)
+                if (notification=='end of stream'):
+                    scriptname='completed '+scriptname
+                    for thishandler in websockrequest_username.keys():
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+                elif (notification=='start of stream'):
+                    try:
+                        entries=telstate.get_range('obs_params',0)
+                        obs_params=dict(entry[0].split(' ', 1) for entry in entries)
+                        scriptname=obs_params['script_name'][1:-1].split('/')[-1]
+                    except Exception, e:
+                        logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
+                        scriptname='undisclosed script'
+                    for thishandler in websockrequest_username.keys():
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+                else:
+                    logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
+            except: #ringbuffernotifyqueue.get(False) raise Empty if queue is empty
+                pass
 
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
@@ -1583,8 +1591,6 @@ def getsensordata(sensorname, start_time=0, end_time=-120):
     else:    
         sensorvalues=np.array([val[0] for val in values])
         timestamps=np.array([val[1] for val in values])
-    if (sensorname=='data_target'):
-        sensorvalues=np.array([val.split(',')[0].split('|')[0] for val in sensorvalues])
     return [timestamps,sensorvalues]
 
 def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
@@ -1624,11 +1630,17 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 sensorts=[]
                 sensorname=''
                 #logger.warning("Exception evaluating sensor %s: %s" % (theviewsettings['sensor'],str(e)), exc_info=True)
-        try:
-            textsensorts,textsensor = getsensordata(sensorname='data_target', start_time=timeseries_fig['xdata'][0], end_time=timeseries_fig['xdata'][-1])
-        except Exception, e:
-            textsensor=[]
-            textsensorts=[]
+
+        textsensor=[]
+        textsensorts=[]
+        for idata in range(len(telstate_data_target))[::-1]:#skip ahead
+            if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
+                break
+        for idata in range(idata+1)[::-1]:#includes preceding target too
+            textsensor.append(telstate_data_target[idata][0])
+            textsensorts.append(telstate_data_target[idata][1])
+            if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
+                break
 
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
@@ -2362,6 +2374,8 @@ telstate=opts.telstate
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
 
+poll_telstate_lasttime=0
+telstate_data_target=[]
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
