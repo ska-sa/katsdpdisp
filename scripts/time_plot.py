@@ -384,8 +384,24 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     ydata=[]
                     color=[]
                     legend=[]
+                    collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
                     customproducts=[]
+                    for colprod in collectionsignals:
+                        if (colprod[:8]=='envelope'):
+                            if (colprod[8:] in collections):
+                                icolprod=collections.index(colprod[8:])
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
+                        else:
+                            if (colprod in collections):
+                                icolprod=collections.index(colprod)
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
@@ -1633,14 +1649,15 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
 
         textsensor=[]
         textsensorts=[]
-        for idata in range(len(telstate_data_target))[::-1]:#skip ahead
-            if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
-                break
-        for idata in range(idata+1 if (len(telstate_data_target)>idata) else idata)[::-1]:#includes preceding target too
-            textsensor.append(telstate_data_target[idata][0])
-            textsensorts.append(telstate_data_target[idata][1])
-            if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
-                break
+        if (len(telstate_data_target)>0):
+            for idata in range(len(telstate_data_target))[::-1]:#skip ahead
+                if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
+                    break
+            for idata in range((idata+1 if (len(telstate_data_target)>idata) else idata))[::-1]:#includes preceding target too
+                textsensor.append(telstate_data_target[idata][0])
+                textsensorts.append(telstate_data_target[idata][1])
+                if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
+                    break
 
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
