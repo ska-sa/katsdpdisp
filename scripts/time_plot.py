@@ -114,22 +114,22 @@ def registeredcolour(signalname):
 def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
     if (thetype=='mhz'):
         if (themin==None or type(themin)==list or not np.isfinite(themin)):
-            stop_channel=len(ch_mhz)
-        else:
-            stop_channel=int(((themin-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
-        if (themax==None or type(themax)==list or not np.isfinite(themax)):
             start_channel=0
         else:
             start_channel=int(((themax-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))
-    elif (thetype=='ghz'):
-        if (themin==None or type(themin)==list or not np.isfinite(themin)):
+        if (themax==None or type(themax)==list or not np.isfinite(themax)):
             stop_channel=len(ch_mhz)
         else:
-            stop_channel=int(((themin*1e3-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
-        if (themax==None or type(themax)==list or not np.isfinite(themax)):
+            stop_channel=int(((themin-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
+    elif (thetype=='ghz'):
+        if (themin==None or type(themin)==list or not np.isfinite(themin)):
             start_channel=0
         else:
             start_channel=int(((themax*1e3-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))
+        if (themax==None or type(themax)==list or not np.isfinite(themax)):
+            stop_channel=len(ch_mhz)
+        else:
+            stop_channel=int(((themin*1e3-ch_mhz[0])/(ch_mhz[-1]-ch_mhz[0]))*len(ch_mhz))+1
     else:#channel
         if (themin==None or type(themin)==list or not np.isfinite(themin)):
             start_channel=0
