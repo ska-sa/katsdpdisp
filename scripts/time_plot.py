@@ -1385,6 +1385,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
+            logger.info(repr(telstate_activity))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1545,11 +1546,17 @@ def handle_websock_event(handlerkey,*args):
             poll_telstate_lasttime=websockrequest_time[handlerkey]
             try:
                 global telstate_data_target
+                global telstate_antenna_mask
+                global telstate_activity
                 global scriptname
                 if ('data_target' in telstate):
                     data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
                     for thisdata_target in data_target:
                         telstate_data_target.append((thisdata_target[0].split(',')[0].split(' |')[0].split('|')[0],thisdata_target[1]))
+                if (len(telstate_antenna_mask)>0 and telstate_antenna_mask[0]+'_activity' in telstate):
+                    data_activity=telstate.get_range(telstate_antenna_mask[0]+'_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
+                    for thisdata_activity in data_activity:
+                        telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
                 notification=ringbuffernotifyqueue.get(False)
                 if (notification=='end of stream'):
                     scriptname='completed '+scriptname
@@ -1557,6 +1564,10 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
                 elif (notification=='start of stream'):
                     try:
+                        if ('antenna_mask' in telstate):
+                            telstate_antenna_mask=telstate['antenna_mask']
+                        else:
+                            logger.warning("Unexpected antenna_mask not in telstate")
                         entries=telstate.get_range('obs_params',0)
                         obs_params=dict(entry[0].split(' ', 1) for entry in entries)
                         scriptname=obs_params['script_name'][1:-1].split('/')[-1]
@@ -2418,6 +2429,8 @@ if (telstate is None):
 
 poll_telstate_lasttime=0
 telstate_data_target=[]
+telstate_activity=[]
+telstate_antenna_mask=[]
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
