@@ -30,7 +30,6 @@ import signal
 import numbers
 from guppy import hpy
 
-memoryleak_msg=[]
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
 np.set_printoptions(threshold=4096)
@@ -1389,9 +1388,6 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
-            logger.info(repr(memoryleak_msg))
-            logger.info(repr(telstate_data_target))
-            logger.info(repr(telstate_activity))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1681,40 +1677,41 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
 
         textsensor=[]
         textsensorts=[]
-        if (len(telstate_data_target)>0):
-            for idata in range(len(telstate_data_target))[::-1]:#skip ahead
-                if (timeseries_fig['xdata'][-1]>=telstate_data_target[idata][1]):
-                    break
-            for idata in range((idata+1 if (len(telstate_data_target)>idata) else idata))[::-1]:#includes preceding target too
-                textsensor.insert(0,telstate_data_target[idata][0])
-                textsensorts.insert(0,telstate_data_target[idata][1])
-                if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
-                    break
         if (len(telstate_activity)>0):
             span=[[]]
             spancolor=[[192,192,192,64]]
             startslew=None
-            lasttargetname=''
+            currenttargetname=''
             itarget=0
-            newtextsensor=[]
-            newtextsensorts=[]
+            mergedtextsensor=[]
+            mergedtextsensorts=[]
             for idata in range(len(telstate_activity)):
                 if (telstate_activity[idata][0]=='slew'):
                     startslew=telstate_activity[idata][1]
                 else:
                     if (startslew is not None):
-                        span[0].append([startslew,telstate_activity[idata][1]])
+                        if ((timeseries_fig['xdata'][0]<=startslew and startslew<=timeseries_fig['xdata'][-1]) or (timeseries_fig['xdata'][0]<=telstate_activity[idata][1] and telstate_activity[idata][1]<=timeseries_fig['xdata'][-1])):
+                            span[0].append([startslew,telstate_activity[idata][1]])
                         while (itarget<len(telstate_data_target)):
                             if (telstate_data_target[itarget][1]<telstate_activity[idata][1]):
-                                lasttargetname=telstate_data_target[itarget][0]
+                                currenttargetname=telstate_data_target[itarget][0]
                                 itarget+=1
                             else:
                                 break
-                        newtextsensor.append(lasttargetname)
-                        newtextsensorts.append(telstate_activity[idata][1])
+                        mergedtextsensor.append(currenttargetname)
+                        mergedtextsensorts.append(telstate_activity[idata][1])
                     startslew=None
-            global memoryleak_msg
-            memoryleak_msg=[textsensor,textsensorts,newtextsensor,newtextsensorts]
+            if (startslew is not None and telstate_activity[idata][0]=='slew' and startslew<timeseries_fig['xdata'][-1]):
+                span[0].append([startslew,timeseries_fig['xdata'][-1]])
+            if (len(mergedtextsensor)>0):#only include text that is in view
+                for idata in range(len(mergedtextsensor))[::-1]:#skip ahead
+                    if (timeseries_fig['xdata'][-1]>=mergedtextsensorts[idata]):
+                        break
+                for idata in range((idata+1 if (len(mergedtextsensor)>idata) else idata))[::-1]:#includes preceding target too
+                    textsensor.insert(0,mergedtextsensor[idata])
+                    textsensorts.insert(0,mergedtextsensorts[idata])
+                    if (timeseries_fig['xdata'][0]>mergedtextsensorts[idata]):
+                        break
             if (len(span[0])>0):
                 timeseries_fig['span']=span
                 timeseries_fig['spancolor']=np.array(spancolor)
