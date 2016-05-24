@@ -890,6 +890,7 @@ def logusers(handlerkey):
     activeproctime=[]
     activetime=[]
     nactive=0
+    totalactiveproctime=0.0
     for usrname in html_viewsettings.keys():
         if (usrname not in websockrequest_username.values()):
             inactive.append(usrname)
@@ -900,6 +901,7 @@ def logusers(handlerkey):
         for fig in html_viewsettings[usrname]:
             proctime+=fig['processtime']
         if (timedelay<60):
+            totalactiveproctime+=proctime
             nactive+=1
             if (usrname in active):
                 activeproctime[active.index(usrname)]+=proctime
@@ -919,9 +921,9 @@ def logusers(handlerkey):
         send_websock_cmd('logconsole("'+str(np.sum(zombiecount))+' zombie (use memoryleak to remove): '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
     else:
         send_websock_cmd('logconsole("0 zombie",true,true,true)',handlerkey)
-    send_websock_cmd('logconsole("'+str(nactive)+' active (use kick to deactivate or send message): ",true,true,true)',handlerkey)
+    send_websock_cmd('logconsole("'+str(nactive)+' active using %.1fms proc time total per dump (use kick to deactivate or send message): ",true,true,true)'%(totalactiveproctime*1000.0),handlerkey)
     for iz in np.argsort(activeproctime)[::-1]:
-        send_websock_cmd('logconsole("'+'[proc %.1fms] %s:'%(activeproctime[iz]*1000.0,active[iz])+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+' ago",true,true,true)',handlerkey)
+        send_websock_cmd('logconsole("[proc %.1fms] %s: '%(activeproctime[iz]*1000.0,active[iz])+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+' ago",true,true,true)',handlerkey)
 
 def handle_websock_event(handlerkey,*args):
     try:
@@ -938,6 +940,7 @@ def handle_websock_event(handlerkey,*args):
             if (args[1] not in html_layoutsettings):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
             send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[args[1]]])+'"]'+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
+            send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',handlerkey)
         elif (username not in html_viewsettings):
             logger.info('Warning: unrecognised username:'+username)
         elif (args[0]=='sendfiguredata'):
@@ -1385,7 +1388,6 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
-            logger.info(repr(telstate_activity))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1548,7 +1550,8 @@ def handle_websock_event(handlerkey,*args):
                 global telstate_data_target
                 global telstate_antenna_mask
                 global telstate_activity
-                global scriptname
+                global telstate_script_name
+                global scriptnametext
                 if ('data_target' in telstate):
                     data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
                     for thisdata_target in data_target:
@@ -1559,9 +1562,9 @@ def handle_websock_event(handlerkey,*args):
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
                 notification=ringbuffernotifyqueue.get(False)
                 if (notification=='end of stream'):
-                    scriptname='completed '+scriptname
+                    scriptnametext='completed '+telstate_script_name
                     for thishandler in websockrequest_username.keys():
-                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 elif (notification=='start of stream'):
                     try:
                         if ('antenna_mask' in telstate):
@@ -1570,12 +1573,13 @@ def handle_websock_event(handlerkey,*args):
                             logger.warning("Unexpected antenna_mask not in telstate")
                         entries=telstate.get_range('obs_params',0)
                         obs_params=dict(entry[0].split(' ', 1) for entry in entries)
-                        scriptname=obs_params['script_name'][1:-1].split('/')[-1]
+                        telstate_script_name=obs_params['script_name'][1:-1].split('/')[-1]
                     except Exception, e:
                         logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
-                        scriptname='undisclosed script'
+                        telstate_script_name='undisclosed script'
+                    scriptnametext=telstate_script_name
                     for thishandler in websockrequest_username.keys():
-                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptname+'";',thishandler)
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 else:
                     logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
             except: #ringbuffernotifyqueue.get(False) raise Empty if queue is empty
@@ -2305,7 +2309,7 @@ class htmlHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 filetext=f.read()
                 if (self.path=="/index.html"):
-                    filetext=filetext.replace('<!--data_port-->',str(opts.data_port)).replace('<!--scriptname_text-->',scriptname)
+                    filetext=filetext.replace('<!--data_port-->',str(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
                 
                 self.wfile.write(filetext)
                 f.close()
@@ -2373,7 +2377,6 @@ else:
 #configure SPEAD to display warnings about dropped packets etc...
 #logging.getLogger('spead2').setLevel(logging.WARNING)
 
-scriptname='No script active'
 SETTINGS_PATH=os.path.expanduser(opts.config_base)
 SERVE_PATH=os.path.expanduser(SERVE_PATH)
 np.random.seed(0)
@@ -2431,6 +2434,8 @@ poll_telstate_lasttime=0
 telstate_data_target=[]
 telstate_activity=[]
 telstate_antenna_mask=[]
+telstate_script_name='No script active'
+scriptnametext=telstate_script_name
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
