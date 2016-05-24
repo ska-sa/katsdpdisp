@@ -921,7 +921,7 @@ def logusers(handlerkey):
         send_websock_cmd('logconsole("'+str(np.sum(zombiecount))+' zombie (use memoryleak to remove): '+','.join([zombie[iz]+':%d'%zombiecount[iz] for iz in range(len(zombie))])+'",true,true,true)',handlerkey)
     else:
         send_websock_cmd('logconsole("0 zombie",true,true,true)',handlerkey)
-    send_websock_cmd('logconsole("'+str(nactive)+' active using %.1fms proc time total per dump (use kick to deactivate or send message): ",true,true,true)'%(totalactiveproctime*1000.0),handlerkey)
+    send_websock_cmd('logconsole("'+str(nactive)+' active using %.1fms proc time (use kick to deactivate or send message): ",true,true,true)'%(totalactiveproctime*1000.0),handlerkey)
     for iz in np.argsort(activeproctime)[::-1]:
         send_websock_cmd('logconsole("[proc %.1fms] %s: '%(activeproctime[iz]*1000.0,active[iz])+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+' ago",true,true,true)',handlerkey)
 
@@ -1686,7 +1686,20 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 textsensorts.insert(0,telstate_data_target[idata][1])
                 if (timeseries_fig['xdata'][0]>telstate_data_target[idata][1]):
                     break
-
+        if (len(telstate_activity)>0):
+            span=[[]]
+            spancolor=[[192,192,192,64]]
+            startslew=None
+            for idata in range(len(telstate_activity)):
+                if (telstate_activity[idata][0]=='slew'):
+                    startslew=telstate_activity[idata][1]
+                else:
+                    if (startslew is not None):
+                        span[0].append([startslew,telstate_activity[idata][1]])
+                    startslew=None
+            if (len(span[0])>0):
+                timeseries_fig['span']=span
+                timeseries_fig['spancolor']=np.array(spancolor)
         if (lastrecalc<timeseries_fig['version'] or outlierhash!=timeseries_fig['outlierhash']):
             local_yseries=(timeseries_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),timeseries_fig['version'],'i'),handlerkey);count+=1;
@@ -1720,7 +1733,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].textsensor'%(ifigure),textsensor,'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].xtextsensor'%(ifigure),textsensorts,'I'),handlerkey);count+=1;
             for ispan,span in enumerate(timeseries_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
-                send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'H'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'I'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),timeseries_fig['spancolor'],'b'),handlerkey);count+=1;
             for itwin,twinplotyseries in enumerate(local_yseries):
                 for iline,linedata in enumerate(twinplotyseries):
@@ -1746,6 +1759,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].ysensor'%(ifigure),sensorsignal,'H'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].textsensor'%(ifigure),textsensor,'s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].xtextsensor'%(ifigure),textsensorts,'I'),handlerkey);count+=1;
+                for ispan,span in enumerate(timeseries_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                    send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'I'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),timeseries_fig['spancolor'],'b'),handlerkey);count+=1;
                 for itwin,twinplotyseries in enumerate(local_yseries):
                     for iline,linedata in enumerate(twinplotyseries):
                         send_websock_data(pack_binarydata_msg('fig[%d].ydata[%d][%d]'%(ifigure,itwin,iline),linedata,'H'),handlerkey);count+=1;

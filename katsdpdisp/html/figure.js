@@ -707,11 +707,20 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
         }
             context.lineWidth=oldlinewidth;
             //context.setLineDash([0])
-            for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
-            {
-                context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
-                for (ispan=0;ispan<spanlist[ispancolor].length;ispan++)                         context.fillRect(xoff+xscale*spanlist[ispancolor][ispan][0],0,xscale*(spanlist[ispancolor][ispan][1]-spanlist[ispancolor][ispan][0]),yspan)
-            }
+            if (xunit=='s')
+                for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
+                {
+                    context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
+                    for (ispan=0;ispan<spanlist[ispancolor].length;ispan++)
+                        context.fillRect(xoff+xscale*(spanlist[ispancolor][ispan][0]-datax[datax.length-1]),0,xscale*(spanlist[ispancolor][ispan][1]-spanlist[ispancolor][ispan][0]),yspan)
+                }
+            else
+                for (ispancolor=0;ispancolor<spancolorlist.length;ispancolor++)
+                {
+                    context.fillStyle='rgba('+spancolorlist[ispancolor][0]+','+spancolorlist[ispancolor][1]+','+spancolorlist[ispancolor][2]+','+spancolorlist[ispancolor][3]/255.0+')'
+                    for (ispan=0;ispan<spanlist[ispancolor].length;ispan++)
+                        context.fillRect(xoff+xscale*spanlist[ispancolor][ispan][0],0,xscale*(spanlist[ispancolor][ispan][1]-spanlist[ispancolor][ispan][0]),yspan)
+                }
         }
         if (figcontext)
         {
