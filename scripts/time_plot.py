@@ -30,6 +30,7 @@ import signal
 import numbers
 from guppy import hpy
 
+memoryleak_msg=[]
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
 np.set_printoptions(threshold=4096)
@@ -1388,6 +1389,9 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
+            logger.info(repr(memoryleak_msg))
+            logger.info(repr(telstate_data_target))
+            logger.info(repr(telstate_activity))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['memoryleak',0,0,0,0,0])
                 fig=ringbufferresultqueue.get()
@@ -1690,13 +1694,27 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             span=[[]]
             spancolor=[[192,192,192,64]]
             startslew=None
+            lasttargetname=''
+            itarget=0
+            newtextsensor=[]
+            newtextsensorts=[]
             for idata in range(len(telstate_activity)):
                 if (telstate_activity[idata][0]=='slew'):
                     startslew=telstate_activity[idata][1]
                 else:
                     if (startslew is not None):
                         span[0].append([startslew,telstate_activity[idata][1]])
+                        while (itarget<len(telstate_data_target)):
+                            if (telstate_data_target[itarget][1]<telstate_activity[idata][1]):
+                                lasttargetname=telstate_data_target[itarget][0]
+                                itarget+=1
+                            else:
+                                break
+                        newtextsensor.append(lasttargetname)
+                        newtextsensorts.append(telstate_activity[idata][1])
                     startslew=None
+            global memoryleak_msg
+            memoryleak_msg=[textsensor,textsensorts,newtextsensor,newtextsensorts]
             if (len(span[0])>0):
                 timeseries_fig['span']=span
                 timeseries_fig['spancolor']=np.array(spancolor)
