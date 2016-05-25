@@ -383,7 +383,7 @@ class SignalDisplayStore2(object):
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.blmxslots = 256
-        self.blmxn_chans = 32 #256
+        self.blmxn_chans = self.n_chans/128 #in 4K mode 32 and in 32K mode 256# should really be 256 in both modes
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
         self.blmxroll_point = 0

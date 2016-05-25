@@ -1698,8 +1698,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                                 itarget+=1
                             else:
                                 break
-                        mergedtextsensor.append(currenttargetname)
-                        mergedtextsensorts.append(telstate_activity[idata][1])
+                        if (len(mergedtextsensor)==0 or mergedtextsensor[idata]!=currenttargetname):
+                            mergedtextsensor.append(currenttargetname)
+                            mergedtextsensorts.append(telstate_activity[idata][1])
                     startslew=None
             if (startslew is not None and telstate_activity[idata][0]=='slew' and startslew<timeseries_fig['xdata'][-1]):
                 span[0].append([startslew,timeseries_fig['xdata'][-1]])
