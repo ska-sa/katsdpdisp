@@ -374,7 +374,7 @@ class SignalDisplayStore2(object):
         self.first_pass = True
         self.timeseriesmaskstr=''
 
-    def init_storage(self, n_chans=512, n_bls=0):
+    def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0):
         gc.collect()#garbage collect before large memory allocation to help prevent fragmentation
         self.n_chans = n_chans
         self.n_bls = n_bls
@@ -383,7 +383,7 @@ class SignalDisplayStore2(object):
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.blmxslots = 256
-        self.blmxn_chans = self.n_chans/128 #in 4K mode 32 and in 32K mode 256# should really be 256 in both modes
+        self.blmxn_chans = blmxn_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
         self.blmxroll_point = 0
@@ -899,7 +899,7 @@ class SpeadSDReceiver(threading.Thread):
                         self.cpref.precompute()
                         if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                         else:
-                            self.storage.init_storage(n_chans = self._direct_meta['n_chans'], n_bls = len(self.cpref.bls_ordering))
+                            self.storage.init_storage(n_chans = self._direct_meta['n_chans'], blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
                             self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                             self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
         else:
@@ -924,7 +924,7 @@ class SpeadSDReceiver(threading.Thread):
                             self.update_center_freqs()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                     if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
@@ -941,7 +941,7 @@ class SpeadSDReceiver(threading.Thread):
                             logger.info("New bls ordering: {}".format(self.bls_ordering))
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         bls_ordering_version = self.ig['bls_ordering'].version
