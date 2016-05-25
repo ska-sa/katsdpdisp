@@ -862,12 +862,12 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         try:
             result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
             logger.info('telstate set custom signals result: '+repr(result))
-            send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
         except Exception, e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
-            send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
             ingest_signals=revert_ingest_signals
-            failed_update_ingest_signals_lastts=lastts            
+            failed_update_ingest_signals_lastts=lastts
 
 def logusers(handlerkey):
     try:
@@ -1059,11 +1059,11 @@ def handle_websock_event(handlerkey,*args):
                 pass
             if (len(flagdictstr)>0):
                 flagdict=convertunicode(json.loads(flagdictstr))
-                send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved:",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved:",true,true,true)',handlerkey)
                 for key in flagdict.keys():
-                    send_websock_cmd('logconsole("'+key+'='+flagdict[key]+'",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("'+key+'='+flagdict[key]+'",true,true,true)',handlerkey)
             else:
-                send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='setoutlierthreshold'):
             logger.info(repr(args))
             html_layoutsettings[username]['outlierthreshold']=float(args[1])
@@ -1205,9 +1205,9 @@ def handle_websock_event(handlerkey,*args):
                     pass
                 if (len(flagdictstr)>0):
                     flagdict=convertunicode(json.loads(flagdictstr))
-                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
-                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='deleteflags'):
             logger.info(repr(args))
             if (len(args)==1):
@@ -1241,9 +1241,9 @@ def handle_websock_event(handlerkey,*args):
                     pass
                 if (len(flagdictstr)>0):
                     flagdict=convertunicode(json.loads(flagdictstr))
-                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
-                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='setflags'):
             logger.info(repr(args))
             try:
@@ -1269,18 +1269,18 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(newflagstrlist)+'",true,true,true)',handlerkey)
                 if (len(flagdictstr)>0):
                     flagdict=convertunicode(json.loads(flagdictstr))
-                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
-                    send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+                    send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
             else:
                 ####set timeseries mask on ingest
                 try:
                     result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
                     logger.info('telstate setflags result: '+repr(result))
-                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(newflagstrlist)+'",true,true,true)',handlerkey)
+                    send_websock_cmd('logconsole("Set timeseries mask to '+','.join(newflagstrlist)+'",true,false,true)',handlerkey)
                 except Exception, e:
                     logger.warning("Exception while telstate setflags: (" + str(e) + ")", exc_info=True)
-                    send_websock_cmd('logconsole("Failed to set timeseries mask to '+','.join(newflagstrlist)+'",true,true,true)',handlerkey)
+                    send_websock_cmd('logconsole("Failed to set timeseries mask to '+','.join(newflagstrlist)+'",true,false,true)',handlerkey)
                     weightedmask={}
                     with RingBufferLock:
                         ringbufferrequestqueue.put(['setflags','',0,0,0,0])
@@ -1289,9 +1289,9 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
                     if (len(flagdictstr)>0):
                         flagdict=convertunicode(json.loads(flagdictstr))
-                        send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,false,false)',handlerkey)
+                        send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                     else:
-                        send_websock_cmd('logconsole("0 flags saved",true,false,false)',handlerkey)
+                        send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]
@@ -1456,16 +1456,16 @@ def handle_websock_event(handlerkey,*args):
                 startupfile.truncate(0)
                 startupfile.write(startupdictstr)
                 startupfile.close()        
-                send_websock_cmd('logconsole("Deleted '+theusername+' from '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("Deleted '+theusername+' from '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
             else:
                 startupfile.close()        
-                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
             if (theusername in html_viewsettings):
                 html_viewsettings.pop(theusername)
                 html_customsignals.pop(theusername)
                 html_collectionsignals.pop(theusername)
                 html_layoutsettings.pop(theusername)
-                send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,true,true)',handlerkey)
                 logusers(handlerkey)
         elif (args[0]=='save'):#saves this user's settings in startup settings file        
             logger.info(repr(args))
@@ -1502,10 +1502,10 @@ def handle_websock_event(handlerkey,*args):
                 pass
             if (len(startupdictstr)>0):
                 startupdict=convertunicode(json.loads(startupdictstr))
-                send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,true)',handlerkey)
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
-                send_websock_cmd('logconsole("0 saved",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("0 saved",true,false,true)',handlerkey)
         elif (args[0]=='load'):#loads this user's settings from startup settings file        
             logger.info(repr(args))
             if (len(args)==2):
@@ -1541,7 +1541,7 @@ def handle_websock_event(handlerkey,*args):
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
             else:
-                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,false,false)',handlerkey)
+                send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
                 logusers(handlerkey)
         global poll_telstate_lasttime
         if (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0):#don't check more than once a second
