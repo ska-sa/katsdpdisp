@@ -1698,7 +1698,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                                 itarget+=1
                             else:
                                 break
-                        if (len(mergedtextsensor)==0 or mergedtextsensor[idata]!=currenttargetname):
+                        if (len(mergedtextsensor)==0 or mergedtextsensor[-1]!=currenttargetname):
                             mergedtextsensor.append(currenttargetname)
                             mergedtextsensorts.append(telstate_activity[idata][1])
                     startslew=None
