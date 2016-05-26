@@ -1190,6 +1190,23 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                     sz=figcontext.measureText(title)
                     //fillText by default draws at this height ___ and starts at start of string
                     figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
+                }else if (RG_fig[ifig].showtitle=='in')
+                {
+                    if (title.slice(0,10)=='Waterfall ')
+                    {
+                        trimtitle=title.slice(10)
+                        if (axiscanvas.width>200)
+                            thefontHeight=titlefontHeight
+                        else
+                            thefontHeight=labelfontHeight
+                        thefontHeightspace=thefontHeight/5
+                        context.font=""+thefontHeight+"px sans-serif";
+                        sz=context.measureText(trimtitle)
+                        context.fillStyle = "rgba(255,255,255,0.5)";
+                        context.fillRect(thefontHeightspace,thefontHeightspace,sz.width+thefontHeightspace,thefontHeight+thefontHeightspace)
+                        context.fillStyle = "#000000";
+                        context.fillText(trimtitle,thefontHeightspace+thefontHeightspace/2,thefontHeight+thefontHeightspace)
+                    }
                 }
 
                 units=xunit
