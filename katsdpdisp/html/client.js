@@ -488,6 +488,10 @@ function ApplyViewLayout(figuretypes,nfigcols)
                            {type:RightContext.TYPE_MENU,
                             text:"PNG figure",
                             onclick:function() {saveFigure([attr_ifig]);} },
+
+                           {type:RightContext.TYPE_MENU,
+                            text:"PNG page",
+                            onclick:function() {savePage();} },
                             
                            {type:RightContext.TYPE_MENU,
                             text:"Delete figure",

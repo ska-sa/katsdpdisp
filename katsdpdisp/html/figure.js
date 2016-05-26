@@ -1540,6 +1540,34 @@ function saveFigure(ifig){
     window.open(img);
 }
 
+function savePage(){
+    var limitxmax=0,limitymax=0,limitxmin=1e100,limitymin=1e100;
+    for (ifig=0;ifig<nfigures;ifig++)
+    {
+        var fig = document.getElementById("myfigurediv"+ifig);
+        if (fig.offsetLeft<limitxmin)limitxmin=fig.offsetLeft;
+        if (fig.offsetTop<limitymin)limitymin=fig.offsetTop;
+        if (fig.offsetLeft+fig.offsetWidth>limitxmax)limitxmax=fig.offsetLeft+fig.offsetWidth;
+        if (fig.offsetTop+fig.offsetHeight>limitymax)limitymax=fig.offsetTop+fig.offsetHeight;
+    }
+    var newcanvas = document.createElement('canvas')
+    newcanvas.width  = limitxmax-limitxmin;
+    newcanvas.height = limitymax-limitymin;
+    var context = newcanvas.getContext("2d");
+    for (ifig=0;ifig<nfigures;ifig++)
+    {
+        var fig = document.getElementById("myfigurediv"+ifig);
+        var canvas = document.getElementById("myfigurecanvas"+ifig);
+        context.drawImage(canvas,fig.offsetLeft-limitxmin,fig.offsetTop-limitymin)
+        var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
+        context.drawImage(axiscanvas,fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop)
+        context.strokeStyle = "#000000";
+        context.strokeRect(fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
+    }
+    var img = newcanvas.toDataURL("image/png");
+    window.open(img);
+}
+
 //FIGURE MOUSE EVENTS ===================================================================
 
 function onFigureMouseDown(event){
