@@ -925,6 +925,31 @@ def logusers(handlerkey):
     for iz in np.argsort(activeproctime)[::-1]:
         send_websock_cmd('logconsole("[proc %.1fms] %s: '%(activeproctime[iz]*1000.0,active[iz])+','.join(['%.1fs'%(tm) for tm in activetime[iz]])+' ago",true,true,true)',handlerkey)
 
+#parse e.g. 3..5,7..,8,..3
+#keeps order of selection
+def parse_antennarange(selectstr):
+    ants=[]
+    for elem in selectstr.replace(' ','').split(','):
+        vals=elem.split('..')
+        if (len(vals)==1):#7
+            if (vals[0].isdigit() and 'm%03d'%(int(vals[0])) in telstate_antenna_mask):
+                if (int(vals[0]) not in ants):
+                    ants.append(int(vals[0]))
+        elif(len(vals)==2):
+            if (vals[0]=='' and (vals[1].isdigit())):#..3
+                for ant in range(int(vals[1])+1):#include specified end too
+                    if ((ant not in ants) and ('m%03d'%(ant) in telstate_antenna_mask)):
+                        ants.append(ant)
+            elif (vals[1]=='' and (vals[0].isdigit())):#7..
+                for ant in range(int(vals[0]),64):
+                    if ((ant not in ants) and ('m%03d'%(ant) in telstate_antenna_mask)):
+                        ants.append(ant)
+            elif (vals[0].isdigit() and vals[1].isdigit()):#3..5
+                for ant in range(int(vals[0]),int(vals[1])+1):
+                    if ((ant not in ants) and ('m%03d'%(ant) in telstate_antenna_mask)):
+                        ants.append(ant)
+    return ants
+
 def handle_websock_event(handlerkey,*args):
     try:
         username=websockrequest_username[handlerkey]
@@ -1080,26 +1105,18 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0][:3]=='wmx' and (args[0][:5]=='wmxhh' or args[0][:5]=='wmxhv' or args[0][:5]=='wmxvh' or args[0][:5]=='wmxvv')):
             logger.info(repr(args))
             antnumbers=[]
-            if (len(args)==1 or (len(args)==2 and not args[1].replace(' ','').isdigit())):#determine available inputs
-                with RingBufferLock:
-                    ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
-                    fig=ringbufferresultqueue.get()
-                if (fig=={}):#an exception occurred
-                    send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
-                elif ('logconsole' in fig):
-                    for antname in fig['logconsole'].split(','):
-                        antnumberstr=antname[1:-1]
-                        if antnumberstr.isdigit() and (int(antnumberstr) not in antnumbers):
-                            antnumbers.append(int(antnumberstr))
+            if (len(args)==1 or args[1]==''):#determine all available inputs
+                for antnumberstr in telstate_antenna_mask:
+                    antnumbers.append(int(antnumberstr[1:]))
             else:#use supplied inputs
-                for antnumberstr in args[1:]:
-                    if antnumberstr.replace(' ','').isdigit() and (int(antnumberstr) not in antnumbers):
-                        antnumbers.append(int(antnumberstr))
+                antnumbers=parse_antennarange(','.join(args[1:]))
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
-            elif (len(antnumbers)>8):
-                send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs found or specified. Specify 8 or fewer.",true,true,true)',handlerkey)
             else:
+                if (len(antnumbers)>8):
+                    send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs specified. Specify antenna ranges explicitly. Warning, omitting: '+','.join(['m%03d'%antnum for antnum in antnumbers[8:]])+'",true,true,true)',handlerkey)
+                    antnumbers=antnumbers[:8]
+                send_websock_cmd('logconsole("Building waterfall matrix for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
                 html_viewsettings[username]=[]

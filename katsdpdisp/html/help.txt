@@ -285,26 +285,30 @@ wmxvv - vv polarisation waterfall matrix
 [wmxhh]
 Generates a waterfall matrix page with hh polarisation.
 
-wmxhh - generates a hh polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxhh - generates a hh polarisation waterfall matrix for all available antennas (up to maximum of 8)
 wmxhh 1,2,3,4 - generates a hh polarisation waterfall matrix for antennas 1,2,3,4 only
+wmxhh 2..5,10,60.. - generates a hh polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxhv]
 Generates a waterfall matrix page with hv polarisation.
 
-wmxhv - generates a hv polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxhv - generates a hv polarisation waterfall matrix for all available antennas (up to maximum of 8)
 wmxhv 1,2,3,4 - generates a hv polarisation waterfall matrix for antennas 1,2,3,4 only
+wmxhv 2..5,10,60.. - generates a hv polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxvh]
 Generates a waterfall matrix page with vh polarisation.
 
-wmxvh - generates a vh polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxvh - generates a vh polarisation waterfall matrix for all available antennas (up to maximum of 8)
 wmxvh 1,2,3,4 - generates a vh polarisation waterfall matrix for antennas 1,2,3,4 only
+wmxvh 2..5,10,60.. - generates a vh polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxvv]
 Generates a waterfall matrix page with vv polarisation.
 
-wmxvv - generates a vv polarisation waterfall matrix for all available antennas (up to maximum of 7)
+wmxvv - generates a vv polarisation waterfall matrix for all available antennas (up to maximum of 8)
 wmxvv 1,2,3,4 - generates a vv polarisation waterfall matrix for antennas 1,2,3,4 only
+wmxvv 2..5,10,60.. - generates a v polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [server]
 'server top' - Prints out to the console the load and process summary of the server.
