@@ -1704,11 +1704,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             mergedtextsensorts=[]
             is_small_view=(timeseries_fig['xdata'][-1]-timeseries_fig['xdata'][0]<120)
             for idata in range(len(telstate_activity)):
+                newtarget=False
                 if (telstate_activity[idata][0]=='slew'):
                     startslew=telstate_activity[idata][1]
-                    if (is_small_view):
-                        mergedtextsensor.append(telstate_activity[idata][0])
-                        mergedtextsensorts.append(telstate_activity[idata][1])
                 else:
                     if (startslew is not None):
                         if ((timeseries_fig['xdata'][0]<=startslew and startslew<=timeseries_fig['xdata'][-1]) or (timeseries_fig['xdata'][0]<=telstate_activity[idata][1] and telstate_activity[idata][1]<=timeseries_fig['xdata'][-1])):
@@ -1719,20 +1717,17 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                                 itarget+=1
                             else:
                                 break
-                        if (len(mergedtextsensor)==0 or mergedtextsensor[-1]!=currenttargetname):
-                            if (is_small_view):
-                                mergedtextsensor.append(currenttargetname+' '+telstate_activity[idata][0])
-                                mergedtextsensorts.append(telstate_activity[idata][1])
-                            else:
-                                mergedtextsensor.append(currenttargetname)
-                                mergedtextsensorts.append(telstate_activity[idata][1])
-                        elif (is_small_view):
-                            mergedtextsensor.append(telstate_activity[idata][0])
-                            mergedtextsensorts.append(telstate_activity[idata][1])
-                    elif (is_small_view):
-                        mergedtextsensor.append(telstate_activity[idata][0])
-                        mergedtextsensorts.append(telstate_activity[idata][1])
+                        newtarget=(len(mergedtextsensor)==0 or mergedtextsensor[-1]!=currenttargetname)
                     startslew=None
+                if (newtarget):
+                    if (is_small_view):
+                        mergedtextsensor.append(currenttargetname+' '+telstate_activity[idata][0])
+                    else:
+                        mergedtextsensor.append(currenttargetname)
+                    mergedtextsensorts.append(telstate_activity[idata][1])
+                elif (is_small_view):
+                    mergedtextsensor.append(telstate_activity[idata][0])
+                    mergedtextsensorts.append(telstate_activity[idata][1])
             if (startslew is not None and telstate_activity[idata][0]=='slew' and startslew<timeseries_fig['xdata'][-1]):
                 span[0].append([startslew,timeseries_fig['xdata'][-1]])
             if (len(mergedtextsensor)>0):#only include text that is in view
