@@ -1702,9 +1702,13 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             itarget=0
             mergedtextsensor=[]
             mergedtextsensorts=[]
+            is_small_view=(timeseries_fig['xdata'][-1]-timeseries_fig['xdata'][0]<120)
             for idata in range(len(telstate_activity)):
                 if (telstate_activity[idata][0]=='slew'):
                     startslew=telstate_activity[idata][1]
+                    if (is_small_view):
+                        mergedtextsensor.append(telstate_activity[idata][0])
+                        mergedtextsensorts.append(telstate_activity[idata][1])
                 else:
                     if (startslew is not None):
                         if ((timeseries_fig['xdata'][0]<=startslew and startslew<=timeseries_fig['xdata'][-1]) or (timeseries_fig['xdata'][0]<=telstate_activity[idata][1] and telstate_activity[idata][1]<=timeseries_fig['xdata'][-1])):
@@ -1716,8 +1720,18 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                             else:
                                 break
                         if (len(mergedtextsensor)==0 or mergedtextsensor[-1]!=currenttargetname):
-                            mergedtextsensor.append(currenttargetname)
+                            if (is_small_view):
+                                mergedtextsensor.append(currenttargetname+' '+telstate_activity[idata][0])
+                                mergedtextsensorts.append(telstate_activity[idata][1])
+                            else:
+                                mergedtextsensor.append(currenttargetname)
+                                mergedtextsensorts.append(telstate_activity[idata][1])
+                        elif (is_small_view):
+                            mergedtextsensor.append(telstate_activity[idata][0])
                             mergedtextsensorts.append(telstate_activity[idata][1])
+                    elif (is_small_view):
+                        mergedtextsensor.append(telstate_activity[idata][0])
+                        mergedtextsensorts.append(telstate_activity[idata][1])
                     startslew=None
             if (startslew is not None and telstate_activity[idata][0]=='slew' and startslew<timeseries_fig['xdata'][-1]):
                 span[0].append([startslew,timeseries_fig['xdata'][-1]])
