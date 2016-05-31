@@ -103,6 +103,13 @@ np.seterr(all='ignore')
 
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
 
+poll_telstate_lasttime=0
+telstate_data_target=[]
+telstate_activity=[]
+telstate_antenna_mask=[]
+telstate_script_name='No script active'
+scriptnametext=telstate_script_name
+
 colour_dict={}
 
 def registeredcolour(signalname):
@@ -218,7 +225,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(datasd.cpref.bls_ordering)
                 continue
             if (thelayoutsettings=='info'):
-                fig={'logconsole':'isAlive(): '+str(datasd.receiver.isAlive())+'\nheap count:'+str(datasd.receiver.heap_count)+'\nnbaselines:'+str(len(datasd.cpref.bls_ordering))+'\nnchannels:'+str(datasd.receiver.channels)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                fig={'logconsole':'katsdpdisp version: '+katsdpdisp.__version__+'\nreceiver alive: '+str(datasd.receiver.isAlive())+'\nheap count: '+str(datasd.receiver.heap_count)+'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\nnchannels: '+str(datasd.receiver.channels)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
@@ -2488,12 +2495,6 @@ telstate=opts.telstate
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
 
-poll_telstate_lasttime=0
-telstate_data_target=[]
-telstate_activity=[]
-telstate_antenna_mask=[]
-telstate_script_name='No script active'
-scriptnametext=telstate_script_name
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
