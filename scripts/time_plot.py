@@ -177,8 +177,8 @@ def getstartstoptime(ts,themin,themax):
     if (themax==None or type(themax)==list or not np.isfinite(themax)):
         tstop=ts[-1]
     else:
-        tstart=ts[-1]+themax
-    if (tstart>tstop):#ensures at least 2 channels even if clipped
+        tstop=ts[-1]+themax
+    if (tstart>tstop):
         tmp=tstart
         tstart=tstop
         tstop=tmp
