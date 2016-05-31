@@ -103,13 +103,6 @@ np.seterr(all='ignore')
 
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
 
-poll_telstate_lasttime=0
-telstate_data_target=[]
-telstate_activity=[]
-telstate_antenna_mask=[]
-telstate_script_name='No script active'
-scriptnametext=telstate_script_name
-
 colour_dict={}
 
 def registeredcolour(signalname):
@@ -984,6 +977,12 @@ def parse_antennarange(selectstr):
     return ants
 
 def handle_websock_event(handlerkey,*args):
+    global poll_telstate_lasttime
+    global telstate_data_target
+    global telstate_antenna_mask
+    global telstate_activity
+    global telstate_script_name
+    global scriptnametext
     try:
         username=websockrequest_username[handlerkey]
         if (args[0]=='setusername' and username!=args[1]):
@@ -1593,15 +1592,9 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
                 logusers(handlerkey)
-        global poll_telstate_lasttime
         if (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0):#don't check more than once a second
             poll_telstate_lasttime=websockrequest_time[handlerkey]
             try:
-                global telstate_data_target
-                global telstate_antenna_mask
-                global telstate_activity
-                global telstate_script_name
-                global scriptnametext
                 if ('data_target' in telstate):
                     data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
                     for thisdata_target in data_target:
@@ -2521,6 +2514,13 @@ except:
 telstate=opts.telstate
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
+
+poll_telstate_lasttime=0
+telstate_data_target=[]
+telstate_activity=[]
+telstate_antenna_mask=[]
+telstate_script_name='No script active'
+scriptnametext=telstate_script_name
 
 RingBufferLock=threading.Lock()
 ringbufferrequestqueue=Queue()
