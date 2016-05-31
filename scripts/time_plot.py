@@ -636,6 +636,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                     productstr=theviewsettings['figtype'][9:]
+                    usingblmxdata=False
                     if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
                         flags=0
                         if (productstr in collections):
@@ -650,6 +651,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         else:                        
                             product=decodecustomsignal(productstr)
                             if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                                usingblmxdata=True
                                 reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
                                 thech=ch[start_chan:stop_chan:reduction]
                                 newchanincr=chanincr/reduction
@@ -682,9 +684,17 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         elif (productstr in collectionsalt):
                             product=collectionsalt.index(productstr)
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                        else:                        
+                        else:
                             product=decodecustomsignal(productstr)
-                            if (list(product) in datasd.cpref.bls_ordering):
+                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                                usingblmxdata=True
+                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                                thech=ch[start_chan:stop_chan:reduction]
+                                newchanincr=chanincr/reduction
+                                if (newchanincr<1):
+                                    newchanincr=1
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                             else:
                                 thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
@@ -736,7 +746,9 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['xlabel']='Channel number'
                         fig['xunit']=''
                     fig['outlierproducts']=[]
-                    if (isinstance(product,int)):
+                    if (usingblmxdata):
+                        fig['customproducts']=[]
+                    elif (isinstance(product,int)):
                         fig['customproducts']=[product]
                     elif (list(product) in datasd.cpref.bls_ordering):
                         fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]

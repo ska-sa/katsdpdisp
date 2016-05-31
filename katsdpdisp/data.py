@@ -386,6 +386,7 @@ class SignalDisplayStore2(object):
         self.blmxn_chans = blmxn_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
+        self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
         self.blmxroll_point = 0
         self.outliertime=  5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
@@ -483,6 +484,7 @@ class SignalDisplayStore2(object):
                 self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
+                self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
                 if (blmxflags is None):
                     self.blmxvalue = np.std(blmxdata,axis=1) # for now but should improve, perhaps std of diff, and phase is number of wraps
@@ -2128,7 +2130,7 @@ class DataHandler(object):
             ts = []
             roll_point = (0 if self.storage.first_pass else (self.storage.blmxroll_point+1))
              # temp value in case of change during search...
-            rolled_ts = np.roll(self.storage.ts,-roll_point)
+            rolled_ts = np.roll(self.storage.blmxts,-roll_point)
             if end_time >= 0:
                 split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
                 validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
@@ -2170,7 +2172,7 @@ class DataHandler(object):
             if reverse_order:
                 frames = frames[::-1,...]
             if include_ts:
-                frames = [np.take(self.storage.ts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                frames = [np.take(self.storage.blmxts, range(split_start,split_end),mode='wrap') / 1000.0, frames]
                 if reverse_order: frames[0] = frames[0][::-1]
             if include_flags:
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
