@@ -168,7 +168,21 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
             channelincr=1
     return start_channel,stop_channel,channelincr,ch_mhz[start_channel:stop_channel:channelincr]
 
-#import objgraph
+#assumes ts is timestamps although themin, themax is seconds after current timestamp (i.e. typically negative numbers)
+def getstartstoptime(ts,themin,themax):
+    if (themin==None or type(themin)==list or not np.isfinite(themin)):
+        tstart=ts[0]
+    else:
+        tstart=ts[-1]+themin
+    if (themax==None or type(themax)==list or not np.isfinite(themax)):
+        tstop=ts[-1]
+    else:
+        tstart=ts[-1]+themax
+    if (tstart>tstop):#ensures at least 2 channels even if clipped
+        tmp=tstart
+        tstart=tstop
+        tstop=tmp
+    return tstart,tstop
 
 #idea is to store the averaged time series profile in channel 0
 def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue):
@@ -1709,7 +1723,8 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             itarget=0
             mergedtextsensor=[]
             mergedtextsensorts=[]
-            is_small_view=(timeseries_fig['xdata'][-1]-timeseries_fig['xdata'][0]<120)
+            tstart,tstop=getstartstoptime(timeseries_fig['xdata'],theviewsettings['xmin'],theviewsettings['xmax'])
+            is_small_view=(tstop-tstart<120)
             for idata in range(len(telstate_activity)):
                 newtarget=False
                 if (telstate_activity[idata][0]=='slew'):
