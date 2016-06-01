@@ -232,7 +232,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(datasd.cpref.bls_ordering)
                 continue
             if (thelayoutsettings=='info'):
-                fig={'logconsole':'katsdpdisp version: '+katsdpdisp.__version__+'\nreceiver alive: '+str(datasd.receiver.isAlive())+'\nheap count: '+str(datasd.receiver.heap_count)+'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\nnchannels: '+str(datasd.receiver.channels)+'\nblmx nchannels: '+str(datasd.storage.blmxn_chans)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                fig={'logconsole':'katsdpdisp version: '+katsdpdisp.__version__+'\nreceiver alive: '+str(datasd.receiver.isAlive())+'\nheap count: '+str(datasd.receiver.heap_count)+'\ntimeseries slots: %d\nspectrum slots: %d\nwmx slots: %d'%(datasd.storage.timeseriesslots,datasd.storage.slots,datasd.storage.blmxslots)+'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\nnchannels: '+str(datasd.receiver.channels)+'\nblmx nchannels: '+str(datasd.storage.blmxn_chans)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
@@ -279,7 +279,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 collectionsignals=thesignals[0]
                 customsignals=thesignals[1]
                 
-                ts = datasd.select_data(product=0, start_time=0, end_time=1e100, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                ts = datasd.select_timeseriesdata(product=0, start_time=0, end_time=1e100, include_ts=True)[0]#gets all timestamps only
                 ch=datasd.receiver.center_freqs_mhz[:]
                 if (len(ts)>1):
                     samplingtime=ts[-1]-ts[-2]
@@ -304,7 +304,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(2):#only min and max
                                     product=icolprod*5+iprod
-                                    signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
                                     signal=signal.reshape(-1)
                                     if (len(signal)<len(ts)):
                                         signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
@@ -324,7 +324,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 c=np.array(np.r_[cbase,1],dtype='int')
                                 for iprod in range(5):
                                     product=icolprod*5+iprod
-                                    signal = datasd.select_data_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
                                     signal=signal.reshape(-1)
                                     if (len(signal)<len(ts)):
                                         signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
@@ -337,7 +337,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal = datasd.select_data(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<len(ts)):
                                 signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
@@ -349,7 +349,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_data(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, start_channel=0, stop_channel=1)
+                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<len(ts)):
                             signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
@@ -419,7 +419,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal = datasd.select_data(dtype=thetype, product=tuple(product), start_time=0, end_time=-datalength, include_ts=False, start_channel=0, stop_channel=1)
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=0, end_time=-datalength, include_ts=False)
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<datalength):
                                 signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
@@ -431,7 +431,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_data(dtype=thetype, product=product, start_time=0, end_time=-datalength, include_ts=False, start_channel=0, stop_channel=1)
+                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=0, end_time=-datalength, include_ts=False)
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<datalength):
                             signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
@@ -569,7 +569,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         spancolor.append([200,200,0,128])
 
                     if (len(ydata)==0):
-                        ydata=[np.nan*ts]
+                        ydata=[np.nan*thech]
                         color=[np.array([255,255,255,0])]
                     if (theviewsettings['type']=='pow'):
                         ydata=10.0*np.log10(ydata)

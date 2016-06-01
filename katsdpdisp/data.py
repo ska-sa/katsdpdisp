@@ -372,6 +372,8 @@ class SignalDisplayStore2(object):
         self.frame_count = 0
         self.ts = None
         self.first_pass = True
+        self.blmxfirst_pass = True
+        self.timeseriesfirst_pass = True
         self.timeseriesmaskstr=''
 
     def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0):
@@ -382,6 +384,12 @@ class SignalDisplayStore2(object):
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
         self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        self.ts = np.zeros(self.slots, dtype=np.uint64)
+        self.timeseriesslots=self.slots
+        self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
+        self.timeseriests = np.zeros(self.timeseriesslots, dtype=np.uint64)
+        self.timeseriesroll_point = 0
         self.blmxslots = 256
         self.blmxn_chans = blmxn_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
@@ -390,14 +398,15 @@ class SignalDisplayStore2(object):
         self.blmxroll_point = 0
         self.outliertime=  5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
-        self.percrunavg = []
-        self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        self.timeseriespercdata = np.zeros((self.timeseriesslots, nperc),dtype=np.complex64)
         self.percflags = np.zeros((self.slots, nperc, self.n_chans),dtype=np.uint8)
-        self.ts = np.zeros(self.slots, dtype=np.uint64)
+        self.percrunavg = []
         self.frame_count = 0
         self.roll_point = 0
         self._last_ts = 0
         self.first_pass = True
+        self.blmxfirst_pass = True
+        self.timeseriesfirst_pass = True
         self.timeseriesmaskstr=''
         gc.collect()#garbage collect after large memory allocation to release previous large block of memory
 
@@ -462,13 +471,15 @@ class SignalDisplayStore2(object):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
+            if self.blmxfirst_pass and self.frame_count > self.blmxslots: self.blmxfirst_pass = False
+            if self.timeseriesfirst_pass and self.frame_count > self.timeseriesslots: self.timeseriesfirst_pass = False
             self.roll_point = (self.frame_count-1) % self.slots
             self.ts[self.roll_point] = timestamp_ms
+            self.timeseriesroll_point = (self.frame_count-1) % self.timeseriesslots
+            self.timeseriests[self.timeseriesroll_point] = timestamp_ms
             #calculate timeseries masked average for all signals and overwrite it into channel 0
             if (timeseries is not None):
-                self.data[self.roll_point,:,0] = timeseries
-                if (data_index is not None):
-                    data[:,0] = timeseries[data_index]
+                self.timeseriesdata[self.timeseriesroll_point,:] = timeseries
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
@@ -481,7 +492,7 @@ class SignalDisplayStore2(object):
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
                 self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)                
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
-                self.percdata[self.roll_point,:,0] = np.array(perctimeseries,dtype=np.complex64)
+                self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxts[self.blmxroll_point] = timestamp_ms
@@ -1970,7 +1981,7 @@ class DataHandler(object):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
-            
+
         with datalock:
             if product is None: product = self.default_product
             orig_product = product
@@ -2031,6 +2042,57 @@ class DataHandler(object):
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
             return frames
 
+    def select_timeseriesdata(self, product=None, dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False):
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return
+
+        with datalock:
+            if product is None: product = self.default_product
+            orig_product = product
+            product = self.cpref.user_to_id(product)
+
+            ts = []
+            roll_point = (0 if self.storage.timeseriesfirst_pass else (self.storage.timeseriesroll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.timeseriests,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.timeseriesslots: end_time = -self.storage.timeseriesslots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.timeseriesslots if split_end - split_start > self.storage.timeseriesslots else split_end
+
+            arraylen=self.storage.timeseriesdata.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+
+            if (_split_start<_split_end):
+                frames=self.storage.timeseriesdata[_split_start:_split_end,product]
+            else:
+                frames=np.concatenate((self.storage.timeseriesdata[_split_start:,product], self.storage.timeseriesdata[:_split_end,product]),axis=0)
+
+            frames = frames.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if reverse_order:
+                frames = frames[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.timeseriests, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
+            return frames
+
     #icollection is index to [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
     def get_data_outlier_products(self, icollection, threshold):
         outlierproducts=[]
@@ -2054,6 +2116,7 @@ class DataHandler(object):
         if self.storage.ts is None:
             print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
             return
+
         with datalock:
             ts = []
             roll_point = (0 if self.storage.first_pass else (self.storage.roll_point+1))
@@ -2073,7 +2136,7 @@ class DataHandler(object):
             arraylen=self.storage.percdata.shape[0];
             _split_start=split_start%arraylen;
             _split_end=split_end%arraylen;
-                    
+
             if (_split_start<_split_end):
                 frames=self.storage.percdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
                 if include_flags:
@@ -2110,6 +2173,53 @@ class DataHandler(object):
                 frames = [frames[0], frames[1], flags] if include_ts else [frames, flags]
             return frames
 
+    def select_timeseriesdata_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False):
+        if self.storage.ts is None:
+            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            return
+        with datalock:
+            ts = []
+            roll_point = (0 if self.storage.timeseriesfirst_pass else (self.storage.timeseriesroll_point+1))
+             # temp value in case of change during search...
+            rolled_ts = np.roll(self.storage.timeseriests,-roll_point)
+            if end_time >= 0:
+                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
+                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+            else:
+                if abs(end_time) > self.storage.timeseriesslots: end_time = -self.storage.timeseriesslots
+                 # ensure we do not ask for more data than is available
+                split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
+                split_start = max(split_end + end_time,0)
+            split_end = split_start + self.storage.timeseriesslots if split_end - split_start > self.storage.timeseriesslots else split_end
+
+            arraylen=self.storage.timeseriespercdata.shape[0];
+            _split_start=split_start%arraylen;
+            _split_end=split_end%arraylen;
+
+            if (_split_start<_split_end):
+                frames=self.storage.timeseriespercdata[_split_start:_split_end,product]
+            else:
+                frames=np.concatenate((self.storage.timeseriespercdata[_split_start:,product], self.storage.timeseriespercdata[:_split_end,product]),axis=0)
+
+            frames = frames.squeeze()
+
+            if dtype == 'mag':
+                frames = np.abs(frames)
+            if dtype == 're':
+                frames = np.real(frames)
+            if dtype == 'imag':
+                frames = np.imag(frames)
+            if dtype == 'phase':
+                frames = np.angle(frames)
+            if reverse_order:
+                frames = frames[::-1,...]
+                if include_flags: flags = flags[::-1,...]
+            if include_ts:
+                frames = [np.take(self.storage.timeseriests, range(split_start,split_end),mode='wrap') / 1000.0, frames]
+                if reverse_order: frames[0] = frames[0][::-1]
+            return frames
+
     #pol can be any of 'hh','hv','vh','vv'
     def select_blxvalue(self,pol='hh'):
         with datalock:
@@ -2128,12 +2238,12 @@ class DataHandler(object):
             product = self.cpref.user_to_id(product)
 
             ts = []
-            roll_point = (0 if self.storage.first_pass else (self.storage.blmxroll_point+1))
+            roll_point = (0 if self.storage.blmxfirst_pass else (self.storage.blmxroll_point+1))
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.blmxts,-roll_point)
             if end_time >= 0:
                 split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.blmxfirst_pass else None)] <= end_time * 1000)[0]
                 split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.blmxslots: end_time = -self.storage.blmxslots
