@@ -365,6 +365,10 @@ class SignalDisplayStore2(object):
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
         self.n_chans = 0
+        self.blmxn_chans = 0
+        self.slots = 0
+        self.timeseriesslots = 0
+        self.blmxslots = 0
         self.n_bls = 0
         self._last_ts = 0
         self.roll_point = 0
