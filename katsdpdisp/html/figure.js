@@ -1657,7 +1657,7 @@ function onFigureMouseUp(event){
         // newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
         // newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
         if (newsizex<200)newsizex=200;
-        if (newsizey<200)newsizey=200;
+        if (newsizey<100)newsizey=100;
         figurediv.style.width = newsizex + 'px';
         figurediv.style.height = newsizey + 'px';
         figurediv.offsetWidth=newsizex
@@ -1838,7 +1838,7 @@ function onFigureMouseMove(event){
             newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
             newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
             if (newsizex<200)newsizex=200;
-            if (newsizey<200)newsizey=200;
+            if (newsizey<100)newsizey=100;
             figurediv.style.width = newsizex + 'px';
             figurediv.style.height = newsizey + 'px';
             figurediv.offsetWidth=newsizex
