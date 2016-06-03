@@ -251,7 +251,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (thelayoutsettings=='sendfiguredata'):
                 try:
                     if (list(thesignals[0]) in datasd.cpref.bls_ordering):
-                        signal = datasd.select_data(dtype=thetype, product=tuple(thesignals[0]), end_time=lastts, include_ts=False,include_flags=False)
+                        signal = datasd.select_data(dtype=theviewsettings, product=tuple(thesignals[0]), end_time=lastts, include_ts=False,include_flags=False)
                         signal=np.array(signal).reshape(-1)
                     else:
                         signal=None
@@ -1004,9 +1004,10 @@ def handle_websock_event(handlerkey,*args):
             reqts=float(args[1])#eg -1
             chan0=int(args[2])
             chan1=int(args[3])
-            thesignals=[(args[4],args[5])] #eg('ant1h','ant1h')
+            thetype=args[4] #'re','im','mag','phase'
+            thesignals=[(args[5],args[6])] #eg('ant1h','ant1h')
             with RingBufferLock:
-                ringbufferrequestqueue.put(['sendfiguredata',0,thesignals,reqts,0,0])
+                ringbufferrequestqueue.put(['sendfiguredata',thetype,thesignals,reqts,0,0])
                 spectrum=ringbufferresultqueue.get()
             if (chan1>0 and chan0>0):
                 send_websock_data(repr(spectrum[chan0:chan1]),handlerkey);
