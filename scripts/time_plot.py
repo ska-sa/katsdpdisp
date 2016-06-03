@@ -1004,8 +1004,8 @@ def handle_websock_event(handlerkey,*args):
             reqts=float(args[1])#eg -1
             chan0=int(args[2])
             chan1=int(args[3])
-            thetype=args[4] #'re','im','mag','phase'
-            thesignals=[(args[5],args[6])] #eg('ant1h','ant1h')
+            thetype=str(args[4]) #'re','im','mag','phase'
+            thesignals=[(str(args[5]),str(args[6]))] #eg('ant1h','ant1h')
             with RingBufferLock:
                 ringbufferrequestqueue.put(['sendfiguredata',thetype,thesignals,reqts,0,0])
                 spectrum=ringbufferresultqueue.get()
