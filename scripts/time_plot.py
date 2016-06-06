@@ -828,17 +828,19 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])                    
                         cdata=rvcdata[1]
-                    cdata=np.abs(np.fft.fft2(cdata,axes=[1]))
+                    cdata=np.fft.fft2(cdata,axes=[1])
                     start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
-                        cdata=10.0*np.log10(cdata)
+                        cdata=10.0*np.log10(np.abs(cdata))
                         fig['clabel']='Power'
                         fig['cunit']='dB'
                     elif (thetype=='mag'):
+                        cdata=np.abs(cdata)
                         fig['clabel']='Amplitude'
                         fig['cunit']='counts'
                     else:
+                        cdata=np.angle(cdata)
                         fig['clabel']='Phase'
                         fig['cunit']='rad'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
