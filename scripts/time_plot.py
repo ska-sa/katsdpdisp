@@ -756,6 +756,122 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]
                     else:
                         fig['customproducts']=[]
+                elif (theviewsettings['figtype'][:3]=='lag'):
+                    start_chan=0;stop_chan=len(ch);chanincr=1
+                    collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
+                    collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
+                    productstr=theviewsettings['figtype'][3:]
+                    usingblmxdata=False
+                    if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
+                        flags=0
+                        if (productstr in collections):
+                            product=collections.index(productstr)
+                            productstr=collectionsalt[product]
+                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            flags=np.logical_or(flags,rvcdata[2])
+                        elif (productstr in collectionsalt):
+                            product=collectionsalt.index(productstr)
+                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            flags=np.logical_or(flags,rvcdata[2])
+                        else:
+                            product=decodecustomsignal(productstr)
+                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                                usingblmxdata=True
+                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                                thech=ch[start_chan:stop_chan:reduction]
+                                newchanincr=chanincr/reduction
+                                if (newchanincr<1):
+                                    newchanincr=1
+                                rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                flags=np.logical_or(flags,rvcdata[2])
+                            elif (list(product) in datasd.cpref.bls_ordering):
+                                rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                flags=np.logical_or(flags,rvcdata[2])
+                            else:
+                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
+
+                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                            rvcdata[1]=np.array([rvcdata[1]])
+                            flags=np.array([flags])
+                    
+                        cdata=rvcdata[1]
+                        if (len(np.shape(flags))>0):
+                            shp=np.shape(cdata)
+                            tmp=cdata.reshape(-1)
+                            tmp[np.nonzero(flags.reshape(-1))[0]]=np.nan;
+                            cdata=tmp.reshape(shp)
+                    else:
+                        if (productstr in collections):
+                            product=collections.index(productstr)
+                            productstr=collectionsalt[product]
+                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        elif (productstr in collectionsalt):
+                            product=collectionsalt.index(productstr)
+                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        else:
+                            product=decodecustomsignal(productstr)
+                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                                usingblmxdata=True
+                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                                thech=ch[start_chan:stop_chan:reduction]
+                                newchanincr=chanincr/reduction
+                                if (newchanincr<1):
+                                    newchanincr=1
+                                rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            elif (list(product) in datasd.cpref.bls_ordering):
+                                rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            else:
+                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
+
+                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                            rvcdata[1]=np.array([rvcdata[1]])                    
+                        cdata=rvcdata[1]
+                    cdata=np.abs(np.fft.fft2(cdata,axes=[1]))
+                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    cdata=cdata[:,start_lag:stop_lag:lagincr]
+                    if (theviewsettings['type']=='pow'):
+                        cdata=10.0*np.log10(cdata)
+                        fig['clabel']='Power'
+                        fig['cunit']='dB'
+                    elif (thetype=='mag'):
+                        fig['clabel']='Amplitude'
+                        fig['cunit']='counts'
+                    else:
+                        fig['clabel']='Phase'
+                        fig['cunit']='rad'
+                    fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
+                    fig['yunit']='s'
+                    fig['cdata']=cdata
+                    fig['ydata']=np.array(rvcdata[0])
+                    fig['legend']=[]
+                    fig['outlierhash']=0
+                    fig['color']=[]
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    fig['title']='Lag '+productstr
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['showtitle']=theviewsettings['showtitle']
+                    fig['showlegend']=theviewsettings['showlegend']
+                    fig['showxlabel']=theviewsettings['showxlabel']
+                    fig['showylabel']=theviewsettings['showylabel']
+                    fig['showxticklabel']=theviewsettings['showxticklabel']
+                    fig['showyticklabel']=theviewsettings['showyticklabel']
+                    fig['xdata']=thelag
+                    fig['xlabel']='Sample'
+                    fig['xunit']=''
+                    fig['outlierproducts']=[]
+                    if (usingblmxdata):
+                        fig['customproducts']=[]
+                    elif (isinstance(product,int)):
+                        fig['customproducts']=[product]
+                    elif (list(product) in datasd.cpref.bls_ordering):
+                        fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]
+                    else:
+                        fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
                     polstr = theviewsettings['figtype'][4:]
                     mxdata,phdata = datasd.select_blxvalue(pol=polstr)
@@ -1058,6 +1174,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:9]=='waterfall'):
                 customproducts,outlierproducts,processtime=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'][:3]=='lag'):
+                customproducts,outlierproducts,processtime=send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:4]=='blmx'):
                 customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             html_viewsettings[username][ifigure]['processtime']=processtime
@@ -1192,6 +1310,12 @@ def handle_websock_event(handlerkey,*args):
                 html_viewsettings[username].append({'figtype':'waterfall'+str(args[0][14:]),'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             else:
                 html_viewsettings[username].append({'figtype':str(args[0]),'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:3]=='lag'):#creates new lag plot
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':str(args[0]),'type':'pow','xtype':'sample','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
@@ -2090,6 +2214,98 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return waterfall_fig['customproducts'],waterfall_fig['outlierproducts'],processtime
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e), exc_info=True)
+    return [],[],processtime
+
+def send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    try:
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            lag_fig=ringbufferresultqueue.get()
+
+        count=0
+        processtime=0
+        if (lag_fig=={}):#an exception occurred
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
+            return [],[],0
+        elif ('logconsole' in lag_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+lag_fig['logconsole']+'",true,false,true)',handlerkey)
+            return [],[],0
+        elif ('logignore' in lag_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return [],[],0
+        if ('processtime' in lag_fig):
+            processtime=lag_fig['processtime']
+        if (lastrecalc<lag_fig['version']):
+            local_cseries=(lag_fig['cdata'])[:]
+            send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),lag_fig['version'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),lag_fig['lastts'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),lag_fig['lastdt'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),lag_fig['showtitle'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),lag_fig['showlegend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),lag_fig['showxlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),lag_fig['showylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),lag_fig['showxticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),lag_fig['showyticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),lag_fig['title'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xlabel'%(ifigure),lag_fig['xlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),lag_fig['ylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].clabel'%(ifigure),lag_fig['clabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),lag_fig['xunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),lag_fig['yunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cunit'%(ifigure),lag_fig['cunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),lag_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),lag_fig['outlierhash'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),lag_fig['xdata'],'m'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ydata'%(ifigure),lag_fig['ydata'],'I'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),lag_fig['color'],'b'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].type'%(ifigure),theviewsettings['type'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xtype'%(ifigure),theviewsettings['xtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cmin'%(ifigure),theviewsettings['cmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cmax'%(ifigure),theviewsettings['cmax'],'f'),handlerkey);count+=1;
+            for ispan,span in enumerate(lag_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(lag_fig['span'][ispan]),'H'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),lag_fig['spancolor'],'b'),handlerkey);count+=1;
+            for iline,linedata in enumerate(local_cseries):
+                send_websock_data(pack_binarydata_msg('fig[%d].cdata[%d]'%(ifigure,iline),linedata,'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        else:#only send update
+            where=np.where(lag_fig['ydata']>lastts+0.01)[0]#next time stamp index
+            if (len(where)>0):
+                its=np.min(where)
+                local_cseries=(lag_fig['cdata'])[its:]
+                send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),lag_fig['lastts'],'d'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),lag_fig['lastdt'],'d'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),lag_fig['title'],'s'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),lag_fig['ylabel'],'s'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].ydata'%(ifigure),lag_fig['ydata'],'I'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),lag_fig['xdata'],'m'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].cmin'%(ifigure),theviewsettings['cmin'],'f'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].cmax'%(ifigure),theviewsettings['cmax'],'f'),handlerkey);count+=1;
+                for iline,linedata in enumerate(local_cseries):
+                    send_websock_data(pack_binarydata_msg('fig[%d].cdata[%d]'%(ifigure,iline),linedata,'B'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'augmentcdata','s'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
+                send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+                send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return lag_fig['customproducts'],lag_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime

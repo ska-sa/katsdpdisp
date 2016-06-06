@@ -188,6 +188,12 @@ Displays a list of inputs available in current spead stream.
 [info]
 Displays information about the current observation
 
+[lag]
+Adds a lag figure to the current view.
+
+lag1h2h - plots lag plot for 1h2h cross correlation product
+
+
 [memoryleak]
 Prints out counts of new objects stored in memory.
 
