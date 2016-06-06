@@ -762,7 +762,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                     productstr=theviewsettings['figtype'][3:]
                     usingblmxdata=False
-                    if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
+                    if (0):#thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
                         flags=0
                         if (productstr in collections):
                             product=collections.index(productstr)
@@ -828,7 +828,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])                    
                         cdata=rvcdata[1]
-                    cdata=cdata#np.fft.fft2(cdata,axes=[1])
+                    cdata=np.fft.fft2(cdata,axes=[1])
                     start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
