@@ -828,7 +828,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])                    
                         cdata=rvcdata[1]
-                    cdata=np.fft.fft2(cdata,axes=[1])
+                    cdata=cdata#np.fft.fft2(cdata,axes=[1])
                     start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
