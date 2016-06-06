@@ -249,17 +249,26 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 ringbufferresultqueue.put(fig)
                 return
             if (thelayoutsettings=='sendfiguredata'):
+                theindex=-1
                 try:
-                    if (list(thesignals[0]) in datasd.cpref.bls_ordering):
+                    if (datasd.receiver.ig['sd_data_index'].value is None):
+                        data_index=[]
+                    else:
+                        data_index=datasd.receiver.ig['sd_data_index'].value.astype(np.uint32)
+                    if (list(thesignals[0]) in [datasd.cpref.bls_ordering[ind] for ind in data_index]):
                         signal = datasd.select_data(dtype=theviewsettings, product=tuple(thesignals[0]), end_time=lastts, include_ts=False,include_flags=False)
                         signal=np.array(signal).reshape(-1)
+                        theindex=datasd.cpref.bls_ordering.index(list(thesignals[0]))
+                    elif (list(thesignals[0]) in datasd.cpref.bls_ordering):
+                        signal='wait for signal'
+                        theindex=datasd.cpref.bls_ordering.index(list(thesignals[0]))
                     else:
-                        signal=None
+                        signal='signal not in bls_ordering'
                 except Exception, e:
                     logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
-                    signal=None
+                    signal='error'
                     pass
-                ringbufferresultqueue.put(signal)
+                ringbufferresultqueue.put([signal, theindex])
                 continue
             if (datasd.storage.frame_count==0):
                 if (warnOnce):
@@ -888,10 +897,12 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         try:
             result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
             logger.info('telstate set custom signals result: '+repr(result))
-            send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
+            if (handlerkey is not None):
+                send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
         except Exception, e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
-            send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
+            if (handlerkey is not None):
+                send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
             ingest_signals=revert_ingest_signals
             failed_update_ingest_signals_lastts=lastts
 
@@ -1001,15 +1012,26 @@ def handle_websock_event(handlerkey,*args):
         elif (username not in html_viewsettings):
             logger.info('Warning: unrecognised username:'+username)
         elif (args[0]=='sendfiguredata'):
+            logger.info(repr(args))
             reqts=float(args[1])#eg -1
             chan0=int(args[2])
             chan1=int(args[3])
             thetype=str(args[4]) #'re','im','mag','phase'
-            thesignals=[(str(args[5]),str(args[6]))] #eg('ant1h','ant1h')
-            with RingBufferLock:
-                ringbufferrequestqueue.put(['sendfiguredata',thetype,thesignals,reqts,0,0])
-                spectrum=ringbufferresultqueue.get()
-            if (chan1>0 and chan0>0):
+            product=decodecustomsignal(str(args[5])) #e.g. args[5]='1h1h' product=('ant1h','ant1h')
+            logger.info('decoded product: '+repr(product))
+            thesignals=[product]
+            if (product not in html_customsignals[username]):
+                html_customsignals[username].append(product)
+            for itry in range(5): #note this may fail perpetually if datacapture has stopped
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['sendfiguredata',thetype,thesignals,reqts,0,0])
+                    spectrum,dataindex=ringbufferresultqueue.get()
+                if (type(spectrum)==str and spectrum == 'wait for signal' and dataindex>=0):
+                    UpdateCustomSignals(None,[dataindex],[],reqts)
+                    time.sleep(1)
+                else:
+                    break
+            if (type(spectrum)!=str and chan1>0 and chan0>0):
                 send_websock_data(repr(spectrum[chan0:chan1]),handlerkey);
             else:
                 send_websock_data(repr(spectrum),handlerkey);
