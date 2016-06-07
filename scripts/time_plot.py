@@ -762,76 +762,36 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
                     productstr=theviewsettings['figtype'][3:]
                     usingblmxdata=False
-                    if (0):#thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
-                        flags=0
-                        if (productstr in collections):
-                            product=collections.index(productstr)
-                            productstr=collectionsalt[product]
-                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                            flags=np.logical_or(flags,rvcdata[2])
-                        elif (productstr in collectionsalt):
-                            product=collectionsalt.index(productstr)
-                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                            flags=np.logical_or(flags,rvcdata[2])
-                        else:
-                            product=decodecustomsignal(productstr)
-                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
-                                usingblmxdata=True
-                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
-                                thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
-                                if (newchanincr<1):
-                                    newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
-                                flags=np.logical_or(flags,rvcdata[2])
-                            elif (list(product) in datasd.cpref.bls_ordering):
-                                rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                                flags=np.logical_or(flags,rvcdata[2])
-                            else:
-                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
-                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
-
-                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
-                            rvcdata[1]=np.array([rvcdata[1]])
-                            flags=np.array([flags])
-                    
-                        cdata=rvcdata[1]
-                        if (len(np.shape(flags))>0):
-                            shp=np.shape(cdata)
-                            tmp=cdata.reshape(-1)
-                            tmp[np.nonzero(flags.reshape(-1))[0]]=np.nan;
-                            cdata=tmp.reshape(shp)
+                    if (productstr in collections):
+                        product=collections.index(productstr)
+                        productstr=collectionsalt[product]
+                        rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                    elif (productstr in collectionsalt):
+                        product=collectionsalt.index(productstr)
+                        rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                     else:
-                        if (productstr in collections):
-                            product=collections.index(productstr)
-                            productstr=collectionsalt[product]
-                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                        elif (productstr in collectionsalt):
-                            product=collectionsalt.index(productstr)
-                            rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        product=decodecustomsignal(productstr)
+                        if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                            usingblmxdata=True
+                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            thech=ch[start_chan:stop_chan:reduction]
+                            newchanincr=chanincr/reduction
+                            if (newchanincr<1):
+                                newchanincr=1
+                            rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                        elif (list(product) in datasd.cpref.bls_ordering):
+                            rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                         else:
-                            product=decodecustomsignal(productstr)
-                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
-                                usingblmxdata=True
-                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
-                                thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
-                                if (newchanincr<1):
-                                    newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
-                            elif (list(product) in datasd.cpref.bls_ordering):
-                                rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
-                            else:
-                                thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
-                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
+                            thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                            rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
 
-                        if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
-                            rvcdata[1]=np.array([rvcdata[1]])                    
-                        cdata=rvcdata[1]
-                    if (thelayoutsettings['showonlineflags']=='on'):
-                        cdata=np.exp(1j*np.angle(cdata))
-                    cdata=np.fft.fft2(cdata,axes=[1])
+                    if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
+                        rvcdata[1]=np.array([rvcdata[1]])
+                    cdata=rvcdata[1]
+                    cdata=np.exp(1j*np.angle(cdata))
+                    cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
                     start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    thelag=thelag-len(thelag)/2
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
@@ -865,7 +825,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['showxticklabel']=theviewsettings['showxticklabel']
                     fig['showyticklabel']=theviewsettings['showyticklabel']
                     fig['xdata']=thelag
-                    fig['xlabel']='Sample'
+                    bw=datasd.storage.n_chans*datasd.receiver.channel_bandwidth
+                    fig['xlabel']='%.3fns samples (bandwidth %.1fMHz)'%(1.0/bw*1e9,bw/1e6)
                     fig['xunit']=''
                     fig['outlierproducts']=[]
                     if (usingblmxdata):
@@ -1319,7 +1280,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0][:3]=='lag'):#creates new lag plot
             logger.info(repr(args))
-            html_viewsettings[username].append({'figtype':str(args[0]),'type':'pow','xtype':'sample','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            html_viewsettings[username].append({'figtype':str(args[0]),'type':'mag','xtype':'sample','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
