@@ -790,8 +790,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     cdata=rvcdata[1]
                     cdata=np.exp(1j*np.angle(cdata))
                     cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
-                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels(range(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
-                    thelag=np.array(thelag)-len(thelag)/2
+                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels(np.arange(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    thelag=thelag-len(ch)/2
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
