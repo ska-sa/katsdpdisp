@@ -718,7 +718,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['clabel']='Phase'
                         fig['cunit']='rad'
                         if (len(typestr)>1):
-                            cdata=np.angle(np.exp(1j*(cdata+float(typestr[1])*1e-9*np.arange(start_chan,stop_chan,chanincr,dtype='float'))))
+                            cdata=np.angle(np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*ch[start_chan,stop_chan,chanincr]*1e6)))
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['cdata']=cdata
@@ -793,7 +793,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         rvcdata[1]=np.array([rvcdata[1]])
                     cdata=rvcdata[1]
                     if (len(typestr)>1):
-                        cdata=np.exp(1j*(cdata+float(typestr[1])*1e-9*np.arange(start_chan,stop_chan,chanincr,dtype='float')))
+                        cdata=np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*ch[start_chan,stop_chan,chanincr]*1e6))
                     else:
                         cdata=np.exp(1j*cdata)
                     cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
