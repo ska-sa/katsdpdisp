@@ -637,7 +637,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
-                    productstr=theviewsettings['figtype'][9:]
+                    typestr=theviewsettings['figtype'][9:].split('delay')
+                    productstr=typestr[0]
                     usingblmxdata=False
                     if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
                         flags=0
@@ -716,6 +717,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         fig['clabel']='Phase'
                         fig['cunit']='rad'
+                        if (len(typestr)>1):
+                            cdata=np.angle(np.exp(1j*(cdata+float(typestr[1])*1e-9*np.arange(start_chan,stop_chan,chanincr))))
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['cdata']=cdata
@@ -725,7 +728,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['color']=[]
                     fig['span']=[]
                     fig['spancolor']=[]
-                    fig['title']='Waterfall '+productstr
+                    fig['title']='Waterfall '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
@@ -760,15 +763,16 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     start_chan=0;stop_chan=len(ch);chanincr=1
                     collections=['auto0','auto100','auto25','auto75','auto50','autohh0','autohh100','autohh25','autohh75','autohh50','autovv0','autovv100','autovv25','autovv75','autovv50','autohv0','autohv100','autohv25','autohv75','autohv50','cross0','cross100','cross25','cross75','cross50','crosshh0','crosshh100','crosshh25','crosshh75','crosshh50','crossvv0','crossvv100','crossvv25','crossvv75','crossvv50','crosshv0','crosshv100','crosshv25','crosshv75','crosshv50']
                     collectionsalt=['automin','automax','auto25','auto75','auto','autohhmin','autohhmax','autohh25','autohh75','autohh','autovvmin','autovvmax','autovv25','autovv75','autovv','autohvmin','autohvmax','autohv25','autohv75','autohv','crossmin','crossmax','cross25','cross75','cross','crosshhmin','crosshhmax','crosshh25','crosshh75','crosshh','crossvvmin','crossvvmax','crossvv25','crossvv75','crossvv','crosshvmin','crosshvmax','crosshv25','crosshv75','crosshv']
-                    productstr=theviewsettings['figtype'][3:]
+                    typestr=theviewsettings['figtype'][3:].split('delay')
+                    productstr=typestr[0]
                     usingblmxdata=False
                     if (productstr in collections):
                         product=collections.index(productstr)
                         productstr=collectionsalt[product]
-                        rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        rvcdata = datasd.select_data_collection(dtype='phase', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                     elif (productstr in collectionsalt):
                         product=collectionsalt.index(productstr)
-                        rvcdata = datasd.select_data_collection(dtype='complex', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        rvcdata = datasd.select_data_collection(dtype='phase', product=product, end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                     else:
                         product=decodecustomsignal(productstr)
                         if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
@@ -778,9 +782,9 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             newchanincr=chanincr/reduction
                             if (newchanincr<1):
                                 newchanincr=1
-                            rvcdata = datasd.select_blmxdata(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
                         elif (list(product) in datasd.cpref.bls_ordering):
-                            rvcdata = datasd.select_data(dtype='complex', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            rvcdata = datasd.select_data(dtype='phase', product=tuple(product), end_time=-120, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
                         else:
                             thets=datasd.select_data(product=0, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
@@ -788,7 +792,10 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                         rvcdata[1]=np.array([rvcdata[1]])
                     cdata=rvcdata[1]
-                    cdata=np.exp(1j*np.angle(cdata))
+                    if (len(typestr)>1):
+                        cdata=np.exp(1j*(cdata+float(typestr[1])*1e-9*np.arange(start_chan,stop_chan,chanincr)))
+                    else:
+                        cdata=np.exp(1j*cdata)
                     cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
                     start_lag,stop_lag,lagincr,thelag=getstartstopchannels(np.arange(len(ch)),'channel',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     thelag=thelag-len(ch)/2
@@ -814,7 +821,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['color']=[]
                     fig['span']=[]
                     fig['spancolor']=[]
-                    fig['title']='Lag '+productstr
+                    fig['title']='Lag '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
