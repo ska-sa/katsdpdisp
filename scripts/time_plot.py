@@ -797,7 +797,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         cdata=np.exp(1j*cdata)
                     cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
-                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels(np.arange(len(ch))-len(ch)/2,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    bw=datasd.storage.n_chans*datasd.receiver.channel_bandwidth
+                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
@@ -831,9 +832,8 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['showxticklabel']=theviewsettings['showxticklabel']
                     fig['showyticklabel']=theviewsettings['showyticklabel']
                     fig['xdata']=thelag
-                    bw=datasd.storage.n_chans*datasd.receiver.channel_bandwidth
-                    fig['xlabel']='%.3fns samples (bandwidth %.1fMHz)'%(1.0/bw*1e9,bw/1e6)
-                    fig['xunit']=''
+                    fig['xlabel']='Delay (%.3fns samples, bandwidth %.1fMHz)'%(1.0/bw*1e9,bw/1e6)
+                    fig['xunit']='s'
                     fig['outlierproducts']=[]
                     if (usingblmxdata):
                         fig['customproducts']=[]
