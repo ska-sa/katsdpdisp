@@ -1218,7 +1218,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                 dotickminor=1
                 dotickpos=0
                 dotickneg=1
-                doprefix=1 if (units=='s') else 0 //for lag plot
+                doprefix=(units=='s')?1:0 //for lag plot
                 timelabel=''
                 displaxisx={viewmin:hviewmin,viewmax:hviewmax,pixspan:axiscanvas.width};
                 if (RG_fig[ifig].showxlabel!='on') xlabel=''
