@@ -161,7 +161,7 @@ function makejet()
 function unitPrefixFromIndex(iprefix,units)
 {
     var g_metricPREFIX="kMGTPEZY";
-    var g_metricprefix="munpfazy";
+    var g_metricprefix="m"+String.fromCharCode(181)+"npfazy";
     if (iprefix>0)
     {
         if (iprefix<8)  return g_metricPREFIX[(iprefix-1)]+units;
