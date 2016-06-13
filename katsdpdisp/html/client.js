@@ -492,7 +492,13 @@ function ApplyViewLayout(figuretypes,nfigcols)
                            {type:RightContext.TYPE_MENU,
                             text:"PNG page",
                             onclick:function() {savePage();} },
-                            
+
+                           {type: RightContext.TYPE_SEPERATOR },
+
+                           {type:RightContext.TYPE_MENU,
+                            text:"Zoom out figure",
+                            onclick:function() {unzoomfigure([attr_ifig]);} },
+
                            {type:RightContext.TYPE_MENU,
                             text:"Delete figure",
                             onclick:function() {handle_data_user_event('deletefigure,[attr_ifig]')} }
