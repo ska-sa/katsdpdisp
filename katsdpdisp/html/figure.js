@@ -1656,8 +1656,15 @@ function onFigureMouseUp(event){
         newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
         // newsizex=event.clientX-figdragstart[0]+figurediv.offsetWidth
         // newsizey=event.clientY-figdragstart[1]+figurediv.offsetHeight
-        if (newsizex<200)newsizex=200;
-        if (newsizey<100)newsizey=100;
+        if (nfigcolumns<8)
+        {
+            if (newsizex<200)newsizex=200;
+            if (newsizey<100)newsizey=100;
+        }else
+        {
+            if (newsizex<20)newsizex=20;
+            if (newsizey<10)newsizey=10;
+        }
         figurediv.style.width = newsizex + 'px';
         figurediv.style.height = newsizey + 'px';
         figurediv.offsetWidth=newsizex
@@ -1842,8 +1849,15 @@ function onFigureMouseMove(event){
         {
             newsizex=event.clientX+document.body.scrollLeft-figdragstart[0]+figdragsizestart[0]
             newsizey=event.clientY+document.body.scrollTop-figdragstart[1]+figdragsizestart[1]
-            if (newsizex<200)newsizex=200;
-            if (newsizey<100)newsizey=100;
+            if (nfigcolumns<8)
+            {
+                if (newsizex<200)newsizex=200;
+                if (newsizey<100)newsizey=100;
+            }else
+            {
+                if (newsizex<20)newsizex=20;
+                if (newsizey<10)newsizey=10;
+            }
             figurediv.style.width = newsizex + 'px';
             figurediv.style.height = newsizey + 'px';
             figurediv.offsetWidth=newsizex

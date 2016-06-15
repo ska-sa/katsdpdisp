@@ -1257,9 +1257,10 @@ def handle_websock_event(handlerkey,*args):
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
-                if (len(antnumbers)>8):
-                    send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs specified. Specify antenna ranges explicitly. Warning, omitting: '+','.join(['m%03d'%antnum for antnum in antnumbers[8:]])+'",true,true,true)',handlerkey)
-                    antnumbers=antnumbers[:8]
+                maxnant=16
+                if (len(antnumbers)>maxnant):
+                    send_websock_cmd('logconsole("Too many ('+str(len(antnumbers))+') antenna inputs specified. Specify antenna ranges explicitly. Warning, omitting: '+','.join(['m%03d'%antnum for antnum in antnumbers[maxnant:]])+'",true,true,true)',handlerkey)
+                    antnumbers=antnumbers[:maxnant]
                 send_websock_cmd('logconsole("Building waterfall matrix for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
