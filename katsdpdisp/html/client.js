@@ -17,9 +17,9 @@ function setsignals(){
     if (signaltext.slice(0,6)=='ncols=')
     {
         ncols=parseInt(signaltext.slice(6))
-        if (ncols<1 || ncols>7)
+        if (ncols<1 || ncols>16)
         {
-            alert('Number of columns must be between 1 and 7');
+            alert('Number of columns must be between 1 and 16');
         }else
         {
             handle_data_user_event('setncols,'+signaltext.slice(6));
@@ -424,14 +424,15 @@ function ApplyViewLayout(figuretypes,nfigcols)
     rowcomplete=1;
     consolectl.style.width=window.innerWidth-listoffigures.offsetLeft*2-5
     figwidth=(window.innerWidth-listoffigures.offsetLeft*2)/nfigcols-5
-    if (figwidth<200)
+
+    if (nfigcols<8)
     {
-        figwidth=200
-        figheight=200
+        if (figwidth<200)figwidth=200;
     }else
     {
-        figheight=figwidth*figureaspect
+        if (figwidth<20)figwidth=20;
     }
+    figheight=figwidth*figureaspect
     for (ifig=0;ifig<nfigures;ifig++)
     {
         if (ifig%nfigcols==0)
