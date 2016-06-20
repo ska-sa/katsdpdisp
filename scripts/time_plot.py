@@ -720,7 +720,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
-                            rvcdata[1]=np.array([rvcdata[1]])                    
+                            rvcdata[1]=np.array([rvcdata[1]])
                         cdata=rvcdata[1]
                     
                     if (theviewsettings['type']=='pow'):
@@ -787,7 +787,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         end_time=-120
                     else:
                         start_time=lastts+0.01
-                        end_time=ts[-1]
+                        end_time=ts[-1]+0.01
                     if (productstr in collections):
                         product=collections.index(productstr)
                         productstr=collectionsalt[product]
@@ -823,10 +823,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         cdata=np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*np.array(ch[start_chan:stop_chan:chanincr])*1e6))
                     else:
                         cdata=np.exp(1j*cdata)
-                    cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
                     bw=datasd.storage.n_chans*datasd.receiver.channel_bandwidth
-                    start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
-                    cdata=cdata[:,start_lag:stop_lag:lagincr]
+                    if (cdata.shape[0]>0):
+                        cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
+                        start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                        cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
                         fig['clabel']='Power'
