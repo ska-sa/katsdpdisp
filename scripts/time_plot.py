@@ -953,6 +953,7 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 
 ingest_signals={}
 failed_update_ingest_signals_lastts=0
+max_custom_signals=128
 
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
@@ -977,6 +978,13 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         if sig not in ingest_signals.keys():
             changed=True
         ingest_signals[sig]=time.time()
+    if (len(ingest_signals)>max_custom_signals):
+        logger.info('Number of customsignals %d exceeds %d:'%(len(ingest_signals),max_custom_signals))
+        sigs=ingest_signals.keys()
+        times=[ingest_signals[sig] for sig in sigs]
+        sind=np.argsort(times)
+        for ind in sind[max_custom_signals:]:
+            del ingest_signals[sigs[ind]]
     if (changed):
         ####set custom signals on ingest
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
