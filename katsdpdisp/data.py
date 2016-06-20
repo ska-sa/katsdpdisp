@@ -1996,9 +1996,14 @@ class DataHandler(object):
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.ts,-roll_point)
             if end_time >= 0:
-                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
-                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+                whr = np.where(rolled_ts >= start_time * 1000)[0]
+                if (len(whr)==0):
+                    split_start=roll_point
+                    split_end=roll_point
+                else:
+                    split_start = min(whr) + roll_point
+                    validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                    split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
                  # ensure we do not ask for more data than is available
@@ -2061,9 +2066,14 @@ class DataHandler(object):
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.timeseriests,-roll_point)
             if end_time >= 0:
-                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
-                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+                whr = np.where(rolled_ts >= start_time * 1000)[0]
+                if (len(whr)==0):
+                    split_start=roll_point
+                    split_end=roll_point
+                else:
+                    split_start = min(whr) + roll_point
+                    validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
+                    split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.timeseriesslots: end_time = -self.storage.timeseriesslots
                  # ensure we do not ask for more data than is available
@@ -2127,9 +2137,14 @@ class DataHandler(object):
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.ts,-roll_point)
             if end_time >= 0:
-                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
-                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+                whr = np.where(rolled_ts >= start_time * 1000)[0]
+                if (len(whr)==0):
+                    split_start=roll_point
+                    split_end=roll_point
+                else:
+                    split_start = min(whr) + roll_point
+                    validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
+                    split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
                  # ensure we do not ask for more data than is available
@@ -2187,9 +2202,14 @@ class DataHandler(object):
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.timeseriests,-roll_point)
             if end_time >= 0:
-                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
-                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+                whr = np.where(rolled_ts >= start_time * 1000)[0]
+                if (len(whr)==0):
+                    split_start=roll_point
+                    split_end=roll_point
+                else:
+                    split_start = min(whr) + roll_point
+                    validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
+                    split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.timeseriesslots: end_time = -self.storage.timeseriesslots
                  # ensure we do not ask for more data than is available
@@ -2246,9 +2266,14 @@ class DataHandler(object):
              # temp value in case of change during search...
             rolled_ts = np.roll(self.storage.blmxts,-roll_point)
             if end_time >= 0:
-                split_start = min(np.where(rolled_ts >= start_time * 1000)[0]) + roll_point
-                validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.blmxfirst_pass else None)] <= end_time * 1000)[0]
-                split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
+                whr = np.where(rolled_ts >= start_time * 1000)[0]
+                if (len(whr)==0):
+                    split_start=roll_point
+                    split_end=roll_point
+                else:
+                    split_start = min(whr) + roll_point
+                    validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.blmxfirst_pass else None)] <= end_time * 1000)[0]
+                    split_end = 1 + max(validind) + roll_point if (len(validind)) else split_start
             else:
                 if abs(end_time) > self.storage.blmxslots: end_time = -self.storage.blmxslots
                  # ensure we do not ask for more data than is available

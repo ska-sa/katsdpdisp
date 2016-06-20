@@ -652,12 +652,14 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             product=collections.index(productstr)
                             productstr=collectionsalt[product]
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             flags=np.logical_or(flags,rvcdata[2])
                         elif (productstr in collectionsalt):
                             product=collectionsalt.index(productstr)
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             flags=np.logical_or(flags,rvcdata[2])
-                        else:                        
+                        else:
                             product=decodecustomsignal(productstr)
                             if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
@@ -667,12 +669,15 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 if (newchanincr<1):
                                     newchanincr=1
                                 rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 flags=np.logical_or(flags,rvcdata[2])
                             elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                limitedts=datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 flags=np.logical_or(flags,rvcdata[2])
                             else:
                                 thets=datasd.select_data(product=0, start_time=start_time, end_time=end_time, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                limitedts=thets
                                 rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
@@ -690,9 +695,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             product=collections.index(productstr)
                             productstr=collectionsalt[product]
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         elif (productstr in collectionsalt):
                             product=collectionsalt.index(productstr)
                             rvcdata = datasd.select_data_collection(dtype=thetype, product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         else:
                             product=decodecustomsignal(productstr)
                             if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
@@ -703,10 +710,13 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                                 if (newchanincr<1):
                                     newchanincr=1
                                 rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                                limitedts=datasd.select_data(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             else:
                                 thets=datasd.select_data(product=0, start_time=start_time, end_time=end_time, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                                limitedts=thets
                                 rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
@@ -728,7 +738,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['cdata']=cdata
-                    fig['ydata']=np.array(rvcdata[0])
+                    fig['ydata']=np.array(limitedts)
                     fig['legend']=[]
                     fig['outlierhash']=0
                     fig['color']=[]
@@ -782,9 +792,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         product=collections.index(productstr)
                         productstr=collectionsalt[product]
                         rvcdata = datasd.select_data_collection(dtype='phase', product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                     elif (productstr in collectionsalt):
                         product=collectionsalt.index(productstr)
                         rvcdata = datasd.select_data_collection(dtype='phase', product=product, start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                        limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                     else:
                         product=decodecustomsignal(productstr)
                         if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
@@ -795,10 +807,13 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             if (newchanincr<1):
                                 newchanincr=1
                             rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            limitedts=datasd.select_data_blmxdata(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         elif (list(product) in datasd.cpref.bls_ordering):
                             rvcdata = datasd.select_data(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
+                            limitedts=datasd.select_data(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         else:
                             thets=datasd.select_data(product=0, start_time=start_time, end_time=end_time, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
+                            limitedts=thets
                             rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
 
                     if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
@@ -827,7 +842,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['cdata']=cdata
-                    fig['ydata']=np.array(rvcdata[0])
+                    fig['ydata']=np.array(limitedts)
                     fig['legend']=[]
                     fig['outlierhash']=0
                     fig['color']=[]
@@ -2182,10 +2197,8 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         else:#only send update
-            where=np.where(waterfall_fig['ydata']>lastts+0.01)[0]#next time stamp index
-            if (len(where)>0):                
-                its=np.min(where)
-                local_cseries=(waterfall_fig['cdata'])[its:]
+            if (waterfall_fig['cdata'].shape[0]>0):
+                local_cseries=waterfall_fig['cdata'][:]
                 send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),waterfall_fig['lastts'],'d'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),waterfall_fig['lastdt'],'d'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),waterfall_fig['title'],'s'),handlerkey);count+=1;
@@ -2274,10 +2287,8 @@ def send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,last
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         else:#only send update
-            where=np.where(lag_fig['ydata']>lastts+0.01)[0]#next time stamp index
-            if (len(where)>0):
-                its=np.min(where)
-                local_cseries=(lag_fig['cdata'])[its:]
+            if (lag_fig['cdata'].shape[0]>0):
+                local_cseries=lag_fig['cdata'][:]
                 send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),lag_fig['lastts'],'d'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),lag_fig['lastdt'],'d'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),lag_fig['title'],'s'),handlerkey);count+=1;
