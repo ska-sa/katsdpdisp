@@ -1998,8 +1998,12 @@ class DataHandler(object):
             if end_time >= 0:
                 whr = np.where(rolled_ts >= start_time * 1000)[0]
                 if (len(whr)==0):
-                    split_start=roll_point
-                    split_end=roll_point
+                    frames=np.array([])
+                    if include_ts:
+                        frames = [np.array([]), frames]
+                    if include_flags:
+                        frames = [frames[0], frames[1], np.array([])] if include_ts else [frames, np.array([])]
+                    return frames
                 else:
                     split_start = min(whr) + roll_point
                     validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
@@ -2068,8 +2072,12 @@ class DataHandler(object):
             if end_time >= 0:
                 whr = np.where(rolled_ts >= start_time * 1000)[0]
                 if (len(whr)==0):
-                    split_start=roll_point
-                    split_end=roll_point
+                    frames=[]
+                    if include_ts:
+                        frames = [[], frames]
+                    if include_flags:
+                        frames = [frames[0], frames[1], []] if include_ts else [frames, []]
+                    return frames
                 else:
                     split_start = min(whr) + roll_point
                     validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
@@ -2139,8 +2147,12 @@ class DataHandler(object):
             if end_time >= 0:
                 whr = np.where(rolled_ts >= start_time * 1000)[0]
                 if (len(whr)==0):
-                    split_start=roll_point
-                    split_end=roll_point
+                    frames=[]
+                    if include_ts:
+                        frames = [[], frames]
+                    if include_flags:
+                        frames = [frames[0], frames[1], []] if include_ts else [frames, []]
+                    return frames
                 else:
                     split_start = min(whr) + roll_point
                     validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.first_pass else None)] <= end_time * 1000)[0]
@@ -2204,8 +2216,12 @@ class DataHandler(object):
             if end_time >= 0:
                 whr = np.where(rolled_ts >= start_time * 1000)[0]
                 if (len(whr)==0):
-                    split_start=roll_point
-                    split_end=roll_point
+                    frames=[]
+                    if include_ts:
+                        frames = [[], frames]
+                    if include_flags:
+                        frames = [frames[0], frames[1], []] if include_ts else [frames, []]
+                    return frames
                 else:
                     split_start = min(whr) + roll_point
                     validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.timeseriesfirst_pass else None)] <= end_time * 1000)[0]
@@ -2268,8 +2284,12 @@ class DataHandler(object):
             if end_time >= 0:
                 whr = np.where(rolled_ts >= start_time * 1000)[0]
                 if (len(whr)==0):
-                    split_start=roll_point
-                    split_end=roll_point
+                    frames=[]
+                    if include_ts:
+                        frames = [[], frames]
+                    if include_flags:
+                        frames = [frames[0], frames[1], []] if include_ts else [frames, []]
+                    return frames
                 else:
                     split_start = min(whr) + roll_point
                     validind=np.where(rolled_ts[:(self.storage.frame_count if self.storage.blmxfirst_pass else None)] <= end_time * 1000)[0]

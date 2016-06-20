@@ -645,7 +645,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         end_time=-120
                     else:
                         start_time=lastts+0.01
-                        end_time=ts[-1]
+                        end_time=ts[-1]+0.01
                     if (thelayoutsettings['showonlineflags']=='on'):#more efficient to separate these out
                         flags=0
                         if (productstr in collections):
@@ -745,7 +745,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['span']=[]
                     fig['spancolor']=[]
                     fig['title']='Waterfall '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
-                    fig['lastts']=ts[-1]
+                    fig['lastts']=limitedts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
                     fig['showtitle']=theviewsettings['showtitle']
@@ -849,7 +849,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['span']=[]
                     fig['spancolor']=[]
                     fig['title']='Lag '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
-                    fig['lastts']=ts[-1]
+                    fig['lastts']=limitedts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
                     fig['showtitle']=theviewsettings['showtitle']
@@ -1160,7 +1160,7 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='sendfigure'):
             ifigure=int(args[1])
             reqts=float(args[2])# timestamp on browser side when sendfigure request was issued
-            lastts=np.round(float(args[3])*1000.0)/1000.0
+            lastts=float(args[3])# np.round(float(args[3])*1000.0)/1000.0
             lastrecalc=float(args[4])
             view_npixels=int(args[5])
             outlierhash=int(args[6])
