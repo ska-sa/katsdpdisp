@@ -684,7 +684,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                             rvcdata[1]=np.array([rvcdata[1]])
                             flags=np.array([flags])
                     
-                        cdata=rvcdata[1]
+                        cdata=np.array(rvcdata[1])
                         if (len(np.shape(flags))>0):
                             shp=np.shape(cdata)
                             tmp=cdata.reshape(-1)
@@ -721,7 +721,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])
-                        cdata=rvcdata[1]
+                        cdata=np.array(rvcdata[1])
                     
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(cdata)
@@ -818,7 +818,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
 
                     if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                         rvcdata[1]=np.array([rvcdata[1]])
-                    cdata=rvcdata[1]
+                    cdata=np.array(rvcdata[1])
                     if (len(typestr)>1):
                         cdata=np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*np.array(ch[start_chan:stop_chan:chanincr])*1e6))
                     else:
