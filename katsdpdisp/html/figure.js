@@ -469,6 +469,9 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
     }
     yviewmin=[]
     yviewmax=[]
+    showlegend=new Array(legend.length)
+    for (i=0;i<legend.length;i++)
+        showlegend[i]=false;
     var localdatax
     if (datax.length==2 && (dataylist[0][0]).length>2)
     {
@@ -575,7 +578,12 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         context.moveTo(xoff+xscale*localdatax[ixstart],yoff-yscale*dataylist[itwin][iline][ixstart]);
                         for (x=ixstart+1;x<ixend;x++)
                         {
-                            context.lineTo(xoff+xscale*localdatax[x],yoff-yscale*dataylist[itwin][iline][x]);
+                            ypos=yoff-yscale*dataylist[itwin][iline][x]
+                            context.lineTo(xoff+xscale*localdatax[x],ypos);
+                            if (ypos>=0 && ypos<=yspan)
+                            {
+                                showlegend[iline]=true;
+                            }
                         }
                         context.stroke();
                         context.closePath();
@@ -792,7 +800,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                     x=figcanvas.width-75
                     for (iline=0,y=axisposv+legendfontHeight;iline<legend.length && y<axisposv+axiscanvas.height-legendfontHeight/5;iline++,y+=legendfontHeight)
                     {
-                        if (corrlinepoly[clrlist[iline][3]])
+                        if (corrlinepoly[clrlist[iline][3]] || showlegend[iline]==false)
                         {
                             y-=legendfontHeight;
                             continue;
