@@ -1222,8 +1222,15 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                 numberpos=0
                 labelpos=0
                 roundScreen=0
-                dotickmajor=1
-                dotickminor=1
+                if (RG_fig[ifig].showtitle=='in')
+                {
+                    dotickmajor=0
+                    dotickminor=0
+                }else
+                {
+                    dotickmajor=1
+                    dotickminor=1
+                }
                 dotickpos=0
                 dotickneg=1
                 doprefix=(units=='s')?1:0 //for lag plot
@@ -1933,6 +1940,13 @@ function setaxiscanvasrect(ifig)
     }
     else
     {
+        tightspacing=3;
+        tightspacing2=7;
+        if (RG_fig[ifig].showtitle=='in')
+        {
+            tightspacing=1;
+            tightspacing2=2;
+        }
         if (RG_fig[ifig].showyticklabel=='on')
             _left=30
         else
@@ -1940,15 +1954,15 @@ function setaxiscanvasrect(ifig)
         if (RG_fig[ifig].showylabel=='on')
             _left+=20
         else
-            _left+=3
+            _left+=tightspacing
         if (RG_fig[ifig].showtitle=='on')
             _top=50
         else
-            _top=7
+            _top=tightspacing2
         if (RG_fig[ifig].showlegend=='on')
             _width=figcanvas.width-80-_left
         else
-            _width=figcanvas.width-7-_left
+            _width=figcanvas.width-tightspacing2-_left
         if ((RG_fig[ifig].figtype=='timeseries') && (RG_fig[ifig].sensorname.length >0))//twinaxis, extra
         {
             _width-=30
@@ -1958,7 +1972,7 @@ function setaxiscanvasrect(ifig)
         if (RG_fig[ifig].showxlabel=='on')
             _height=figcanvas.height-55-_top;
         else
-            _height=figcanvas.height-33-_top
+            _height=figcanvas.height-30-_top-tightspacing;
         if (RG_fig[ifig].showxticklabel=='on')
             _height-=0
         else
