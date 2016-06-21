@@ -745,7 +745,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['span']=[]
                     fig['spancolor']=[]
                     fig['title']='Waterfall '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
-                    fig['lastts']=limitedts[-1]
+                    fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
                     fig['showtitle']=theviewsettings['showtitle']
@@ -850,7 +850,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig['span']=[]
                     fig['spancolor']=[]
                     fig['title']='Lag '+productstr+(' with %sns delay'%(typestr[1]) if (len(typestr)>1) else '')
-                    fig['lastts']=limitedts[-1]
+                    fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
                     fig['showtitle']=theviewsettings['showtitle']
