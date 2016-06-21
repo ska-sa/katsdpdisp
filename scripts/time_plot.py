@@ -733,7 +733,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     else:
                         fig['clabel']='Phase'
                         fig['cunit']='rad'
-                        if (len(typestr)>1):
+                        if (cdata.shape[0]>0 and len(typestr)>1):
                             cdata=np.angle(np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*np.array(ch[start_chan:stop_chan:chanincr])*1e6)))
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
@@ -819,12 +819,12 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                         rvcdata[1]=np.array([rvcdata[1]])
                     cdata=np.array(rvcdata[1])
-                    if (len(typestr)>1):
-                        cdata=np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*np.array(ch[start_chan:stop_chan:chanincr])*1e6))
-                    else:
-                        cdata=np.exp(1j*cdata)
                     bw=datasd.storage.n_chans*datasd.receiver.channel_bandwidth
                     if (cdata.shape[0]>0):
+                        if (len(typestr)>1):
+                            cdata=np.exp(1j*(cdata+2.0*np.pi*float(typestr[1])*1e-9*np.array(ch[start_chan:stop_chan:chanincr])*1e6))
+                        else:
+                            cdata=np.exp(1j*cdata)
                         cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
                         start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                         cdata=cdata[:,start_lag:stop_lag:lagincr]
