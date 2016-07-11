@@ -883,7 +883,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                         fig['cunit']='counts'
                     else:
                         fig['clabel']='Phase'
-                        fig['cunit']='rad'
+                        fig['cunit']='deg'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['mxdata']=mxdata

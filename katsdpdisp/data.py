@@ -501,25 +501,17 @@ class SignalDisplayStore2(object):
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
-                if (blmxflags is None):
-                    self.blmxvalue = np.std(blmxdata,axis=1) # for now but should improve, perhaps std of diff, and phase is number of wraps
-                else:
-                    for iprod in range(blmxdata.shape[0]):
-                        valid=np.nonzero(blmxflags[iprod,:]==0)[0]
-                        absdata=np.abs(blmxdata[iprod,valid])
-                        meanabs=np.mean(absdata)
-                        diffabs=np.diff(absdata)
-                        stddiffabs=np.std(diffabs)
-                        diffangle=np.diff(np.angle(blmxdata[iprod,valid]))
-                        stddiffangle=np.std(diffangle)
-                        if (stddiffangle==0):
-                            self.blmxvalue[iprod]=meanabs/stddiffabs
-                        else:
-                            meandiffangle=np.mean(diffangle)
-                            validangle=np.nonzero(np.abs(diffangle-meandiffangle)<stddiffangle)[0]
-                            #filtered_anglestd=np.std(diffangle[validangle])
-                            filtered_anglemean=np.mean(diffangle[validangle])
-                            self.blmxvalue[iprod]=meanabs/stddiffabs+1j*filtered_anglemean
+                for iprod in range(blmxdata.shape[0]):
+                    mag=np.abs(blmxdata[iprod,:])
+                    admag=np.abs(np.diff(mag))
+                    std_estimate=2.22*np.percentile(admag,25.)
+                    valid=np.nonzero(np.logical_and(admag[:-1]<std_estimate,admag[1:]<std_estimate))[0]
+                    mean_estimate=np.mean(mag[valid])
+                    snr_estimate=mean_estimate/std_estimate
+
+                    lag=np.abs(np.fft.fftshift(np.fft.fft(np.exp(1j*np.angle(blmxdata[iprod,:])))))
+                    phaseangle=float(np.argmax(lag)-len(lag)/2.0)/float(len(lag))
+                    self.blmxvalue[iprod]=snr_estimate+1j*phaseangle
 
             if (data_index is not None):
                 if (flags is not None):
