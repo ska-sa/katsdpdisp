@@ -502,14 +502,14 @@ class SignalDisplayStore2(object):
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
                 for iprod in range(blmxdata.shape[0]):
-                    mag=np.abs(blmxdata[iprod,:])
+                    mag=np.abs(blmxdata[iprod,:].reshape(-1))
                     admag=np.abs(np.diff(mag))
                     std_estimate=2.22*np.percentile(admag,25.)
                     valid=np.nonzero(np.logical_and(admag[:-1]<std_estimate,admag[1:]<std_estimate))[0]
                     mean_estimate=np.mean(mag[valid])
                     snr_estimate=mean_estimate/std_estimate
 
-                    lag=np.abs(np.fft.fftshift(np.fft.fft(np.exp(1j*np.angle(blmxdata[iprod,:])))))
+                    lag=np.abs(np.fft.fftshift(np.fft.fft(np.exp(1j*np.angle(blmxdata[iprod,:].reshape(-1))))))
                     phaseangle=float(np.argmax(lag)-len(lag)/2.0)/float(len(lag))
                     self.blmxvalue[iprod]=snr_estimate+1j*phaseangle
 
