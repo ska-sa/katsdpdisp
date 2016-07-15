@@ -192,10 +192,20 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
         datasd=dh.sd
     else:
         try:
-            dh.load_k7_data(datafilename,rows=300,startrow=0)
+            dh.load_ar1_data(datafilename, rows=300, startrow=0, capacity=memusage/100.0, store2=True)
         except Exception,e:
-            logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
-            dh.load_ff_data(datafilename)
+            logger.warning(" Failed to load file using ar1 loader (%s)" % e, exc_info=True)
+            try:
+                dh.load_k7_data(datafilename,rows=300,startrow=0)
+            except Exception,e:
+                logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
+                try:
+                    dh.load_ff_data(datafilename)
+                except Exception,e:
+                    logger.warning(" Failed to load file using ff loader (%s)" % e, exc_info=True)
+                    pass
+                pass
+            pass
         datasd=dh.sd_hist
     logger.info('Started ring buffer process')
     warnOnce=True
@@ -2674,8 +2684,8 @@ parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
                   help="Display debug messages.")
 parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%(default)s)")
-parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=False,
-                  help="Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
+parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=True,
+                  help="DEPRECATED Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%(default)s)")
 parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
@@ -2712,10 +2722,7 @@ np.random.seed(0)
 if (len(args)==0):
     args=['stream']
 
-if (opts.rts_antenna_labels):
-    ANTNAMEPREFIX='m%03d' #meerkat
-else:
-    ANTNAMEPREFIX='ant%d' #kat7    
+ANTNAMEPREFIX='m%03d' #meerkat; ANTNAMEPREFIX='ant%d' #kat7
     
 # loads usersettings
 try:
