@@ -179,6 +179,7 @@ def getstartstoptime(ts,themin,themax):
 
 #idea is to store the averaged time series profile in channel 0
 def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue):
+    thefileoffset=0
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
     hp = hpy()
@@ -192,11 +193,11 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
         datasd=dh.sd
     else:
         try:
-            dh.load_ar1_data(datafilename, rows=300, startrow=0, capacity=memusage/100.0, store2=True)
+            dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True)
         except Exception,e:
             logger.warning(" Failed to load file using ar1 loader (%s)" % e, exc_info=True)
             try:
-                dh.load_k7_data(datafilename,rows=300,startrow=0)
+                dh.load_k7_data(datafilename,rows=300,startrow=thefileoffset)
             except Exception,e:
                 logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
                 try:
@@ -252,6 +253,18 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 logger.info('Memory usage %s (kb)'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
                 logger.info(hpleftover)
                 fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
+                ringbufferresultqueue.put(fig)
+                continue
+            if (thelayoutsettings=='fileoffset'):
+                if (datafilename is 'stream'):
+                    fig={'logconsole':'This is a stream'}
+                elif (theviewsettings is None):
+                    fig={'logconsole':'The fileoffset for %s is %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
+                else:
+                    thefileoffset=theviewsettings
+                    dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True)
+                    datasd=dh.sd_hist
+                    fig={'logconsole':'Restarted %s at %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='RESTART'):
@@ -998,6 +1011,8 @@ max_custom_signals=128
 def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     global failed_update_ingest_signals_lastts
     global ingest_signals
+    if (opts.datafilename is not 'stream'):
+        return
     if (failed_update_ingest_signals_lastts==lastts):
         return
     #remove stale items
@@ -1506,6 +1521,18 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                     else:
                         send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
+        elif (args[0]=='fileoffset'):
+            logger.info(repr(args))
+            if (opts.datafilename is 'stream'):
+                send_websock_cmd('logconsole("Ignoring fileoffset command because data source is a stream and not a file",true,true,true)',handlerkey)
+            else:
+                with RingBufferLock:
+                    ringbufferrequestqueue.put(['fileoffset',int(args[1]) if (args[1].isdigit()) else None,0,0,0,0])
+                    fig=ringbufferresultqueue.get()
+                    if (fig=={}):#an exception occurred
+                        send_websock_cmd('logconsole("Server exception occurred evaluating fileoffset",true,true,true)',handlerkey)
+                    elif ('logconsole' in fig):
+                        send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='showonlineflags' or args[0]=='showflags'):#onlineflags on, onlineflags off; flags on, flags off
             logger.info(repr(args))
             html_layoutsettings[username][args[0]]=args[1]

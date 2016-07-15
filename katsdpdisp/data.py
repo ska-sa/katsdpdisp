@@ -537,9 +537,10 @@ class SignalDisplayStore2(object):
         self.init_storage(n_chans=self.n_chans, blmxn_chans=256, n_bls=len(bls_ordering))
         self.collectionproducts,self.percrunavg=set_bls(self.cpref.bls_ordering)
         self.timeseriesmaskind,weightedmask,self.spectrum_flag0,self.spectrum_flag1=parse_timeseries_mask(self.timeseriesmaskstr,self.n_chans)
+        self.h5_ndumps=len(h5.timestamps)
 
         tss = h5.timestamps[startrow:startrow+rows]
-        print "Loading %i integrations..." % len(tss)
+        print "Loading %d of %d integrations..." % (len(tss),len(h5.timestamps))
         blmx = np.zeros([len(bls_ordering),256],dtype=np.complex)
         blmxfl = np.zeros([len(bls_ordering),256],dtype=np.uint8)
         timeseries = np.zeros(len(bls_ordering),dtype=np.complex)
@@ -560,10 +561,10 @@ class SignalDisplayStore2(object):
                 if (len(iproducts)>0):
                     pdata=np.percentile(d[iproducts,:],[0,100,25,75,50],axis=0)
                     perc.extend(pdata)
-                    percfl.extend(np.zeros(pdata.shape,dtype=np.complex64))
+                    percfl.extend(np.zeros(pdata.shape,dtype=np.uint8))
                 else:
                     perc.extend(np.nan*np.zeros([5],dtype=np.complex64))
-                    percfl.extend(np.zeros([5],dtype=np.complex64))
+                    percfl.extend(np.zeros([5],dtype=np.uint8))
 
             perc=np.array(perc).swapaxes(0,1)
             percfl=np.array(percfl,dtype=np.uint8).swapaxes(0,1)
