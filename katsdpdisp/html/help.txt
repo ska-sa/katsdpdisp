@@ -41,13 +41,17 @@ loop - displays a list of different profiles in a loop
 kick - kicks a user off the system
 
 Advanced user commands:
-console - shows,  hides or clears the console
+antennas - shows antenna names
+console - shows, hides or clears the console
 RESTART - exits spead receiver process and restarts it
 memoryleak - prints out new object counts in memory
 inputs - see which antenna inputs are available in spead stream
 update - display performance information updates to console
 server - display performance of server
 telstate - displays telescope state keys
+
+[antennas]
+Prints out the antenna names used in the subarray.
 
 [auto]
 Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh as well as vv auto correlation products. This collection excludes hv auto correlation products.

@@ -1550,7 +1550,20 @@ def handle_websock_event(handlerkey,*args):
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
-                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
+                inputsstr=fig['logconsole']
+                inputs=inputsstr.split(',')
+                send_websock_cmd('logconsole("%d inputs: '%(len(inputs))+inputsstr+'",true,true,true)',handlerkey)
+        elif (args[0]=='antennas'):
+            logger.info(repr(args))
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+                fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                inputs=fig['logconsole'].split(',')
+                antennas=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+                send_websock_cmd('logconsole("%d antennas: '%(len(antennas))+','.join(antennas)+'",true,true,true)',handlerkey)
         elif (args[0]=='info'):
             logger.info(repr(args))
             with RingBufferLock:
@@ -2807,6 +2820,20 @@ opts.datafilename=args[0]
 rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
 htmlrequest_handlers={}
+
+if (opts.datafilename is not 'stream'):
+    telstate_script_name=opts.datafilename
+    scriptnametext=opts.datafilename
+    with RingBufferLock:
+        ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+        fig=ringbufferresultqueue.get()
+    if (fig=={}):#an exception occurred
+        logger.warning('Server exception evaluating inputs')
+    elif ('logconsole' in fig):
+        inputs=fig['logconsole'].split(',')
+        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+    else:
+        logger.warning('Error evaluating inputs')
 
 def graceful_exit(_signo=None, _stack_frame=None):
     logger.info("Exiting time_plot on SIGTERM")

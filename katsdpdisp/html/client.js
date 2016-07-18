@@ -278,6 +278,9 @@ function setsignals(){
     }else if (signaltext=='users')
     {   
         handle_data_user_event('getusers');
+    }else if (signaltext=='antennas')
+	{
+		handle_data_user_event('antennas');
     }else if (signaltext=='inputs')
 	{
 		handle_data_user_event('inputs');
