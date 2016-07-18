@@ -353,7 +353,7 @@ class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
     This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
     is done whenever channel or baseline count changes."""
-    def __init__(self, n_ants=2, capacity=0.2):
+    def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr=''):
         try:
             import psutil
             self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
@@ -378,9 +378,9 @@ class SignalDisplayStore2(object):
         self.first_pass = True
         self.blmxfirst_pass = True
         self.timeseriesfirst_pass = True
-        self.timeseriesmaskstr=''
+        self.timeseriesmaskstr = timeseriesmaskstr
 
-    def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0):
+    def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0, timeseriesmaskstr=''):
         gc.collect()#garbage collect before large memory allocation to help prevent fragmentation
         self.n_chans = n_chans
         self.n_bls = n_bls
@@ -411,7 +411,7 @@ class SignalDisplayStore2(object):
         self.first_pass = True
         self.blmxfirst_pass = True
         self.timeseriesfirst_pass = True
-        self.timeseriesmaskstr=''
+        self.timeseriesmaskstr = timeseriesmaskstr
         gc.collect()#garbage collect after large memory allocation to release previous large block of memory
 
     """Add some data to the store.
@@ -534,7 +534,7 @@ class SignalDisplayStore2(object):
         self.channel_bandwidth = h5.channel_width
         self.n_chans = len(self.center_freqs_mhz)
         self.cpref = CorrProdRef(bls_ordering=bls_ordering)
-        self.init_storage(n_chans=self.n_chans, blmxn_chans=256, n_bls=len(bls_ordering))
+        self.init_storage(n_chans=self.n_chans, blmxn_chans=256, n_bls=len(bls_ordering), timeseriesmaskstr=self.timeseriesmaskstr)
         self.collectionproducts,self.percrunavg=set_bls(self.cpref.bls_ordering)
         self.timeseriesmaskind,weightedmask,self.spectrum_flag0,self.spectrum_flag1=parse_timeseries_mask(self.timeseriesmaskstr,self.n_chans)
         self.h5_ndumps=len(h5.timestamps)
@@ -552,7 +552,7 @@ class SignalDisplayStore2(object):
                 #calculate reduced blmx version of data
                 blmx[prod,:] = subsample(d[prod,:], self.n_chans/256)
                 #calculate timeseries
-                timeseries[prod] = np.mean(d[prod,:])
+                timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
             #calculate percentiles
             perc=[]
             percfl=[]
@@ -3114,7 +3114,7 @@ class KATData(object):
         r.start()
         self.sd = DataHandler(dbe=None, receiver=r, store=st)
 
-    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, store2=False):
+    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, store2=False, timeseriesmaskstr=''):
         """Load ar1 data from the specified file and use this to populate a signal display storage object.
         The new data handler is available as .sd_hist
 
@@ -3123,7 +3123,7 @@ class KATData(object):
         filename : string
             The fully qualified path to the HDF5 file in question
         """
-        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity, timeseriesmaskstr=timeseriesmaskstr) if store2 else SignalDisplayStore(capacity=capacity)
         st.pc_load_letter(filename, rows=rows, startrow=startrow)
         r = NullReceiver(st)
         r.cpref = st.cpref

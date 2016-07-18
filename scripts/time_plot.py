@@ -262,7 +262,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                     fig={'logconsole':'The fileoffset for %s is %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
                 else:
                     thefileoffset=theviewsettings
-                    dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True)
+                    dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True, timeseriesmaskstr=datasd.storage.timeseriesmaskstr)
                     datasd=dh.sd_hist
                     fig={'logconsole':'Restarted %s at %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
                 ringbufferresultqueue.put(fig)
@@ -1501,7 +1501,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
-            else:
+            elif (opts.datafilename is 'stream'):
                 ####set timeseries mask on ingest
                 try:
                     result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
