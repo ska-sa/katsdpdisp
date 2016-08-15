@@ -514,7 +514,7 @@ class SignalDisplayStore2(object):
                         phaseangle=float(np.argmax(lag)-len(lag)/2.0)/float(len(lag))
                         self.blmxvalue[iprod]=snr_estimate+1j*phaseangle
                     except Exception, e:
-                        logger.warning('Exception in blmx calculation: '+str(e), exc_info=True)
+                        logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
                         self.blmxvalue[iprod]=0.
                         pass
 
