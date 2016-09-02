@@ -1797,7 +1797,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
                 logusers(handlerkey)
-        if (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0):#don't check more than once a second
+        if ((handlerkey in websockrequest_time) and (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0)):#don't check more than once a second
             poll_telstate_lasttime=websockrequest_time[handlerkey]
             try:
                 if ('data_target' in telstate):
