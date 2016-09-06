@@ -1673,7 +1673,7 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
                 time.sleep(2)
                 Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, ringbufferrequestqueue, ringbufferresultqueue)).start()
-                logger.info('RESTART performed, using port='+opts.spead_port+' memusage='+opts.memusage+' datafilename='+opts.datafilename)
+                logger.info('RESTART performed, using port=%d memusage=%f datafilename=%s'%(opts.spead_port,opts.memusage,opts.datafilename))
                 send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
             cmd=','.join(args[1:])
