@@ -104,11 +104,19 @@ np.seterr(all='ignore')
 #note timeseries ringbuffer should also store flaglist(as fn of channel) per time instant, or atleast whereever a change occurs
 
 colour_dict={}
+colour_dict_bandpass={}
 
+#this colour list is exclusively used by ring buffer process
 def registeredcolour(signalname):
     if (signalname not in colour_dict):
         colour_dict[signalname]=np.random.random(3)*255
     return colour_dict[signalname];
+
+#this colour list is exclusively used by main process
+def registeredcolourbandpass(signalname):
+    if (signalname not in colour_dict_bandpass):
+        colour_dict_bandpass[signalname]=np.random.random(3)*255
+    return colour_dict_bandpass[signalname];
 
 #returns minimum and maximum channel numbers, and channel increment, and channels
 def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
@@ -1210,6 +1218,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:4]=='blmx'):
                 customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'][:8]=='bandpass'):
+                customproducts,outlierproducts,processtime=send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             html_viewsettings[username][ifigure]['processtime']=processtime
             UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
@@ -1364,6 +1374,16 @@ def handle_websock_event(handlerkey,*args):
                 figtype='periodogram%d'%(int(args[0][11:].replace(' ','')))
             else:
                 figtype='periodogram'
+            html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:8]=='bandpass'):#creates new bandpass plot
+            logger.info(repr(args))
+            if (args[0][11:].replace(' ','').isdigit()):
+                figtype='bandpass%d'%(int(args[0][8:].replace(' ','')))
+            else:
+                figtype='bandpass'
             html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
@@ -2116,6 +2136,113 @@ def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,las
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime
 
+def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    try:
+        startproctime=time.time()
+        if (telstate is not None):
+            if ('cal_product_B' in telstate):
+                [(cal_B,cal_B_timestamp)]=telstate.get_range('cal_product_B')
+                ants=telstate.get('cal_antlist')
+                if (True):
+                    ydata=[]
+                    color=[]
+                    legend=[]
+                    start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                    thech_=np.arange(start_chan,stop_chan,chanincr)
+                    for ipol in range(cal_B.shape[1]):
+                        for iant in range(cal_B.shape[2]):
+                            signal=cal_B[:,ipol,iant].reshape(-1)
+                            ydata.append(signal)
+                            legend.append(ants[iant]+['h','v'][ipol])
+                            color.append(np.r_[registeredcolourbandpass(legend[-1]),0])
+                    if (len(ydata)==0):
+                        ydata=[np.nan*thech]
+                        color=[np.array([255,255,255,0])]
+                    if (theviewsettings['type']=='pow'):
+                        ydata=10.0*np.log10(ydata)
+                        fig['ylabel']=['Power']
+                        fig['yunit']=['dB']
+                    elif (thetype=='mag'):
+                        fig['ylabel']=['Amplitude']
+                        fig['yunit']=['counts']
+                    else:
+                        fig['ylabel']=['Phase']
+                        fig['yunit']=['rad']
+                    fig['ydata']=[ydata]
+                    fig['color']=np.array(color)
+                    fig['legend']=legend
+                    fig['outlierhash']=0
+                    fig['title']='Bandpass at '+time.asctime(time.localtime(cal_B_timestamp))
+                    fig['lastts']=cal_B_timestamp
+                    fig['lastdt']=0
+                    fig['version']=theviewsettings['version']
+                    fig['showtitle']=theviewsettings['showtitle']
+                    fig['showlegend']=theviewsettings['showlegend']
+                    fig['showxlabel']=theviewsettings['showxlabel']
+                    fig['showylabel']=theviewsettings['showylabel']
+                    fig['showxticklabel']=theviewsettings['showxticklabel']
+                    fig['showyticklabel']=theviewsettings['showyticklabel']
+                    if (theviewsettings['xtype']=='mhz'):
+                        fig['xdata']=thech
+                        fig['xlabel']='Frequency'
+                        fig['xunit']='MHz'
+                    elif (theviewsettings['xtype']=='ghz'):
+                        fig['xdata']=np.array(thech)/1e3
+                        fig['xlabel']='Frequency'
+                        fig['xunit']='GHz'
+                    else:
+                        fig['xdata']=thech_
+                        fig['xlabel']='Channel number'
+                        fig['xunit']=''
+                    fig['spancolor']=np.array([])
+                    fig['span']=[]
+                    fig['outlierproducts']=[]
+                    fig['customproducts']=[]
+        bandpass_fig=fig
+        processtime=time.time()-startproctime
+        count=0
+        if (lastrecalc<bandpass_fig['version'] or fig['lastts']>lastts+0.01):
+            local_yseries=(bandpass_fig['ydata'])[:]
+            send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),bandpass_fig['version'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),bandpass_fig['lastts'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),bandpass_fig['lastdt'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),bandpass_fig['showtitle'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),bandpass_fig['showlegend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),bandpass_fig['showxlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),bandpass_fig['showylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),bandpass_fig['showxticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),bandpass_fig['showyticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),bandpass_fig['title'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xlabel'%(ifigure),bandpass_fig['xlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),bandpass_fig['ylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),bandpass_fig['xunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),bandpass_fig['yunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legend'%(ifigure),bandpass_fig['legend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),bandpass_fig['outlierhash'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),bandpass_fig['xdata'],'m'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].color'%(ifigure),bandpass_fig['color'],'b'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].type'%(ifigure),theviewsettings['type'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xtype'%(ifigure),theviewsettings['xtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            for ispan,span in enumerate(periodogram_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+                send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(bandpass_fig['span'][ispan]),'H'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),bandpass_fig['spancolor'],'b'),handlerkey);count+=1;
+            for itwin,twinplotyseries in enumerate(local_yseries):
+                for iline,linedata in enumerate(twinplotyseries):
+                    send_websock_data(pack_binarydata_msg('fig[%d].ydata[%d][%d]'%(ifigure,itwin,iline),linedata,'H'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        else:#nothing new
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return bandpass_fig['customproducts'],bandpass_fig['outlierproducts'],processtime
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e), exc_info=True)
+    return [],[],processtime
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:

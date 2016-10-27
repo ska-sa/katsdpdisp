@@ -6,8 +6,10 @@ To hide this console, press the ESC key. To show it again, type 'console on' and
 To get help on a particular command, type 'help' followed by a Space and the command and press Enter.
 
 To add new figures to the page, refer to the commands below:
+bandpass
 timeseries
 periodogram
+lag
 spectrum
 waterfall
 blmx
@@ -28,6 +30,10 @@ outliertime - specify which outliers to detect and display automatically
 See also help on 'limits' to set limit extents for the views.
 
 Other commands
+bandpass - adds a bandpass plot
+periodogram - adds a periodogram plot
+lag - adds a lag plot
+
 flags - specify channels to be flagged for timeseries plot calculation
 onlineflags - hides or shows online flags
 
