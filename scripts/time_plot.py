@@ -2142,11 +2142,15 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         if (telstate is not None):
             if ('cal_product_B' in telstate):
                 [(cal_B,cal_B_timestamp)]=telstate.get_range('cal_product_B')
-                ants=telstate.get('cal_antlist')
                 if (True):
                     ydata=[]
                     color=[]
                     legend=[]
+                    ants=telstate.get('cal_antlist')
+                    cfreq=telstate.get('cbf_center_freq')*1e-6
+                    bwidth=telstate.get('cbf_bandwidth')*1e-6
+                    nchan=telstate.get('sdp_cbf_channels')
+                    ch=np.linspace(cfreq-bwidth/2.0,cfreq+bwidth/2.0,nchan)
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                     thech_=np.arange(start_chan,stop_chan,chanincr)
                     for ipol in range(cal_B.shape[1]):
