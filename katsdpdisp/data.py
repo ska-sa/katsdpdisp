@@ -15,12 +15,7 @@ import spead2
 import spead2.recv
 import six
 
-from quitter import Quitter
-
 datalock = threading.RLock()
-
-quitter = Quitter("exit")
- # create a quitter to handle exit conditions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("katsdpdisp.data")
@@ -1723,8 +1718,6 @@ class DataHandler(object):
             self.receiver = SignalDisplayReceiver(port, self.storage)
             self.receiver.setDaemon(True)
             self.receiver.start()
-
-        quitter.register_callback("Data Handler", self.stop)
 
         self.cpref = self.receiver.cpref
         self.default_product = (1, 2, 'hh')
