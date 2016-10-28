@@ -2321,7 +2321,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     elif (thetype=='mag'):
                         ydata=np.abs(ydata)
                         fig['ylabel']=['Amplitude'] if (dodelay==False) else ['Delay']
-                        fig['yunit']=['s']
+                        fig['yunit']=[''] if (dodelay==False) else ['s']
                     else:
                         ydata=np.angle(ydata)
                         fig['ylabel']=['Phase']
