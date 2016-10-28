@@ -2153,14 +2153,12 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                     nchan=telstate.get('sdp_cbf_channels')
                     ch=np.linspace(cfreq-bwidth/2.0,cfreq+bwidth/2.0,nchan)
                     start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
-                    print theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels
-                    print start_chan,stop_chan,chanincr,thech
                     thech_=np.arange(start_chan,stop_chan,chanincr)
                     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
                     thetype=typelookup[theviewsettings['type']]
                     for ipol in range(cal_B.shape[1]):
                         for iant in range(cal_B.shape[2]):
-                            signal=cal_B[:,ipol,iant].reshape(-1)
+                            signal=cal_B[start_chan:stop_chan:chanincr,ipol,iant].reshape(-1)
                             ydata.append(signal)
                             legend.append(ants[iant]+['h','v'][ipol])
                             color.append(np.r_[registeredcolourbandpass(legend[-1]),0])
