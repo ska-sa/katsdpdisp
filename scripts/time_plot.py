@@ -2268,6 +2268,11 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
 def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     startproctime=time.time()
     fig={}
+    sensorsignal=[]
+    sensorts=[]
+    sensorname=''
+    textsensor=[]
+    textsensorts=[]
     try:
         if (telstate is not None):
             if ('cal_product_G' in telstate):
