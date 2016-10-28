@@ -2330,7 +2330,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
         processtime=time.time()-startproctime
         count=0
         if (fig!={} and (lastrecalc<fig['version'] or outlierhash!=fig['outlierhash'])):
-            local_yseries=(gain_fig['ydata'])[:]
+            local_yseries=(fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),fig['version'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),fig['lastts'],'d'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),fig['lastdt'],'d'),handlerkey);count+=1;
