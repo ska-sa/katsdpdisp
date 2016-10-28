@@ -6,10 +6,11 @@ To hide this console, press the ESC key. To show it again, type 'console on' and
 To get help on a particular command, type 'help' followed by a Space and the command and press Enter.
 
 To add new figures to the page, refer to the commands below:
-bandpass
 timeseries
-periodogram
+bandpass
+gain
 lag
+periodogram
 spectrum
 waterfall
 blmx
@@ -31,8 +32,9 @@ See also help on 'limits' to set limit extents for the views.
 
 Other commands
 bandpass - adds a bandpass plot
-periodogram - adds a periodogram plot
+gain - adds a gain plot
 lag - adds a lag plot
+periodogram - adds a periodogram plot
 
 flags - specify channels to be flagged for timeseries plot calculation
 onlineflags - hides or shows online flags
