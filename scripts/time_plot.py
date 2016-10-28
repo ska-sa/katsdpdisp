@@ -2166,13 +2166,15 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                         ydata=[np.nan*thech]
                         color=[np.array([255,255,255,0])]
                     if (theviewsettings['type']=='pow'):
-                        ydata=10.0*np.log10(ydata)
+                        ydata=10.0*np.log10(np.abs(ydata))
                         fig['ylabel']=['Power']
                         fig['yunit']=['dB']
                     elif (thetype=='mag'):
+                        ydata=np.abs(ydata)
                         fig['ylabel']=['Amplitude']
                         fig['yunit']=['counts']
                     else:
+                        ydata=np.angle(ydata)
                         fig['ylabel']=['Phase']
                         fig['yunit']=['rad']
                     fig['ydata']=[ydata]
