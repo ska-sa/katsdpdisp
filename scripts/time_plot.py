@@ -1222,6 +1222,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'][:4]=='gain'):
                 customproducts,outlierproducts,processtime=send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'][:5]=='delay'):
+                customproducts,outlierproducts,processtime=send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure,dodelay=True)
             html_viewsettings[username][ifigure]['processtime']=processtime
             UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts)
         elif (args[0]=='setzoom'):
@@ -1396,7 +1398,17 @@ def handle_websock_event(handlerkey,*args):
                 figtype='gain%d'%(int(args[0][4:].replace(' ','')))
             else:
                 figtype='gain'
-            html_viewsettings[username].append({'figtype':figtype,'type':'pow','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            html_viewsettings[username].append({'figtype':figtype,'type':'mag','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0][:5]=='delay'):#creates new delay plot
+            logger.info(repr(args))
+            if (args[0][4:].replace(' ','').isdigit()):
+                figtype='delay%d'%(int(args[0][5:].replace(' ','')))
+            else:
+                figtype='delay'
+            html_viewsettings[username].append({'figtype':figtype,'type':'mag','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
@@ -2265,7 +2277,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime
 
-def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure,dodelay=False):
     startproctime=time.time()
     fig={}
     sensorsignal=[]
@@ -2275,8 +2287,11 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
     textsensorts=[]
     try:
         if (telstate is not None):
-            if ('cal_product_G' in telstate):
-                gainlist=telstate.get_range('cal_product_G',0)
+            if ((dodelay==False and 'cal_product_G' in telstate) or (dodelay==True and 'cal_product_K' in telstate)):
+                if (dodelay):
+                    gainlist=telstate.get_range('cal_product_K',0)
+                else:
+                    gainlist=telstate.get_range('cal_product_G',0)
                 if (True):
                     ants=telstate.get('cal_antlist')
                     ts=[]
@@ -2302,11 +2317,11 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     if (theviewsettings['type']=='pow'):
                         ydata=10.0*np.log10(np.abs(ydata))
                         fig['ylabel']=['Power']
-                        fig['yunit']=['dB']
+                        fig['yunit']= ['dB'] if (dodelay==False) else ['s']
                     elif (thetype=='mag'):
                         ydata=np.abs(ydata)
-                        fig['ylabel']=['Amplitude']
-                        fig['yunit']=['counts']
+                        fig['ylabel']=['Amplitude'] if (dodelay==False) else ['Delay']
+                        fig['yunit']=['s']
                     else:
                         ydata=np.angle(ydata)
                         fig['ylabel']=['Phase']
@@ -2316,8 +2331,8 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     fig['ydata']=[ydata]
                     fig['color']=np.array(color)
                     fig['legend']=legend
-                    fig['outlierhash']=outlierhash
-                    fig['title']='Gain'
+                    fig['outlierhash']=outlierhash                    
+                    fig['title']='Gain' if (dodelay==False) else 'Delay'
                     fig['lastts']=ts[-1]
                     fig['lastdt']=0
                     fig['version']=theviewsettings['version']

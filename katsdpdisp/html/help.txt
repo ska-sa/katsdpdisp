@@ -8,6 +8,7 @@ To get help on a particular command, type 'help' followed by a Space and the com
 To add new figures to the page, refer to the commands below:
 timeseries
 bandpass
+delay
 gain
 lag
 periodogram
@@ -32,6 +33,7 @@ See also help on 'limits' to set limit extents for the views.
 
 Other commands
 bandpass - adds a bandpass plot
+delay - adds a delay plot
 gain - adds a gain plot
 lag - adds a lag plot
 periodogram - adds a periodogram plot
