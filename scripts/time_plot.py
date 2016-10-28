@@ -2137,8 +2137,9 @@ def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,las
     return [],[],processtime
 
 def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    startproctime=time.time()
+    fig={}
     try:
-        startproctime=time.time()
         if (telstate is not None):
             if ('cal_product_B' in telstate):
                 [(cal_B,cal_B_timestamp)]=telstate.get_range('cal_product_B')
@@ -2205,7 +2206,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         bandpass_fig=fig
         processtime=time.time()-startproctime
         count=0
-        if (lastrecalc<bandpass_fig['version'] or fig['lastts']>lastts+0.01):
+        if (bandpass_fig!={} and (lastrecalc<bandpass_fig['version'] or bandpass_fig['lastts']>lastts+0.01)):
             local_yseries=(bandpass_fig['ydata'])[:]
             send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),bandpass_fig['version'],'i'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),bandpass_fig['lastts'],'d'),handlerkey);count+=1;
@@ -2246,7 +2247,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         return bandpass_fig['customproducts'],bandpass_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-    return [],[],processtime
+    return [],[],time.time()-startproctime
 
 def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
     try:
