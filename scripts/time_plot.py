@@ -2388,7 +2388,10 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         else:#only send update
-            where=np.where(fig['xdata']>lastts+0.01)[0]#next time stamp index
+            if fig=={}:
+                where=[]
+            else:
+                where=np.where(fig['xdata']>lastts+0.01)[0]#next time stamp index
             if (len(where)>0):
                 its=np.min(where)
                 local_yseries=np.array(fig['ydata'])[:,:,its:]
