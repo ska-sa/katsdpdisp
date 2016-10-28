@@ -2291,7 +2291,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     if (len(gainlist)>0):
                         for ipol in range(gainlist[0][0].shape[0]):
                             for iant in range(gainlist[0][0].shape[1]):
-                                signal=np.array([v[ipol,iant] for v in gainlist]).reshape(-1)
+                                signal=np.array([v[0][ipol,iant] for v in gainlist]).reshape(-1)
                                 ydata.append(signal)
                                 legend.append(ants[iant]+['h','v'][ipol])
                                 color.append(np.r_[registeredcolourbandpass(legend[-1]),0])
