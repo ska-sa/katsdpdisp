@@ -2287,11 +2287,11 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     customproducts=[]
                     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
                     thetype=typelookup[theviewsettings['type']]
-                    for it in range(len(gainlist)):
-                        for ipol in range(gainlist[it][0].shape[0]):
-                            for iant in range(gainlist[it][0].shape[1]):
-                                ts.append(gainlist[it][1])
-                                signal=gainlist[it][0][ipol,iant].reshape(-1)
+                    ts=[v[1] for v in gainlist]
+                    if (len(gainlist)>0):
+                        for ipol in range(gainlist[0][0].shape[0]):
+                            for iant in range(gainlist[0][0].shape[1]):
+                                signal=np.array([v[ipol,iant] for v in gainlist]).reshape(-1)
                                 ydata.append(signal)
                                 legend.append(ants[iant]+['h','v'][ipol])
                                 color.append(np.r_[registeredcolourbandpass(legend[-1]),0])
