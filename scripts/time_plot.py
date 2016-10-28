@@ -2233,7 +2233,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
-            for ispan,span in enumerate(periodogram_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
+            for ispan,span in enumerate(bandpass_fig['span']):#this must be separated because it doesnt evaluate to numpy arrays individially
                 send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(bandpass_fig['span'][ispan]),'H'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),bandpass_fig['spancolor'],'b'),handlerkey);count+=1;
             for itwin,twinplotyseries in enumerate(local_yseries):
