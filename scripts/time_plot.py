@@ -2283,8 +2283,8 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
                     thetype=typelookup[theviewsettings['type']]
                     for it in range(len(gainlist)):
-                        for ipol in range(gainlist[it][0].shape[1]):
-                            for iant in range(gainlist[it][0].shape[2]):
+                        for ipol in range(gainlist[it][0].shape[0]):
+                            for iant in range(gainlist[it][0].shape[1]):
                                 ts.append(gainlist[it][1])
                                 signal=gainlist[it][0][ipol,iant].reshape(-1)
                                 ydata.append(signal)
