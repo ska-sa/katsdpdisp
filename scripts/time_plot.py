@@ -2232,7 +2232,6 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                     fig['outlierproducts']=[]
                     fig['customproducts']=[]
         bandpass_fig=fig
-        processtime=time.time()-startproctime
         count=0
         if (bandpass_fig!={} and (lastrecalc<bandpass_fig['version'] or bandpass_fig['lastts']>lastts+0.01)):
             local_yseries=(bandpass_fig['ydata'])[:]
@@ -2272,7 +2271,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return bandpass_fig['customproducts'],bandpass_fig['outlierproducts'],processtime
+        return [],[],time.time()-startproctime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime
@@ -2347,7 +2346,6 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     fig['spancolor']=[]
                     fig['outlierproducts']=[]
                     fig['customproducts']=[]
-        processtime=time.time()-startproctime
         count=0
         if (fig!={} and (lastrecalc<fig['version'] or outlierhash!=fig['outlierhash'])):
             local_yseries=(fig['ydata'])[:]
@@ -2419,7 +2417,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-        return fig['customproducts'],fig['outlierproducts'],processtime
+        return [],[],time.time()-startproctime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime
