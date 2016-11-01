@@ -2153,7 +2153,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                     ydata=[np.nan*thech]
                     color=[np.array([255,255,255,0])]
                 if (theviewsettings['type']=='pow'):
-                    ydata=10.0*np.log10(np.abs(ydata))
+                    ydata=20.0*np.log10(np.abs(ydata))#ydata is voltage quantity in this case
                     fig['ylabel']=['Power']
                     fig['yunit']=['dB']
                 elif (thetype=='mag'):
@@ -2267,7 +2267,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                     ydata=[]
                     color=[np.array([255,255,255,0])]
                 if (theviewsettings['type']=='pow'):
-                    ydata=10.0*np.log10(np.abs(ydata))
+                    ydata=20.0*np.log10(np.abs(ydata))#ydata is voltage quantity in this case
                     fig['ylabel']=['Power']
                     fig['yunit']= ['dB'] if (not dodelay) else ['dBs']
                 elif (thetype=='mag'):
