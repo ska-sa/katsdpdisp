@@ -2014,7 +2014,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             send_websock_data(pack_binarydata_msg('fig[%d].ysensor'%(ifigure),sensorsignal,'H'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].textsensor'%(ifigure),textsensor,'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].xtextsensor'%(ifigure),textsensorts,'I'),handlerkey);count+=1;
-            for ispan range(len(timeseries_fig['span'])):#this must be separated because it doesnt evaluate to numpy arrays individially
+            for ispan in range(len(timeseries_fig['span'])):#this must be separated because it doesnt evaluate to numpy arrays individially
                 send_websock_data(pack_binarydata_msg('fig[%d].span[%d]'%(ifigure,ispan),np.array(timeseries_fig['span'][ispan]),'I'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].spancolor'%(ifigure),timeseries_fig['spancolor'],'b'),handlerkey);count+=1;
             for itwin,twinplotyseries in enumerate(local_yseries):
