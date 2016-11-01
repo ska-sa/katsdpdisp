@@ -2269,7 +2269,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                 if (theviewsettings['type']=='pow'):
                     ydata=10.0*np.log10(np.abs(ydata))
                     fig['ylabel']=['Power']
-                    fig['yunit']= ['dB'] if (not dodelay) else ['s']
+                    fig['yunit']= ['dB'] if (not dodelay) else ['dBs']
                 elif (thetype=='mag'):
                     if (dodelay):
                         ydata=np.real(ydata)
