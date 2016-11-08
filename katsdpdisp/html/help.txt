@@ -69,6 +69,14 @@ Adds a percentile collection plot to timeseries and spectrum figures for the col
 See also:
 autohh,autovv,autohv,cross
 
+[bandwidthMHz]
+
+bandwidthMHz=856 - overrides bandwidth. Use negative value to flip axis around.
+
+[centerfreqMHz]
+
+centerfreqMHz=1284 - overrides bandwidth
+
 [blmx]
 Adds a baseline matrix using one of the following commands. Double click a matrix item to generate a waterfall plot for corresponding signal.
 

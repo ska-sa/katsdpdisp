@@ -16,6 +16,7 @@ import spead2.recv
 import six
 
 datalock = threading.RLock()
+freqlock = threading.RLock()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("katsdpdisp.data")
@@ -911,21 +912,28 @@ class SpeadSDReceiver(threading.Thread):
         self._direct_meta_required = ['sync_time','scale_factor_timestamp','n_chans','center_freq','bandwidth','bls_ordering']
         self._direct_meta = {}
         self.notifyqueue = notifyqueue
+        self.override_channel_bandwidth = None
+        self.override_center_freq = None
         threading.Thread.__init__(self)
 
     def stop(self):
         if self.rx is not None: self.rx.stop()
 
-    def update_center_freqs(self):
+    def update_center_freqs(self,_override_center_freq=None,_override_channel_bandwidth=None):
         """Update the table containing the center frequencies for each channels."""
         logger.info("Attempting to update center frequencies...")
         try:
-            self.center_freq = self.ig['center_freq'].value or 1284.0e6 #temporary hack because center_freq not available in AR1
-            self.channels = self.ig['n_chans'].value
-            self.channel_bandwidth = self.ig['bandwidth'].value / self.channels
-            self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
-            #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
-             # channels mapped in reverse order
+            with freqlock:# update_center_freqs can be called from ringbuffer main process thread or from spead stream thread
+                if (_override_channel_bandwidth is not None):
+                    self.override_channel_bandwidth=_override_channel_bandwidth
+                if (_override_center_freq is not None):
+                    self.override_center_freq=_override_center_freq
+                self.channels = self.ig['n_chans'].value
+                self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
+                self.channel_bandwidth = self.override_channel_bandwidth if (self.override_channel_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
+                #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
+                 # channels mapped in reverse order
         except ValueError:
             logger.warning("Failed to update center frequency table due to missing metadata.")
 

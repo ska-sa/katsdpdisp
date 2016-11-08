@@ -243,8 +243,24 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':'outliertime=%g'%(datasd.storage.outliertime)}
                 ringbufferresultqueue.put(fig)
                 continue
-            if (thelayoutsettings=='inputs'):                
+            if (thelayoutsettings=='inputs'):
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
+                ringbufferresultqueue.put(fig)
+                continue
+            if (thelayoutsettings=='override'):
+                try:
+                    if (theviewsettings.startswith('bandwidthMHz=')):
+                        newval=float(theviewsettings[13:])
+                        fig={'logconsole':'override set bandwidthMHz=%f'%(newval)}
+                        datasd.receiver.update_center_freqs(_override_channel_bandwidth=newval*1e6)
+                    elif (theviewsettings.startswith('centerfreqMHz=')):
+                        newval=float(theviewsettings[14:])
+                        fig={'logconsole':'override set centerfreqMHz=%f'%(newval)}
+                        datasd.receiver.update_center_freqs(_override_center_freq=newval*1e6)
+                    else:
+                        fig={}
+                except:
+                        fig={}
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='get_bls_ordering'):
@@ -1550,6 +1566,16 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='getusers'):
             logger.info(repr(args))
             logusers(handlerkey)
+        elif (args[0]=='override'):
+            logger.info(repr(args))
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['override',args[1],0,0,0,0])
+                fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating override",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                overridestr=fig['logconsole']
+                send_websock_cmd('logconsole("'+overridestr+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
             logger.info(repr(args))
             with RingBufferLock:
