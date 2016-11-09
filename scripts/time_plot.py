@@ -250,14 +250,20 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (thelayoutsettings=='override'):
                 try:
                     if (theviewsettings.startswith('bandwidthMHz=')):
+                        print 'theviewsettings[13:]',theviewsettings[13:]
                         if (len(theviewsettings[13:])==0):
+                            print 'doing this'
                             fig={'logconsole':'clear override bandwidthMHz'}
+                            print 'got here'
                             datasd.receiver.set_override_channel_bandwidth(None)
+                            print 'got here too'
                         else:
                             newval=float(theviewsettings[13:])
                             fig={'logconsole':'override set bandwidthMHz=%f'%(newval)}
                             datasd.receiver.set_override_channel_bandwidth(newval*1e6)
+                        print 'about to update center freqs'
                         datasd.receiver.update_center_freqs()
+                        print 'got here finally'
                     elif (theviewsettings.startswith('centerfreqMHz=')):
                         if (len(theviewsettings[14:])==0):
                             fig={'logconsole':'clear override centerfreqMHz'}
