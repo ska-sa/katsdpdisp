@@ -71,10 +71,12 @@ autohh,autovv,autohv,cross
 
 [bandwidthMHz]
 
+bandwidthMHz=    - clears bandwidth override
 bandwidthMHz=856 - overrides bandwidth. Use negative value to flip axis around.
 
 [centerfreqMHz]
 
+centerfreqMHz=     - clears center frequency override
 centerfreqMHz=1284 - overrides center frequency
 
 [blmx]
