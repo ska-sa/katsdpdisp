@@ -250,13 +250,23 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
             if (thelayoutsettings=='override'):
                 try:
                     if (theviewsettings.startswith('bandwidthMHz=')):
-                        newval=float(theviewsettings[13:])
-                        fig={'logconsole':'override set bandwidthMHz=%f'%(newval)}
-                        datasd.receiver.update_center_freqs(_override_channel_bandwidth=newval*1e6)
+                        if (len(theviewsettings[13:])==0):
+                            fig={'logconsole':'clear override bandwidthMHz'}
+                            datasd.receiver.set_override_channel_bandwidth(None)
+                        else:
+                            newval=float(theviewsettings[13:])
+                            fig={'logconsole':'override set bandwidthMHz=%f'%(newval)}
+                            datasd.receiver.set_override_channel_bandwidth(newval*1e6)
+                        datasd.receiver.update_center_freqs()
                     elif (theviewsettings.startswith('centerfreqMHz=')):
-                        newval=float(theviewsettings[14:])
-                        fig={'logconsole':'override set centerfreqMHz=%f'%(newval)}
-                        datasd.receiver.update_center_freqs(_override_center_freq=newval*1e6)
+                        if (len(theviewsettings[14:])==0):
+                            fig={'logconsole':'clear override centerfreqMHz'}
+                            datasd.receiver.set_override_center_freq(None)
+                        else:
+                            newval=float(theviewsettings[14:])
+                            fig={'logconsole':'override set centerfreqMHz=%f'%(newval)}
+                            datasd.receiver.set_override_center_freq(newval*1e6)
+                        datasd.receiver.update_center_freqs()
                     else:
                         fig={}
                 except:
