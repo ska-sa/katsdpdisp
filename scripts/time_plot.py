@@ -1852,19 +1852,16 @@ def handle_websock_event(handlerkey,*args):
                     data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
                     for thisdata_target in data_target:
                         telstate_data_target.append((thisdata_target[0].split(',')[0].split(' |')[0].split('|')[0],thisdata_target[1]))
-                    if (len(data_target)):#only check for change in gain solutions when there is a new data_target. Does imply delay in result but that's better than polling more often
-                        if (len(telstate_cal_antlist)==0 and 'cal_antlist' in telstate):
-                            telstate_cal_antlist=telstate.get('cal_antlist')
-                        if ('cal_product_G' in telstate):
-                            newproducts=telstate.get_range('cal_product_G',st=0 if (len(telstate_cal_product_G)==0) else telstate_cal_product_G[-1][1]+0.01)
-                            for thisnewproduct in newproducts:
-                                telstate_cal_product_G.append(thisnewproduct)
-                            if (len(newproducts) and 'cal_product_B' in telstate):#only check for new bandpass if there is a new gain solution. Does imply delay in result but that's better than polling more often
-                                telstate_cal_product_B=telstate.get_range('cal_product_B')#just overwrite with latest values
-                        if ('cal_product_K' in telstate):
-                            newproducts=telstate.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
-                            for thisnewproduct in newproducts:
-                                telstate_cal_product_K.append(thisnewproduct)
+                if (len(telstate_cal_antlist)==0 and 'cal_antlist' in telstate):
+                    telstate_cal_antlist=telstate.get('cal_antlist')
+                if ('cal_product_G' in telstate):
+                    newproducts=telstate.get_range('cal_product_G',st=0 if (len(telstate_cal_product_G)==0) else telstate_cal_product_G[-1][1]+0.01)
+                    telstate_cal_product_G.extend(newproducts)
+                    if (len(newproducts) and 'cal_product_B' in telstate):#only check for new bandpass if there is a new gain solution. Does imply delay in result but that's better than polling more often
+                        telstate_cal_product_B=telstate.get_range('cal_product_B')#just overwrite with latest values, do not make history available
+                if ('cal_product_K' in telstate):
+                    newproducts=telstate.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
+                    telstate_cal_product_K.extend(newproducts)
                 if (len(telstate_antenna_mask)>0 and telstate_antenna_mask[0]+'_activity' in telstate):
                     data_activity=telstate.get_range(telstate_antenna_mask[0]+'_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
                     for thisdata_activity in data_activity:
