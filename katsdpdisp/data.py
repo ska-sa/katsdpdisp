@@ -1005,14 +1005,11 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
-                    doupdatefreq=False
-                    with freqlock:#to avoid nested freqlock access in update_center_freqs(), introduce doupdatefreq
+                    with freqlock:#reentrant lock is ok to nest
                         if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
                             if (self.override_center_freq is not None and self.ig['center_freq'].value != self.center_freq) or (self.override_bandwidth is not None and self.ig['bandwidth'].value / self.ig['n_chans'].value != self.channel_bandwidth):
-                                doupdatefreq=True
-                    if (doupdatefreq):
-                        self.update_center_freqs()
-                        logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
+                                self.update_center_freqs()
+                                logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
                     if self.ig['bls_ordering'].version != bls_ordering_version:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value] != self.bls_ordering:
                             logger.info("Previous bls ordering: {}".format(self.bls_ordering))
