@@ -16,6 +16,7 @@ import spead2.recv
 import six
 
 datalock = threading.RLock()
+freqlock = threading.RLock()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("katsdpdisp.data")
@@ -911,21 +912,32 @@ class SpeadSDReceiver(threading.Thread):
         self._direct_meta_required = ['sync_time','scale_factor_timestamp','n_chans','center_freq','bandwidth','bls_ordering']
         self._direct_meta = {}
         self.notifyqueue = notifyqueue
+        self.override_bandwidth = None
+        self.override_center_freq = None
         threading.Thread.__init__(self)
 
     def stop(self):
         if self.rx is not None: self.rx.stop()
 
+    def set_override_center_freq(self,override_center_freq):
+        with freqlock:
+            self.override_center_freq=override_center_freq
+
+    def set_override_bandwidth(self,override_bandwidth):
+        with freqlock:
+            self.override_bandwidth=override_bandwidth
+
     def update_center_freqs(self):
         """Update the table containing the center frequencies for each channels."""
         logger.info("Attempting to update center frequencies...")
         try:
-            self.center_freq = self.ig['center_freq'].value or 1284.0e6 #temporary hack because center_freq not available in AR1
-            self.channels = self.ig['n_chans'].value
-            self.channel_bandwidth = self.ig['bandwidth'].value / self.channels
-            self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
-            #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
-             # channels mapped in reverse order
+            with freqlock:# update_center_freqs can be called from ringbuffer main process thread or from spead stream thread
+                self.channels = self.ig['n_chans'].value
+                self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
+                self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
+                #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
+                 # channels mapped in reverse order
         except ValueError:
             logger.warning("Failed to update center frequency table due to missing metadata.")
 
@@ -993,10 +1005,11 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
-                    if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
-                        if self.ig['center_freq'].value != self.center_freq or self.ig['bandwidth'].value / self.ig['n_chans'].value != self.channel_bandwidth:
-                            self.update_center_freqs()
-                            logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
+                    with freqlock:#reentrant lock is ok to nest
+                        if self.ig['center_freq'].value is not None and self.ig['bandwidth'].value is not None and self.ig['n_chans'].value is not None:
+                            if (self.override_center_freq is not None and self.ig['center_freq'].value != self.center_freq) or (self.override_bandwidth is not None and self.ig['bandwidth'].value / self.ig['n_chans'].value != self.channel_bandwidth):
+                                self.update_center_freqs()
+                                logger.info("New center frequency:"+str(self.center_freq)+" channel bandwidth: "+str(self.channel_bandwidth))
                     if self.ig['bls_ordering'].version != bls_ordering_version:
                         if [[bl[0].lower(),bl[1].lower()] for bl in self.ig['bls_ordering'].value] != self.bls_ordering:
                             logger.info("Previous bls ordering: {}".format(self.bls_ordering))

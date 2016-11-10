@@ -397,6 +397,9 @@ function setsignals(){
                 logconsole('Current loop view profiles: '+loopusernames.join(', '),true,true,true)
             }
         }
+    }else if (signaltext.slice(0,13)=='bandwidthMHz=' || signaltext.slice(0,14)=='centerfreqMHz=')
+    {
+        handle_data_user_event('override,'+signaltext)
     }else if (signaltext.slice(0,11)=='fileoffset=' || signaltext.slice(0,11)=='fileoffset ')
     {
         handle_data_user_event('fileoffset,'+signaltext.slice(11))

@@ -243,8 +243,34 @@ def RingBufferProcess(spead_port, memusage, datafilename, ringbufferrequestqueue
                 fig={'logconsole':'outliertime=%g'%(datasd.storage.outliertime)}
                 ringbufferresultqueue.put(fig)
                 continue
-            if (thelayoutsettings=='inputs'):                
+            if (thelayoutsettings=='inputs'):
                 fig={'logconsole':','.join(datasd.cpref.inputs)}
+                ringbufferresultqueue.put(fig)
+                continue
+            if (thelayoutsettings=='override'):
+                try:
+                    if (theviewsettings.startswith('bandwidthMHz=')):
+                        if (len(theviewsettings[13:])==0):
+                            fig={'logconsole':'clear override bandwidthMHz'}
+                            datasd.receiver.set_override_bandwidth(None)
+                        else:
+                            newval=float(theviewsettings[13:])
+                            fig={'logconsole':'override set bandwidthMHz=%f'%(newval)}
+                            datasd.receiver.set_override_bandwidth(newval*1e6)
+                        datasd.receiver.update_center_freqs()
+                    elif (theviewsettings.startswith('centerfreqMHz=')):
+                        if (len(theviewsettings[14:])==0):
+                            fig={'logconsole':'clear override centerfreqMHz'}
+                            datasd.receiver.set_override_center_freq(None)
+                        else:
+                            newval=float(theviewsettings[14:])
+                            fig={'logconsole':'override set centerfreqMHz=%f'%(newval)}
+                            datasd.receiver.set_override_center_freq(newval*1e6)
+                        datasd.receiver.update_center_freqs()
+                    else:
+                        fig={}
+                except:
+                        fig={}
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='get_bls_ordering'):
@@ -1109,6 +1135,10 @@ def parse_antennarange(selectstr):
 
 def handle_websock_event(handlerkey,*args):
     global poll_telstate_lasttime
+    global telstate_cal_product_G
+    global telstate_cal_product_K
+    global telstate_cal_product_B
+    global telstate_cal_antlist
     global telstate_data_target
     global telstate_antenna_mask
     global telstate_activity
@@ -1550,6 +1580,16 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='getusers'):
             logger.info(repr(args))
             logusers(handlerkey)
+        elif (args[0]=='override'):
+            logger.info(repr(args))
+            with RingBufferLock:
+                ringbufferrequestqueue.put(['override',args[1],0,0,0,0])
+                fig=ringbufferresultqueue.get()
+            if (fig=={}):#an exception occurred
+                send_websock_cmd('logconsole("Server exception occurred evaluating override",true,true,true)',handlerkey)
+            elif ('logconsole' in fig):
+                overridestr=fig['logconsole']
+                send_websock_cmd('logconsole("'+overridestr+'",true,true,true)',handlerkey)
         elif (args[0]=='inputs'):
             logger.info(repr(args))
             with RingBufferLock:
@@ -1812,6 +1852,16 @@ def handle_websock_event(handlerkey,*args):
                     data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
                     for thisdata_target in data_target:
                         telstate_data_target.append((thisdata_target[0].split(',')[0].split(' |')[0].split('|')[0],thisdata_target[1]))
+                if (len(telstate_cal_antlist)==0 and 'cal_antlist' in telstate):
+                    telstate_cal_antlist=telstate.get('cal_antlist')
+                if ('cal_product_G' in telstate):
+                    newproducts=telstate.get_range('cal_product_G',st=0 if (len(telstate_cal_product_G)==0) else telstate_cal_product_G[-1][1]+0.01)
+                    telstate_cal_product_G.extend(newproducts)
+                    if (len(newproducts) and 'cal_product_B' in telstate):#only check for new bandpass if there is a new gain solution. Does imply delay in result but that's better than polling more often
+                        telstate_cal_product_B=telstate.get_range('cal_product_B')#just overwrite with latest values, do not make history available
+                if ('cal_product_K' in telstate):
+                    newproducts=telstate.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
+                    telstate_cal_product_K.extend(newproducts)
                 if (len(telstate_antenna_mask)>0 and telstate_antenna_mask[0]+'_activity' in telstate):
                     data_activity=telstate.get_range(telstate_antenna_mask[0]+'_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
                     for thisdata_activity in data_activity:
@@ -2129,12 +2179,11 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
     fig={}
     try:
         if (telstate is not None):
-            if ('cal_product_B' in telstate):
-                [(cal_B,cal_B_timestamp)]=telstate.get_range('cal_product_B')
+            if (len(telstate_cal_product_B)):
+                [(cal_B,cal_B_timestamp)]=telstate_cal_product_B
                 ydata=[]
                 color=[]
                 legend=[]
-                ants=telstate.get('cal_antlist')
                 cfreq=telstate.get('cbf_center_freq')*1e-6
                 bwidth=telstate.get('cbf_bandwidth')*1e-6
                 nchan=telstate.get('sdp_cbf_channels')
@@ -2147,7 +2196,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                     for iant in range(cal_B.shape[2]):
                         signal=cal_B[start_chan:stop_chan:chanincr,ipol,iant].reshape(-1)
                         ydata.append(signal)
-                        legend.append(ants[iant]+['h','v'][ipol])
+                        legend.append(telstate_cal_antlist[iant]+['h','v'][ipol])
                         color.append(np.r_[registeredcolourant(legend[-1]),0])
                 if (len(ydata)==0):
                     ydata=[np.nan*thech]
@@ -2242,10 +2291,8 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
     textsensorts=[]
     try:
         if (telstate is not None):
-            gainkey='cal_product_K' if dodelay else 'cal_product_G'
-            if (gainkey in telstate):
-                gainlist=telstate.get_range(gainkey,0)
-                ants=telstate.get('cal_antlist')
+            gainlist=telstate_cal_product_K if dodelay else telstate_cal_product_G
+            if (len(gainlist)):
                 ts=[]
                 ydata=[]
                 color=[]
@@ -2260,7 +2307,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                         for iant in range(gainlist[0][0].shape[1]):
                             signal=np.array([v[0][ipol,iant] for v in gainlist]).reshape(-1)
                             ydata.append(signal)
-                            legend.append(ants[iant]+['h','v'][ipol])
+                            legend.append(telstate_cal_antlist[iant]+['h','v'][ipol])
                             color.append(np.r_[registeredcolourant(legend[-1]),0])
                 outlierhash=0
                 if (len(ydata)==0):
@@ -3064,6 +3111,10 @@ if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
 
 poll_telstate_lasttime=0
+telstate_cal_antlist=[]
+telstate_cal_product_G=[]
+telstate_cal_product_K=[]
+telstate_cal_product_B=[]
 telstate_data_target=[]
 telstate_activity=[]
 telstate_antenna_mask=[]
