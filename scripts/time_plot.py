@@ -2485,7 +2485,7 @@ def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,l
                 fig['lastts']=ts[-1]
                 fig['lastdt']=0
                 fig['version']=theviewsettings['version']
-                fig['xdata']=range(gainlist[0][0].shape[1]*2)
+                fig['xdata']=range(gainlist[0][0].shape[1]*2+1)
                 fig['xlabel']='Input'
                 fig['xunit']=' '
                 fig['outlierproducts']=[]
