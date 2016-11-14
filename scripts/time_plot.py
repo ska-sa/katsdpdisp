@@ -2475,7 +2475,7 @@ def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,l
                 fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                 fig['yunit']='s'
                 fig['cdata']=cdata
-                fig['ydata']=np.array(limitedts)
+                fig['ydata']=np.array(ts)
                 fig['legend']=[]
                 fig['outlierhash']=0
                 fig['color']=[]
