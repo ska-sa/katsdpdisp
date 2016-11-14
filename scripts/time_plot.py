@@ -2434,7 +2434,6 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
 
 
 def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure,dodelay=False):
-    try:
     startproctime=time.time()
     fig={}
     try:
