@@ -2455,7 +2455,7 @@ def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,l
                             cdata.append(signal)
                             legend.append(telstate_cal_antlist[iant]+['h','v'][ipol])
                 outlierhash=0
-                cdata=np.array(cdata)
+                cdata=np.array(cdata).transpose()
                 if (theviewsettings['type']=='pow'):
                     cdata=20.0*np.log10(np.abs(cdata))
                     fig['clabel']='Power'
