@@ -1296,22 +1296,30 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                         {
                             thislegend=""+parseInt(legend[legend.length-1].slice(1,4))
                             sz=context.measureText(thislegend)                            
-                            if (sz.width<colwidth)
-                               legendtype=3//e.g. 64
+                            if (sz.width<colwidth*2)
+                               legendtype=3//e.g. 64 straddling 2 columns
                         }
                     }
-                    for(var icol=0;icol<legend.length;icol++)
-                    {
-                        if (legendtype==1)
-                            thislegend=legend[icol]
-                        else if (legendtype==2)
-                            thislegend=""+parseInt(legend[icol].slice(1,4))+legend[icol][4]
-                        else if (legendtype==3)
-                            thislegend=""+parseInt(legend[icol].slice(1,4))
-                        else continue
-                        sz=context.measureText(thislegend)
-                        figcontext.fillText(thislegend,axisposx+(icol/colscale+0.5+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
-                    }
+                    if (legendtype)
+                        for(var icol=0;icol<legend.length;icol++)
+                        {
+                            if (legendtype==1)
+                                thislegend=legend[icol]
+                            else if (legendtype==2)
+                                thislegend=""+parseInt(legend[icol].slice(1,4))+legend[icol][4]
+                            else// legendtype==3 //antenna number straddles h&v columns
+                            {
+                                if (icol%2==1)
+                                {
+                                    thislegend=""+parseInt(legend[icol].slice(1,4))
+                                    sz=context.measureText(thislegend)
+                                    figcontext.fillText(thislegend,axisposx+(icol/colscale+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
+                                }
+                                continue
+                            }
+                            sz=context.measureText(thislegend)
+                            figcontext.fillText(thislegend,axisposx+(icol/colscale+0.5+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
+                        }
                 }
 
                 figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
