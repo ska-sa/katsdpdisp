@@ -1279,11 +1279,38 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 
                 if (legend.length>0)//==(dataylist[0]).length)//for gain matrix view
                 {
+                    var legendtype=0//no legend
                     context.font=""+tickfontHeight+"px sans-serif";
+                    colwidth=axiscanvas.width/(hviewmax-hviewmin)
+                    thislegend=legend[legend.length-1]
+                    sz=context.measureText(thislegend)
+                    if (sz.width<colwidth)
+                        legendtype=1//e.g. m064h
+                    else
+                    {
+                        thislegend=""+parseInt(legend[legend.length-1].slice(1,4))+legend[legend.length-1][4]
+                        sz=context.measureText(thislegend)
+                        if (sz.width<colwidth)
+                            legendtype=2//e.g. 64h
+                        else
+                        {
+                            thislegend=""+parseInt(legend[legend.length-1].slice(1,4))
+                            sz=context.measureText(thislegend)                            
+                            if (sz.width<colwidth)
+                               legendtype=3//e.g. 64
+                        }
+                    }
                     for(var icol=0;icol<legend.length;icol++)
                     {
-                        sz=context.measureText(legend[icol])
-                        figcontext.fillText(legend[icol],(icol/colscale+dataxmin-hviewmin)/(hviewmax-hviewmin)*axiscanvas.width,-50)
+                        if (legendtype==1)
+                            thislegend=legend[icol]
+                        else if (legendtype==2)
+                            thislegend=""+parseInt(legend[icol].slice(1,4))+legend[icol][4]
+                        else if (legendtype==3)
+                            thislegend=""+parseInt(legend[icol].slice(1,4))
+                        else continue
+                        sz=context.measureText(thislegend)
+                        figcontext.fillText(thislegend,axisposx+(icol/colscale+0.5+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
                     }
                 }
 
