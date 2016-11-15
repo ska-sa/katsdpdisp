@@ -2449,8 +2449,8 @@ def send_gainwaterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,l
                 thetype=typelookup[theviewsettings['type']]
                 ts=[v[1] for v in gainlist]
                 if (len(gainlist)>0):
-                    for ipol in range(gainlist[0][0].shape[0]):
-                        for iant in range(gainlist[0][0].shape[1]):
+                    for iant in range(gainlist[0][0].shape[1]):
+                        for ipol in range(gainlist[0][0].shape[0]):
                             signal=np.array([v[0][ipol,iant] for v in gainlist]).reshape(-1)
                             cdata.append(signal)
                             legend.append(telstate_cal_antlist[iant]+['h','v'][ipol])
