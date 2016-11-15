@@ -1258,6 +1258,15 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 
                 drawMetricLinearAtPt(figcontext, vviewmin, vviewmax, axiscanvas.height, -(axisposy+axiscanvas.height),axisposx, units, ylabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
 
+                if (legend.length>0)//==(dataylist[0]).length)//for gain matrix view
+                {
+                    context.font=""+tickfontHeight+"px sans-serif";
+                    for(var icol=0;icol<legend.length;icol++)
+                    {
+                        sz=context.measureText(label)
+                        figcontext.fillText(legend[icol],50,(icol/colscale+dataxmin-hviewmin)/(hviewmax-hviewmin)*axiscanvas.width)
+                    }
+                }
                 if (RG_fig[ifig].showlegend=='on')
                 {
                     units=cunit
