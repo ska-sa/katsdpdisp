@@ -1214,8 +1214,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('bandpass')):
                 customproducts,outlierproducts,processtime=send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
-            elif (theviewsettings['figtype'].startswith('gainmx')):
-                customproducts,outlierproducts,processtime=send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'].startswith('gainwaterfall')):
+                customproducts,outlierproducts,processtime=send_gainwaterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('gain')):
                 customproducts,outlierproducts,processtime=send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('delay')):
@@ -1317,9 +1317,9 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-        elif (args[0]=='gainmx'):
+        elif (args[0]=='gainwaterfall'):
             logger.info(repr(args))
-            html_viewsettings[username].append({'figtype':'gainmx' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            html_viewsettings[username].append({'figtype':'gainwaterfall' ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
@@ -2433,7 +2433,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
     return [],[],time.time()-startproctime#customproducts,outlierproducts,processtime
 
 
-def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure,dodelay=False):
+def send_gainwaterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure,dodelay=False):
     startproctime=time.time()
     fig={}
     try:
@@ -2481,7 +2481,7 @@ def send_gainmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,l
                 fig['color']=[]
                 fig['span']=[]
                 fig['spancolor']=[]
-                fig['title']='Gain matrix' if (not dodelay) else 'Delay matrix'
+                fig['title']='Gain waterfall' if (not dodelay) else 'Delay waterfall'
                 fig['lastts']=ts[-1]
                 fig['lastdt']=0
                 fig['version']=theviewsettings['version']
