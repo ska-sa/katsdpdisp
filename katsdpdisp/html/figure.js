@@ -1263,7 +1263,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                     context.font=""+tickfontHeight+"px sans-serif";
                     for(var icol=0;icol<legend.length;icol++)
                     {
-                        sz=context.measureText(label)
+                        sz=context.measureText(legend[icol])
                         figcontext.fillText(legend[icol],50,(icol/colscale+dataxmin-hviewmin)/(hviewmax-hviewmin)*axiscanvas.width)
                     }
                 }
