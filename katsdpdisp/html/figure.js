@@ -1277,41 +1277,43 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                 }
                 figcontext.restore();
 
-                if (legend.length>0)//==(dataylist[0]).length)//for gain matrix view
+                if (legend.length>0)//for gain matrix view
                 {
-                    var legendtype=0//no legend
-                    context.font=""+tickfontHeight+"px sans-serif";
+                    var legendtype="none"//no legend
+                    context.font=tickfontHeight.toString()+"px sans-serif";
                     colwidth=axiscanvas.width/(hviewmax-hviewmin)
                     thislegend=legend[legend.length-1]
                     sz=context.measureText(thislegend)
                     if (sz.width<colwidth)
-                        legendtype=1//e.g. m064h
+                        legendtype="full"//e.g. m064h
                     else
                     {
-                        thislegend=""+parseInt(legend[legend.length-1].slice(1,4))+legend[legend.length-1][4]
+                        thislegend=parseInt(legend[legend.length-1].slice(1,4)).toString()+legend[legend.length-1][4]
                         sz=context.measureText(thislegend)
                         if (sz.width<colwidth)
-                            legendtype=2//e.g. 64h
+                            legendtype="short"//e.g. 64h
                         else
                         {
-                            thislegend=""+parseInt(legend[legend.length-1].slice(1,4))
+                            thislegend=parseInt(legend[legend.length-1].slice(1,4)).toString()
                             sz=context.measureText(thislegend)                            
                             if (sz.width<colwidth*2)
-                               legendtype=3//e.g. 64 straddling 2 columns
+                               legendtype="straddle"//e.g. 64 straddling 2 columns
                         }
                     }
-                    if (legendtype)
+                    if (legendtype!="none")
                         for(var icol=0;icol<legend.length;icol++)
                         {
-                            if (legendtype==1)
+                            antnumber=parseInt(legend[icol].slice(1,4)).toString()
+                            antpol=legend[icol][4]
+                            if (legendtype=="full")
                                 thislegend=legend[icol]
-                            else if (legendtype==2)
-                                thislegend=""+parseInt(legend[icol].slice(1,4))+legend[icol][4]
-                            else// legendtype==3 //antenna number straddles h&v columns
+                            else if (legendtype=="short")
+                                thislegend=antnumber+antpol
+                            else// legendtype=="straddle"
                             {
                                 if (icol%2==1)
                                 {
-                                    thislegend=""+parseInt(legend[icol].slice(1,4))
+                                    thislegend=antnumber
                                     sz=context.measureText(thislegend)
                                     figcontext.fillText(thislegend,axisposx+(icol/colscale+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
                                 }
