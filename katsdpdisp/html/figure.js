@@ -1280,7 +1280,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                 if (legend.length>0)//for gain matrix view
                 {
                     var legendtype="none"//no legend
-                    context.font=tickfontHeight.toString()+"px sans-serif";
+                    context.font=tickfontHeight+"px sans-serif";
                     colwidth=axiscanvas.width/(hviewmax-hviewmin)
                     thislegend=legend[legend.length-1]
                     sz=context.measureText(thislegend)
@@ -1288,13 +1288,13 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                         legendtype="full"//e.g. m064h
                     else
                     {
-                        thislegend=parseInt(legend[legend.length-1].slice(1,4)).toString()+legend[legend.length-1][4]
+                        thislegend=parseInt(legend[legend.length-1].slice(1,4))+legend[legend.length-1][4]
                         sz=context.measureText(thislegend)
                         if (sz.width<colwidth)
                             legendtype="short"//e.g. 64h
                         else
                         {
-                            thislegend=parseInt(legend[legend.length-1].slice(1,4)).toString()
+                            thislegend=parseInt(legend[legend.length-1].slice(1,4))
                             sz=context.measureText(thislegend)                            
                             if (sz.width<colwidth*2)
                                legendtype="straddle"//e.g. 64 straddling 2 columns
