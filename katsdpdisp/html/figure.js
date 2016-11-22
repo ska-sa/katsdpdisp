@@ -1277,6 +1277,53 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
                 }
                 figcontext.restore();
 
+                if (legend.length>0)//for gain matrix view
+                {
+                    var legendtype="none"//no legend
+                    context.font=tickfontHeight+"px sans-serif";
+                    colwidth=axiscanvas.width/(hviewmax-hviewmin)
+                    thislegend=legend[legend.length-1]
+                    sz=context.measureText(thislegend)
+                    if (sz.width<colwidth)
+                        legendtype="full"//e.g. m064h
+                    else
+                    {
+                        thislegend=parseInt(legend[legend.length-1].slice(1,4))+legend[legend.length-1][4]
+                        sz=context.measureText(thislegend)
+                        if (sz.width<colwidth)
+                            legendtype="short"//e.g. 64h
+                        else
+                        {
+                            thislegend=parseInt(legend[legend.length-1].slice(1,4))
+                            sz=context.measureText(thislegend)                            
+                            if (sz.width<colwidth*2)
+                               legendtype="straddle"//e.g. 64 straddling 2 columns
+                        }
+                    }
+                    if (legendtype!="none")
+                        for(var icol=0;icol<legend.length;icol++)
+                        {
+                            antnumber=parseInt(legend[icol].slice(1,4)).toString()
+                            antpol=legend[icol][4]
+                            if (legendtype=="full")
+                                thislegend=legend[icol]
+                            else if (legendtype=="short")
+                                thislegend=antnumber+antpol
+                            else// legendtype=="straddle"
+                            {
+                                if (icol%2==1)
+                                {
+                                    thislegend=antnumber
+                                    sz=context.measureText(thislegend)
+                                    figcontext.fillText(thislegend,axisposx+(icol/colscale+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
+                                }
+                                continue
+                            }
+                            sz=context.measureText(thislegend)
+                            figcontext.fillText(thislegend,axisposx+(icol/colscale+0.5+dataxmin-hviewmin)*colwidth-sz.width/2,axisposy-2)
+                        }
+                }
+
                 figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
                 //draw colorbar
                 if (RG_fig[ifig].showlegend=='on')

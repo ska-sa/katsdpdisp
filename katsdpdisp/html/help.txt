@@ -10,6 +10,7 @@ timeseries
 bandpass
 delay
 gain
+gainwaterfall
 lag
 periodogram
 spectrum
@@ -35,6 +36,7 @@ Other commands
 bandpass - adds a bandpass plot
 delay - adds a delay plot
 gain - adds a gain plot
+gainwaterfall - adds a gain waterfall plot
 lag - adds a lag plot
 periodogram - adds a periodogram plot
 

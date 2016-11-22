@@ -407,7 +407,7 @@ function setsignals(){
     {
         document.getElementById("consoletext").style.display = 'block'
         handle_data_user_event('help,'+signaltext.slice(5))
-    }else if (signaltext=='timeseries' || signaltext.slice(0,8)=='spectrum' || signaltext.slice(0,9)=='waterfall' || signaltext.slice(0,11)=='periodogram' || signaltext.slice(0,3)=='lag' || signaltext.slice(0,8)=='bandpass' || signaltext.slice(0,4)=='gain' || signaltext.slice(0,5)=='delay')
+    }else if (signaltext=='timeseries' || signaltext.slice(0,8)=='spectrum' || signaltext.slice(0,9)=='waterfall' || signaltext.slice(0,11)=='periodogram' || signaltext.slice(0,3)=='lag' || signaltext.slice(0,8)=='bandpass' || signaltext.slice(0,4)=='gain' || signaltext.slice(0,13)=='gainwaterfall' || signaltext.slice(0,5)=='delay')
     {
         handle_data_user_event(signaltext);
     }else handle_data_user_event('setsignals,'+signaltext);
