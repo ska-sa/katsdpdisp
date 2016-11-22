@@ -349,7 +349,7 @@ class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
     This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
     is done whenever channel or baseline count changes."""
-    def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr=''):
+    def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
         try:
             import psutil
             self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
@@ -360,6 +360,7 @@ class SignalDisplayStore2(object):
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
+        self.cbf_channels = cbf_channels
         self.n_chans = 0
         self.blmxn_chans = 0
         self.slots = 0
@@ -375,10 +376,11 @@ class SignalDisplayStore2(object):
         self.blmxfirst_pass = True
         self.timeseriesfirst_pass = True
         self.timeseriesmaskstr = timeseriesmaskstr
+        self.framecollector={}
 
     def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0, timeseriesmaskstr=''):
         gc.collect()#garbage collect before large memory allocation to help prevent fragmentation
-        self.n_chans = n_chans
+        self.n_chans = n_chans if (self.cbf_channels is None) else self.cbf_channels
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
@@ -391,7 +393,7 @@ class SignalDisplayStore2(object):
         self.timeseriests = np.zeros(self.timeseriesslots, dtype=np.uint64)
         self.timeseriesroll_point = 0
         self.blmxslots = 256
-        self.blmxn_chans = blmxn_chans
+        self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)/n_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
         self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
@@ -408,6 +410,7 @@ class SignalDisplayStore2(object):
         self.blmxfirst_pass = True
         self.timeseriesfirst_pass = True
         self.timeseriesmaskstr = timeseriesmaskstr
+        self.framecollector={}
         gc.collect()#garbage collect after large memory allocation to release previous large block of memory
 
     """Add some data to the store.
@@ -467,7 +470,48 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
+    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
+        #catch frames until complete set acquired before pushing it into the data store
+        if (self.n_chans<data.shape[1]):
+            if (timestamp_ms not in framecollector):
+                frame_nchans=data.shape[1]
+                reduction=self.n_chans/frame_nchans
+                ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
+                nflags=np.zeros([flags.shape[0],self.nchans],dtype=np.uint8)
+                npercspectrum=np.zeros([percspectrum.shape[0],self.nchans],dtype=np.complex64)
+                npercspectrumflags=np.zeros([percspectrumflags.shape[0],self.nchans],dtype=np.uint8)
+                nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
+                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
+                ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
+                npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
+                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
+                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
+                ntimeseries=timeseries
+                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, frame_nchans]
+                return
+            else:
+                [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
+                ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
+                npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
+                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
+                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
+                ntimeseries+=timeseries
+                self.framecollector[timestamp_ms][-1]+=frame_nchans
+                if (self.framecollector[timestamp_ms][-1]==self.n_chans):
+                    data=ndata
+                    flags=nflags
+                    percspectrum=npercspectrum
+                    percspectrumflags=npercspectrumflags
+                    blmxdata=nblmxdata
+                    blmxflags=nblmxflags
+                    timeseries=ntimeseries/reduction
+                    del self.framecollector[timestamp_ms]
+                else:
+                    return
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
@@ -1036,7 +1080,8 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
-                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1))
+                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1), \
+                                                        self.ig['frequency'] if ('frequency' in self.ig) else 0)
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
@@ -3080,7 +3125,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2, notifyqueue=None, store2=False):
+    def start_spead_receiver(self, port=7149, capacity=0.2, cbf_channels=None, notifyqueue=None, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -3099,7 +3144,7 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port,st,notifyqueue)
         r.setDaemon(True)
         r.start()
