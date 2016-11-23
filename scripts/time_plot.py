@@ -194,7 +194,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbuff
     hpbefore = hp.heap()
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
-        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,cbf_channels,notifyqueue=ringbuffernotifyqueue,store2=True)
+        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,cbf_channels=cbf_channels,notifyqueue=ringbuffernotifyqueue,store2=True)
         datasd=dh.sd
     elif (datafilename=='k7simulator'):
         dh.start_direct_spead_receiver(capacity=memusage/100.0,store2=True)
