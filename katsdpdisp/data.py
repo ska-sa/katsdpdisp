@@ -474,7 +474,7 @@ class SignalDisplayStore2(object):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[1] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
         reduction=self.n_chans/frame_nchans
-        print 'channel_offset',repr(channel_offset),'frame_nchans',repr(frame_nchans)
+        print 'channel_offset',repr(channel_offset),'frame_nchans',frame_nchans,'percspectrum',percspectrum.shape
         if (self.n_chans>frame_nchans):
             if (timestamp_ms not in self.framecollector):
                 if (data is not None):
@@ -1090,7 +1090,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
                                                         self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1), \
-                                                        self.ig['frequency'] if ('frequency' in self.ig) else 0)
+                                                        self.ig['frequency'].value.astype(np.uint32) if ('frequency' in self.ig) else 0)
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
