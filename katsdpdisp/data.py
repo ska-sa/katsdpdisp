@@ -474,6 +474,7 @@ class SignalDisplayStore2(object):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[0] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
         reduction=frame_nchans/blmxdata.shape[1]
+        ningestnodes=self.n_chans/frame_nchans
         if (self.n_chans>frame_nchans):
             print 'blmxdata.shape',blmxdata.shape,'npercspectrum.shape',percspectrum.shape,'timeseries.shape',timeseries.shape,'reduction',reduction,'frame_nchans',frame_nchans,'channel_offset',channel_offset
             if (timestamp_ms not in self.framecollector):
@@ -489,8 +490,8 @@ class SignalDisplayStore2(object):
                     nflags=None
                 npercspectrum=np.zeros([self.n_chans,percspectrum.shape[1]],dtype=np.complex64)
                 npercspectrumflags=np.zeros([self.n_chans,percspectrumflags.shape[1]],dtype=np.uint8)
-                nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
-                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
+                nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.complex64)
+                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.uint8)
                 npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
                 npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
                 nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
@@ -517,7 +518,7 @@ class SignalDisplayStore2(object):
                     percspectrumflags=npercspectrumflags
                     blmxdata=nblmxdata
                     blmxflags=nblmxflags
-                    timeseries=ntimeseries*float(frame_nchans)/float(self.n_chans)
+                    timeseries=ntimeseries/float(ningestnodes)
                     del self.framecollector[timestamp_ms]
                 else:
                     return
@@ -547,7 +548,6 @@ class SignalDisplayStore2(object):
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
-                print 'blmxdata.shape',blmxdata.shape,'self.blmxdata.shape',self.blmxdata.shape
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
