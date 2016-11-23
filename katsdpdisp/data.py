@@ -472,9 +472,8 @@ class SignalDisplayStore2(object):
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
-        frame_nchans=percspectrum.shape[1] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
+        frame_nchans=percspectrum.shape[0] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
         reduction=self.n_chans/frame_nchans
-        print 'channel_offset',repr(channel_offset),'frame_nchans',frame_nchans,'percspectrum',percspectrum.shape
         if (self.n_chans>frame_nchans):
             if (timestamp_ms not in self.framecollector):
                 if (data is not None):
