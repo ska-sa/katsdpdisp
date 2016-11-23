@@ -472,22 +472,24 @@ class SignalDisplayStore2(object):
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
-        if (data is None):
-            return
-        if (self.n_chans>data.shape[1]):
-            print 'data shape ',data.shape,' nchans',self.n_chans
+        frame_nchans=percspectrum.shape[1] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
+        reduction=self.n_chans/frame_nchans
+        if (self.n_chans>frame_nchans):
             if (timestamp_ms not in framecollector):
-                print 'timestamp not in'
-                frame_nchans=data.shape[1]
-                reduction=self.n_chans/frame_nchans
-                ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
-                nflags=np.zeros([flags.shape[0],self.nchans],dtype=np.uint8)
+                if (data is not None):
+                    ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
+                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                else:
+                    ndata=None
+                if (flags is not None):
+                    nflags=np.zeros([flags.shape[0],self.nchans],dtype=np.uint8)
+                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                else:
+                    nflags=None
                 npercspectrum=np.zeros([percspectrum.shape[0],self.nchans],dtype=np.complex64)
                 npercspectrumflags=np.zeros([percspectrumflags.shape[0],self.nchans],dtype=np.uint8)
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
-                ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
                 npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
                 npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
                 nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
@@ -496,10 +498,11 @@ class SignalDisplayStore2(object):
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, frame_nchans]
                 return
             else:
-                print 'timestamp is in'
                 [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
-                ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                if (ndata is not None):
+                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                if (nflags is not None):
+                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
                 npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
                 npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
                 nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
