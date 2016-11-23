@@ -473,7 +473,9 @@ class SignalDisplayStore2(object):
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
         if (data is not None and self.n_chans>data.shape[1]):
+            print 'data shape ',data.shape,' nchans',self.n_chans
             if (timestamp_ms not in framecollector):
+                print 'timestamp not in'
                 frame_nchans=data.shape[1]
                 reduction=self.n_chans/frame_nchans
                 ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
@@ -492,6 +494,7 @@ class SignalDisplayStore2(object):
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, frame_nchans]
                 return
             else:
+                print 'timestamp is in'
                 [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
                 ndata[:,channel_offset:channel_offset+frame_nchans]=data
                 nflags[:,channel_offset:channel_offset+frame_nchans]=flags
