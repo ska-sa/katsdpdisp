@@ -472,7 +472,7 @@ class SignalDisplayStore2(object):
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
-        if (self.n_chans<data.shape[1]):
+        if (data is not None and self.n_chans<data.shape[1]):
             if (timestamp_ms not in framecollector):
                 frame_nchans=data.shape[1]
                 reduction=self.n_chans/frame_nchans
@@ -614,7 +614,7 @@ class SignalDisplayStore2(object):
             perc=np.array(perc).swapaxes(0,1)
             percfl=np.array(percfl,dtype=np.uint8).swapaxes(0,1)
 
-            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, perc, percfl, blmx, blmxfl)
+            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, perc, percfl, blmx, blmxfl, 0)
             sys.stdout.flush()
         print "\nLoad complete..."
 
