@@ -491,8 +491,8 @@ class SignalDisplayStore2(object):
                 npercspectrumflags=np.zeros([self.n_chans,percspectrumflags.shape[1]],dtype=np.uint8)
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
-                npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
-                npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
+                npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
+                npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
                 nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
                 nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
                 ntimeseries=timeseries
