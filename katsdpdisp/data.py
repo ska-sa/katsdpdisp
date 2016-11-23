@@ -544,7 +544,9 @@ class SignalDisplayStore2(object):
                         perctimeseries.extend(pdata)
                     else:
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
-                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)                
+                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
+                print 'self.percdata.shape',self.percdata.shape,'percspectrum.shape',percspectrum.shape
+                print 'self.blmxdata.shape',self.blmxdata.shape,'blmxdata.shape',blmxdata.shape
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
