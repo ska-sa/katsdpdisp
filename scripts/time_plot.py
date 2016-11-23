@@ -277,7 +277,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbuff
                 ringbufferresultqueue.put(datasd.cpref.bls_ordering)
                 continue
             if (thelayoutsettings=='info'):
-                fig={'logconsole':'katsdpdisp version: '+katsdpdisp.__version__+'\nreceiver alive: '+str(datasd.receiver.isAlive())+'\nheap count: '+str(datasd.receiver.heap_count)+'\ntimeseries slots: %d\nspectrum slots: %d\nwmx slots: %d'%(datasd.storage.timeseriesslots,datasd.storage.slots,datasd.storage.blmxslots)+'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\nnchannels: '+str(datasd.receiver.channels)+'\nblmx nchannels: '+str(datasd.storage.blmxn_chans)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
+                fig={'logconsole':'katsdpdisp version: '+katsdpdisp.__version__+'\nreceiver alive: '+str(datasd.receiver.isAlive())+'\nheap count: '+str(datasd.receiver.heap_count)+'\ntimeseries slots: %d\nspectrum slots: %d\nwmx slots: %d'%(datasd.storage.timeseriesslots,datasd.storage.slots,datasd.storage.blmxslots)+'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\nncbf_channels: '+str(datasd.receiver.cbf_channels)+'\nnchannels: '+str(datasd.receiver.channels)+'\nblmx nchannels: '+str(datasd.storage.blmxn_chans)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
