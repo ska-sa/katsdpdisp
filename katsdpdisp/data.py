@@ -477,17 +477,17 @@ class SignalDisplayStore2(object):
         if (self.n_chans>frame_nchans):
             if (timestamp_ms not in self.framecollector):
                 if (data is not None):
-                    ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
+                    ndata=np.zeros([data.shape[0],self.n_chans],dtype=np.complex64)
                     ndata[:,channel_offset:channel_offset+frame_nchans]=data
                 else:
                     ndata=None
                 if (flags is not None):
-                    nflags=np.zeros([flags.shape[0],self.nchans],dtype=np.uint8)
+                    nflags=np.zeros([flags.shape[0],self.n_chans],dtype=np.uint8)
                     nflags[:,channel_offset:channel_offset+frame_nchans]=flags
                 else:
                     nflags=None
-                npercspectrum=np.zeros([percspectrum.shape[0],self.nchans],dtype=np.complex64)
-                npercspectrumflags=np.zeros([percspectrumflags.shape[0],self.nchans],dtype=np.uint8)
+                npercspectrum=np.zeros([percspectrum.shape[0],self.n_chans],dtype=np.complex64)
+                npercspectrumflags=np.zeros([percspectrumflags.shape[0],self.n_chans],dtype=np.uint8)
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
                 npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
