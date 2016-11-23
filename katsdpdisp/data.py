@@ -472,7 +472,9 @@ class SignalDisplayStore2(object):
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
-        if (data is not None and self.n_chans>data.shape[1]):
+        if (data is None):
+            return
+        if (self.n_chans>data.shape[1]):
             print 'data shape ',data.shape,' nchans',self.n_chans
             if (timestamp_ms not in framecollector):
                 print 'timestamp not in'
