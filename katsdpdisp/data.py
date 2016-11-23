@@ -476,7 +476,6 @@ class SignalDisplayStore2(object):
         reduction=frame_nchans/blmxdata.shape[1]
         ningestnodes=self.n_chans/frame_nchans
         if (self.n_chans>frame_nchans):
-            print 'blmxdata.shape',blmxdata.shape,'npercspectrum.shape',percspectrum.shape,'timeseries.shape',timeseries.shape,'reduction',reduction,'frame_nchans',frame_nchans,'channel_offset',channel_offset
             if (timestamp_ms not in self.framecollector):
                 if (data is not None):
                     ndata=np.zeros([data.shape[0],self.n_chans],dtype=np.complex64)
@@ -545,8 +544,6 @@ class SignalDisplayStore2(object):
                     else:
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
                 self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
-                print 'self.percdata.shape',self.percdata.shape,'percspectrum.shape',percspectrum.shape
-                print 'self.blmxdata.shape',self.blmxdata.shape,'blmxdata.shape',blmxdata.shape
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
@@ -950,7 +947,7 @@ class SpeadSDReceiver(threading.Thread):
     direct : boolean
         If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, notifyqueue=None, direct=False):
+    def __init__(self, port, storage, notifyqueue=None, direct=False, cbf_channels=None):
         self._port = port
         self.storage = storage
         self.cpref = CorrProdRef()
@@ -961,6 +958,7 @@ class SpeadSDReceiver(threading.Thread):
         self.heap_count = 0
         self.bls_ordering = None
         self.center_freq = 0
+        self.cbf_channels = cbf_channels
         self.channels = 0
         self.channel_bandwidth = 0
         self.center_freqs_mhz = []
@@ -991,7 +989,8 @@ class SpeadSDReceiver(threading.Thread):
                 self.channels = self.ig['n_chans'].value
                 self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
                 self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
-                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
+                cbf_channels = self.channels if (self.cbf_channels is None) else self.cbf_channels
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels/2, cbf_channels/2)]
                 #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
                  # channels mapped in reverse order
         except ValueError:
@@ -3157,7 +3156,7 @@ class KATData(object):
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
         st = SignalDisplayStore2(capacity=capacity,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
-        r = SpeadSDReceiver(port,st,notifyqueue)
+        r = SpeadSDReceiver(port,st,notifyqueue,cbf_channels=cbf_channels)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
