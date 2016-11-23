@@ -473,7 +473,7 @@ class SignalDisplayStore2(object):
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[0] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
-        reduction=self.n_chans/frame_nchans
+        reduction=frame_nchans/blmxdata.shape[1]
         if (self.n_chans>frame_nchans):
             print 'blmxdata.shape',blmxdata.shape,'npercspectrum.shape',percspectrum.shape,'timeseries.shape',timeseries.shape,'reduction',reduction,'frame_nchans',frame_nchans,'channel_offset',channel_offset
             if (timestamp_ms not in self.framecollector):
@@ -517,7 +517,7 @@ class SignalDisplayStore2(object):
                     percspectrumflags=npercspectrumflags
                     blmxdata=nblmxdata
                     blmxflags=nblmxflags
-                    timeseries=ntimeseries/reduction
+                    timeseries=ntimeseries*float(frame_nchans)/float(self.n_chans)
                     del self.framecollector[timestamp_ms]
                 else:
                     return
