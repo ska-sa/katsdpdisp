@@ -475,7 +475,7 @@ class SignalDisplayStore2(object):
         frame_nchans=percspectrum.shape[1] #not data could be none, if ingest sends no full signals, but percspectrum should always be transmitted
         reduction=self.n_chans/frame_nchans
         if (self.n_chans>frame_nchans):
-            if (timestamp_ms not in framecollector):
+            if (timestamp_ms not in self.framecollector):
                 if (data is not None):
                     ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
                     ndata[:,channel_offset:channel_offset+frame_nchans]=data
