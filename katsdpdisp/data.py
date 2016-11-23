@@ -547,6 +547,7 @@ class SignalDisplayStore2(object):
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
+                print 'blmxdata.shape',blmxdata.shape,'self.blmxdata.shape',self.blmxdata.shape
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
