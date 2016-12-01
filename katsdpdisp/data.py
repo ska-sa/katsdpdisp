@@ -519,6 +519,10 @@ class SignalDisplayStore2(object):
                     blmxflags=nblmxflags
                     timeseries=ntimeseries/float(ningestnodes)
                     del self.framecollector[timestamp_ms]
+                    for key in self.framecollector.keys():
+                        if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
+                            logger.warning('Discarding data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.'%(timestamp_ms,self.framecollector[timestamp_ms][-1],self.n_chans,timestamp_ms))
+                            del self.framecollector[key]
                 else:
                     return
         with datalock:
