@@ -540,7 +540,7 @@ class SignalDisplayStore2(object):
                 else:
                     ndata=None
                 if (flags is not None):
-                    nflags=np.zeros([flags.shape[0],self.n_chans],dtype=np.uint8)
+                    nflags=np.array(np.tile(8,[flags.shape[0],self.n_chans]),dtype=np.uint8)
                     nflags[:,channel_offset:channel_offset+frame_nchans]=flags
                 else:
                     nflags=None

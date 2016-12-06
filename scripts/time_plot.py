@@ -3265,9 +3265,6 @@ except:
 telstate=opts.telstate
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
-elif ('cbf_channels' in telstate):
-    opts.cbf_channels=telstate['cbf_channels']
-
 
 poll_telstate_lasttime=0
 telstate_cal_antlist=[]
