@@ -536,46 +536,41 @@ class SignalDisplayStore2(object):
             elif (timestamp_ms not in self.framecollector):
                 if (data is not None):
                     ndata=np.zeros([data.shape[0],self.n_chans],dtype=np.complex64)
-                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
                 else:
                     ndata=None
                 if (flags is not None):
                     nflags=np.array(np.tile(8,[flags.shape[0],self.n_chans]),dtype=np.uint8)
-                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
                 else:
                     nflags=None
                 npercspectrum=np.zeros([self.n_chans,percspectrum.shape[1]],dtype=np.complex64)
                 npercspectrumflags=np.zeros([self.n_chans,percspectrumflags.shape[1]],dtype=np.uint8)
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.complex64)
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.uint8)
-                npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
-                npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
-                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
-                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
-                ntimeseries=timeseries
-                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, frame_nchans]
+                ntimeseries=0
+                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
             else:
                 [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
-                if (ndata is not None):
-                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                if (nflags is not None):
-                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
-                npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
-                npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
-                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
-                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
-                ntimeseries+=timeseries
-                self.framecollector[timestamp_ms][-1]+=frame_nchans
-                if (self.framecollector[timestamp_ms][-1]==self.n_chans):
-                    #flush all framecollector entries up to timestamp_ms, even if they are not complete
-                    for key in np.sort(self.framecollector.keys()):
-                        [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
-                        if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
-                            logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
-                        elif (key>timestamp_ms):
-                            break
-                        self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
-                        del self.framecollector[key]
+            if (ndata is not None):
+                ndata[:,channel_offset:channel_offset+frame_nchans]=data
+            if (nflags is not None):
+                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+            npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
+            npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
+            nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
+            nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
+            ntimeseries+=timeseries
+            self.framecollector[timestamp_ms][-1]+=frame_nchans
+
+            if (self.framecollector[timestamp_ms][-1]==self.n_chans):
+                #flush all framecollector entries up to timestamp_ms, even if they are not complete
+                for key in np.sort(self.framecollector.keys()):
+                    [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
+                    if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
+                        logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
+                    elif (key>timestamp_ms):
+                        break
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
+                    del self.framecollector[key]
             if (len(self.framecollector.keys())>3):#flush old data even if just one ingest working, results will be lagging by 3 timestamps if not all ingest nodes are working
                 for key in np.sort(self.framecollector.keys())[:-3]:
                     [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
