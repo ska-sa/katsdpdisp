@@ -467,51 +467,7 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[nsignals/2]]],percrunavg]
         
         
-    #calculate percentile statistics
-    #calculates masked average for this single timestamp for each data product (incl for percentiles)
-    #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
-        #catch frames until complete set acquired before pushing it into the data store
-        if (self.n_chans<data.shape[1]):
-            if (timestamp_ms not in framecollector):
-                frame_nchans=data.shape[1]
-                reduction=self.n_chans/frame_nchans
-                ndata=np.zeros([data.shape[0],self.nchans],dtype=np.complex64)
-                nflags=np.zeros([flags.shape[0],self.nchans],dtype=np.uint8)
-                npercspectrum=np.zeros([percspectrum.shape[0],self.nchans],dtype=np.complex64)
-                npercspectrumflags=np.zeros([percspectrumflags.shape[0],self.nchans],dtype=np.uint8)
-                nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*reduction],dtype=np.complex64)
-                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*reduction],dtype=np.uint8)
-                ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
-                npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
-                npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
-                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
-                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
-                ntimeseries=timeseries
-                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, frame_nchans]
-                return
-            else:
-                [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
-                ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
-                npercspectrum[:,channel_offset:channel_offset+frame_nchans]=percspectrum
-                npercspectrumflags[:,channel_offset:channel_offset+frame_nchans]=percspectrumflags
-                nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
-                nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
-                ntimeseries+=timeseries
-                self.framecollector[timestamp_ms][-1]+=frame_nchans
-                if (self.framecollector[timestamp_ms][-1]==self.n_chans):
-                    data=ndata
-                    flags=nflags
-                    percspectrum=npercspectrum
-                    percspectrumflags=npercspectrumflags
-                    blmxdata=nblmxdata
-                    blmxflags=nblmxflags
-                    timeseries=ntimeseries/reduction
-                    del self.framecollector[timestamp_ms]
-                else:
-                    return
+    def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
@@ -534,7 +490,7 @@ class SignalDisplayStore2(object):
                         perctimeseries.extend(pdata)
                     else:
                         perctimeseries.extend(np.nan*np.zeros([5],dtype=np.complex64))
-                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)                
+                self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
@@ -564,6 +520,64 @@ class SignalDisplayStore2(object):
                 self.data[self.roll_point,data_index,:] = data
 
             self._last_ts = timestamp_ms
+
+
+    #calculate percentile statistics
+    #calculates masked average for this single timestamp for each data product (incl for percentiles)
+    #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
+    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
+        #catch frames until complete set acquired before pushing it into the data store
+        frame_nchans=percspectrum.shape[0] #data may be None if ingest sends no full signals, so use percspectrum to get shape
+        reduction=frame_nchans/blmxdata.shape[1]
+        ningestnodes=self.n_chans/frame_nchans
+        if (self.n_chans>frame_nchans):
+            if (timestamp_ms<=self._last_ts):
+                logger.warning('Discarding late parital data at timestamp %f, because data at timestamp %f already complete.',timestamp_ms,self._last_ts)
+            elif (timestamp_ms not in self.framecollector):
+                if (data is not None):
+                    ndata=np.zeros([data.shape[0],self.n_chans],dtype=np.complex64)
+                else:
+                    ndata=None
+                if (flags is not None):
+                    nflags=np.array(np.tile(8,[flags.shape[0],self.n_chans]),dtype=np.uint8)
+                else:
+                    nflags=None
+                npercspectrum=np.zeros([self.n_chans,percspectrum.shape[1]],dtype=np.complex64)
+                npercspectrumflags=np.zeros([self.n_chans,percspectrumflags.shape[1]],dtype=np.uint8)
+                nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.complex64)
+                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.uint8)
+                ntimeseries=np.zeros(np.shape(timeseries),dtype=np.complex64)
+                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
+            else:
+                [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
+            if (ndata is not None):
+                ndata[:,channel_offset:channel_offset+frame_nchans]=data
+            if (nflags is not None):
+                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+            npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
+            npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
+            nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
+            nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
+            ntimeseries+=timeseries
+            self.framecollector[timestamp_ms][-1]+=frame_nchans
+
+            if (self.framecollector[timestamp_ms][-1]==self.n_chans):
+                #flush all framecollector entries up to timestamp_ms, even if they are not complete
+                for key in np.sort(self.framecollector.keys()):
+                    [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
+                    if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
+                        logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
+                    elif (key>timestamp_ms):
+                        break
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
+                    del self.framecollector[key]
+            if (len(self.framecollector.keys())>3):#flush old data even if just one ingest working, results will be lagging by 3 timestamps if not all ingest nodes are working
+                for key in np.sort(self.framecollector.keys())[:-3]:
+                    [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
+                    del self.framecollector[key]
+        else:
+            self._add_data2(timestamp_ms, data, flags, data_index, timeseries, percspectrum, percspectrumflags, blmxdata, blmxflags)
 
     def pc_load_letter(self, filename, rows=None, startrow=0, cf=1.8e9, nc=512):
         """Load signal display data from an hdf5 v2 generated by the packetised correlator."""
@@ -614,7 +628,7 @@ class SignalDisplayStore2(object):
             perc=np.array(perc).swapaxes(0,1)
             percfl=np.array(percfl,dtype=np.uint8).swapaxes(0,1)
 
-            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, perc, percfl, blmx, blmxfl)
+            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, perc, percfl, blmx, blmxfl, 0)
             sys.stdout.flush()
         print "\nLoad complete..."
 
@@ -938,7 +952,7 @@ class SpeadSDReceiver(threading.Thread):
     direct : boolean
         If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, notifyqueue=None, direct=False):
+    def __init__(self, port, storage, notifyqueue=None, direct=False, cbf_channels=None):
         self._port = port
         self.storage = storage
         self.cpref = CorrProdRef()
@@ -949,6 +963,7 @@ class SpeadSDReceiver(threading.Thread):
         self.heap_count = 0
         self.bls_ordering = None
         self.center_freq = 0
+        self.cbf_channels = cbf_channels
         self.channels = 0
         self.channel_bandwidth = 0
         self.center_freqs_mhz = []
@@ -979,7 +994,8 @@ class SpeadSDReceiver(threading.Thread):
                 self.channels = self.ig['n_chans'].value
                 self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
                 self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
-                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-self.channels/2, self.channels/2)]
+                cbf_channels = self.channels if (self.cbf_channels is None) else self.cbf_channels
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels/2, cbf_channels/2)]
                 #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
                  # channels mapped in reverse order
         except ValueError:
@@ -1081,7 +1097,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
                                                         self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1), \
-                                                        self.ig['frequency'] if ('frequency' in self.ig) else 0)
+                                                        self.ig['frequency'].value if ('frequency' in self.ig) else 0)
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
                             for id in range(data.shape[0]):
@@ -3145,7 +3161,7 @@ class KATData(object):
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
         st = SignalDisplayStore2(capacity=capacity,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
-        r = SpeadSDReceiver(port,st,notifyqueue)
+        r = SpeadSDReceiver(port,st,notifyqueue,cbf_channels=cbf_channels)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
