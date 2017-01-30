@@ -3094,24 +3094,26 @@ class htmlHandler(BaseHTTPRequestHandler):
     #intercepts commands sent from data collector processes
     def parse_request(self):
         if (self.raw_requestline[:7]=='/*cmd*/'):
-            #logger.info('raw request:'+self.raw_requestline)
-            response=self.handle_command(self.raw_requestline[7:-1])
-            self.wfile.write(response);
-            self.command = None  
-            self.requestline = ""
-            self.request_version = self.default_request_version
-            self.close_connection = 1
-            return False
-        else:
-            return BaseHTTPRequestHandler.parse_request(self)
+            try:
+                response=self.handle_command(self.raw_requestline[7:-1])
+                self.wfile.write(response);
+                self.command = None
+                self.requestline = ""
+                self.request_version = self.default_request_version
+                self.close_connection = 1
+                return False
+            except Exception, e:
+                logger.warning("Exception occurred in httpHandler parse_request (%s)" % str(e), exc_info=True)
+
+        return BaseHTTPRequestHandler.parse_request(self)
         
         
     #Handler for the GET requests
     def do_GET(self):
-        if self.path=="/":
-            self.path="/index.html"
-
         try:
+            if self.path=="/":
+                self.path="/index.html"
+
             #Check the file extension required and
             #set the right mime type
 
@@ -3319,7 +3321,7 @@ try:
     logger.info('Started data websocket server on port '+str(opts.data_port))
     thread.start_new_thread(websockserver.serve_forever, ())
 except Exception, e:
-    logger.warning("Failed to create data websocket server. (%s)" % str(e))
+    logger.warning("Failed to create data websocket server. (%s)" % str(e), exc_info=True)
     sys.exit(1)
 
 try:
