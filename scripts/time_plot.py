@@ -3102,8 +3102,8 @@ class htmlHandler(BaseHTTPRequestHandler):
                 self.request_version = self.default_request_version
                 self.close_connection = 1
                 return False
-            except Exception, e:
-                logger.warning("Exception occurred in httpHandler parse_request (%s)" % str(e), exc_info=True)
+            except Exception as e:
+                logger.warning("Exception occurred in httpHandler parse_request", exc_info=True)
 
         return BaseHTTPRequestHandler.parse_request(self)
         
@@ -3320,8 +3320,8 @@ try:
     websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
     logger.info('Started data websocket server on port '+str(opts.data_port))
     thread.start_new_thread(websockserver.serve_forever, ())
-except Exception, e:
-    logger.warning("Failed to create data websocket server. (%s)" % str(e), exc_info=True)
+except Exception as e:
+    logger.warning("Failed to create data websocket server", exc_info=True)
     sys.exit(1)
 
 try:
