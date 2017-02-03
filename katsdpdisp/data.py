@@ -350,12 +350,15 @@ class SignalDisplayStore2(object):
     This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
     is done whenever channel or baseline count changes."""
     def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
-        try:
-            import psutil
-            self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
-        except ImportError:
-            self.mem_cap = 1024*1024*128
-             # default to 128 megabytes if we cannot determine system memory
+        if (capacity<0):
+            self.mem_cap = 1024*1024*(-capacity*100)
+        else:
+            try:
+                import psutil
+                self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
+            except ImportError:
+                self.mem_cap = 1024*1024*128
+                 # default to 128 megabytes if we cannot determine system memory
         logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
         self.n_ants = n_ants
         self.center_freqs_mhz = []
@@ -648,12 +651,15 @@ class SignalDisplayStore(object):
         default: 0.2
     """
     def __init__(self, n_ants=2, capacity=0.2):
-        try:
-            import psutil
-            self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
-        except ImportError:
-            self.mem_cap = 1024*1024*128
-             # default to 128 megabytes if we cannot determine system memory
+        if (capacity<0):
+            self.mem_cap = 1024*1024*(-capacity*100)
+        else:
+            try:
+                import psutil
+                self.mem_cap = int(psutil.virtual_memory()[0] * capacity)
+            except ImportError:
+                self.mem_cap = 1024*1024*128
+                 # default to 128 megabytes if we cannot determine system memory
         print "Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0))
         self.n_ants = n_ants
         self.center_freqs_mhz = []

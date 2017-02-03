@@ -3184,7 +3184,7 @@ parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'strea
 parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
                   help="Display debug messages.")
 parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
-                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer (default=%(default)s)")
+                  help="Percentage memory usage. Percentage of available memory to be allocated for buffer. If negative then number of megabytes. (default=%(default)s)")
 parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=True,
                   help="DEPRECATED Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
