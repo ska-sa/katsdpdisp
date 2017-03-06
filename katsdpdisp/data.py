@@ -1092,7 +1092,7 @@ class SpeadSDReceiver(threading.Thread):
                         bls_ordering_version = self.ig['bls_ordering'].version
                     hasdata = (self.ig['sd_data'].value is not None)
                     if (hasdata) or (self.ig['sd_percspectrum'].value is not None):
-                        ts = self.ig['sd_timestamp'].value * 10.0
+                        ts = int(self.ig['sd_timestamp'].value * 10)
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
                             self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if hasdata else None, \
