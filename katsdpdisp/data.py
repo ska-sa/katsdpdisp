@@ -351,7 +351,7 @@ class SignalDisplayStore2(object):
     is done whenever channel or baseline count changes."""
     def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
         if (capacity<0):
-            self.mem_cap = 1024*1024*(-capacity*100)
+            self.mem_cap = int(1024*1024*(-capacity*100))
         else:
             try:
                 import psutil
@@ -387,7 +387,7 @@ class SignalDisplayStore2(object):
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-        self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
+        self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
@@ -1092,7 +1092,7 @@ class SpeadSDReceiver(threading.Thread):
                         bls_ordering_version = self.ig['bls_ordering'].version
                     hasdata = (self.ig['sd_data'].value is not None)
                     if (hasdata) or (self.ig['sd_percspectrum'].value is not None):
-                        ts = self.ig['sd_timestamp'].value * 10.0
+                        ts = int(self.ig['sd_timestamp'].value * 10)
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
                             self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if hasdata else None, \
