@@ -359,7 +359,7 @@ class SignalDisplayStore2(object):
             except ImportError:
                 self.mem_cap = 1024*1024*128
                  # default to 128 megabytes if we cannot determine system memory
-        logger.info("Store will use %d MBytes of system memory." % int(self.mem_cap / (1024*1024)))
+        logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
