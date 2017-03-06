@@ -351,7 +351,7 @@ class SignalDisplayStore2(object):
     is done whenever channel or baseline count changes."""
     def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
         if (capacity<0):
-            self.mem_cap = 1024*1024*(-capacity*100)
+            self.mem_cap = int(1024*1024*(-capacity*100))
         else:
             try:
                 import psutil
@@ -359,7 +359,7 @@ class SignalDisplayStore2(object):
             except ImportError:
                 self.mem_cap = 1024*1024*128
                  # default to 128 megabytes if we cannot determine system memory
-        logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
+        logger.info("Store will use %d MBytes of system memory." % int(self.mem_cap / (1024*1024)))
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
@@ -387,7 +387,7 @@ class SignalDisplayStore2(object):
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-        self.slots = self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc))
+        self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
         self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
