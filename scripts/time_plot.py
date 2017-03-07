@@ -626,7 +626,7 @@ def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbuff
                         spancolor.append([200,200,0,128])
 
                     if (len(ydata)==0):
-                        ydata=[np.nan*thech]
+                        ydata=[np.tile(np.nan,len(thech))]
                         color=[np.array([255,255,255,0])]
                     if (theviewsettings['type']=='pow'):
                         ydata=10.0*np.log10(ydata)
