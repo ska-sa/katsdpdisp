@@ -99,7 +99,7 @@ function loadpage()
 
 function start_data() 
 {
-    datasocket = new WebSocket('ws://'+document.domain+':'+webdataportnumber);	
+    datasocket = new WebSocket(webdataURL);
 	var supports_binary = (datasocket.binaryType != undefined);
 	datasocket.binaryType = 'arraybuffer';
 	datasocket.onerror = function(e) 
