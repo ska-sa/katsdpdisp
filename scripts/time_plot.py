@@ -3150,9 +3150,9 @@ class htmlHandler(BaseHTTPRequestHandler):
                 if (self.path=="/index.html"):
                     if ('X-Timeplot-Data-Address' in self.headers):
                         dataURLheader=self.headers.get('X-Timeplot-Data-Address')
-                        filetext=filetext.replace('<!--data_URL-->',dataURLheader).replace('<!--scriptname_text-->',scriptnametext)
+                        filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
                     else:
-                        filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'".format(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
+                        filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'"%(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
                 
                 self.wfile.write(filetext)
                 f.close()
