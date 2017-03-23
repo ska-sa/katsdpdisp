@@ -21,7 +21,9 @@ wmx
 Right click the figures to choose viewing options.
 
 To add lines to figures:
-1h1h - specify custom input products to be displayed
+h*h - specify multiple custom auto products using wildcard character
+1h*h - specify multiple custom cross products using wildcard character
+1h1h - specify explicit custom input products to be displayed
 auto - draws percentile plots for a collection of auto correlation signals
 cross - draws percentile plots for a collection of cross correlation signals
 envelope - draws envelope of a collection of signals
