@@ -1434,7 +1434,7 @@ def handle_websock_event(handlerkey,*args):
                 theviewsettings['version']+=1
             for sig in args[1:]:
                 sig=str(sig)
-                if (re.match(r'^[^*]*[hv]\*[hv]$',sig) is not None):#wildcard signal eg 32h*h, or h*h for auto products if (sig.count('*') == 1 and len(sig)>=3 and '*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
+                if (re.match(r'^[^*]*[hv]\*[hv]$',sig)):#wildcard signal eg 32h*h, or h*h for auto products if (sig.count('*') == 1 and len(sig)>=3 and '*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
                     decodedsignal=decodecustomsignal(sig.replace('*','99999'))
                     if (len(decodedsignal) != 2):
                             send_websock_cmd('logconsole("Custom signal instruction not recognised",true,true,true)',handlerkey)
