@@ -1434,24 +1434,27 @@ def handle_websock_event(handlerkey,*args):
                 theviewsettings['version']+=1
             for sig in args[1:]:
                 sig=str(sig)
-                if ('*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
+                if (len(np.nonzero(np.array(sig,dtype='c')=='*')[0])==1 and len(sig)>=3 and '*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
                     decodedsignal=decodecustomsignal(sig.replace('*','99999'))
-                    with RingBufferLock:
-                        ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
-                        fig=ringbufferresultqueue.get()
-                    if (fig=={}):#an exception occurred
-                        send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
-                    elif ('logconsole' in fig):
-                        inputs=fig['logconsole'].split(',')
-                        antennas=np.unique([inputname[:-1] for inputname in inputs]).tolist()
-                        send_websock_cmd('logconsole("%d antennas: '%(len(antennas))+','.join(antennas)+'",true,true,true)',handlerkey)
-                        for ant in antennas:
-                            if (len(sig)==3):
-                                decodedsignal=(ant+decodedsignal[0][-1],ant+decodedsignal[1][-1])
-                            else:
-                                decodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
-                            if (decodedsignal not in html_customsignals[username]):
-                                html_customsignals[username].append(decodedsignal)
+                    if (len(decodedsignal) is not 2):
+                            send_websock_cmd('logconsole("Custom signal instruction not recognised",true,true,true)',handlerkey)
+                    else:
+                        with RingBufferLock:
+                            ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+                            fig=ringbufferresultqueue.get()
+                        if (fig=={}):#an exception occurred
+                            send_websock_cmd('logconsole("Server exception occurred evaluating inputs",true,true,true)',handlerkey)
+                        elif ('logconsole' in fig):
+                            inputs=fig['logconsole'].split(',')
+                            antennas=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+                            send_websock_cmd('logconsole("%d antennas: '%(len(antennas))+','.join(antennas)+'",true,true,true)',handlerkey)
+                            for ant in antennas:
+                                if (len(sig)==3):
+                                    decodedsignal=(ant+decodedsignal[0][-1],ant+decodedsignal[1][-1])
+                                else:
+                                    decodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
+                                if (decodedsignal not in html_customsignals[username]):
+                                    html_customsignals[username].append(decodedsignal)
                 else:
                     decodedsignal=decodecustomsignal(sig)
                     logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
