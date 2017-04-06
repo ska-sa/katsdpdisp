@@ -1105,7 +1105,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_flags'].value.swapaxes(0,1) if hasdata and ('sd_flags' in self.ig.keys()) else None , \
                                                         self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None, \
                                                         self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
-                                                        self.ig['sd_timeseriesabs'].value.astype(np.float32).view(np.float32)[:,0], \
+                                                        self.ig['sd_timeseriesabs'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
