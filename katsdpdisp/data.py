@@ -470,7 +470,7 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[nsignals/2]]],percrunavg]
         
         
-    def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
+    def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
@@ -482,6 +482,8 @@ class SignalDisplayStore2(object):
             self.timeseriests[self.timeseriesroll_point] = timestamp_ms
             #calculate timeseries masked average for all signals and overwrite it into channel 0
             if (timeseries is not None):
+                #first replace absolute value
+                timeseries=timeseriesabs*np.exp(1j*np.angle(timeseries))
                 self.timeseriesdata[self.timeseriesroll_point,:] = timeseries
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
@@ -528,7 +530,7 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
+    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[0] #data may be None if ingest sends no full signals, so use percspectrum to get shape
         reduction=frame_nchans/blmxdata.shape[1]
@@ -550,9 +552,10 @@ class SignalDisplayStore2(object):
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.complex64)
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.uint8)
                 ntimeseries=np.zeros(np.shape(timeseries),dtype=np.complex64)
-                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
+                ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
+                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
             else:
-                [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
+                [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
             if (ndata is not None):
                 ndata[:,channel_offset:channel_offset+frame_nchans]=data
             if (nflags is not None):
@@ -562,25 +565,26 @@ class SignalDisplayStore2(object):
             nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
             nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
             ntimeseries+=timeseries
+            ntimeseriesabs+=timeseriesabs
             self.framecollector[timestamp_ms][-1]+=frame_nchans
 
             if (self.framecollector[timestamp_ms][-1]==self.n_chans):
                 #flush all framecollector entries up to timestamp_ms, even if they are not complete
                 for key in np.sort(self.framecollector.keys()):
-                    [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
+                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
                     if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
                         logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
                     elif (key>timestamp_ms):
                         break
-                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
                     del self.framecollector[key]
             if (len(self.framecollector.keys())>3):#flush old data even if just one ingest working, results will be lagging by 3 timestamps if not all ingest nodes are working
                 for key in np.sort(self.framecollector.keys())[:-3]:
-                    [ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
-                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
+                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[key]
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags)
                     del self.framecollector[key]
         else:
-            self._add_data2(timestamp_ms, data, flags, data_index, timeseries, percspectrum, percspectrumflags, blmxdata, blmxflags)
+            self._add_data2(timestamp_ms, data, flags, data_index, timeseries, timeseriesabs, percspectrum, percspectrumflags, blmxdata, blmxflags)
 
     def pc_load_letter(self, filename, rows=None, startrow=0, cf=1.8e9, nc=512):
         """Load signal display data from an hdf5 v2 generated by the packetised correlator."""
@@ -606,6 +610,7 @@ class SignalDisplayStore2(object):
         blmx = np.zeros([len(bls_ordering),256],dtype=np.complex)
         blmxfl = np.zeros([len(bls_ordering),256],dtype=np.uint8)
         timeseries = np.zeros(len(bls_ordering),dtype=np.complex)
+        timeseriesabs = np.zeros(len(bls_ordering),dtype=np.float32)
         for i,t in enumerate(tss):
             print ".",
             d = h5.vis[i+startrow,:,:].squeeze(axis=0).swapaxes(0,1)
@@ -615,6 +620,7 @@ class SignalDisplayStore2(object):
                 blmx[prod,:] = subsample(d[prod,:], self.n_chans/256)
                 #calculate timeseries
                 timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
+                timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
             #calculate percentiles
             perc=[]
             percfl=[]
@@ -631,7 +637,7 @@ class SignalDisplayStore2(object):
             perc=np.array(perc).swapaxes(0,1)
             percfl=np.array(percfl,dtype=np.uint8).swapaxes(0,1)
 
-            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, perc, percfl, blmx, blmxfl, 0)
+            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, timeseriesabs, perc, percfl, blmx, blmxfl, 0)
             sys.stdout.flush()
         print "\nLoad complete..."
 
@@ -1099,6 +1105,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_flags'].value.swapaxes(0,1) if hasdata and ('sd_flags' in self.ig.keys()) else None , \
                                                         self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None, \
                                                         self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
+                                                        self.ig['sd_timeseriesabs'].value.astype(np.float32).view(np.float32)[:,0], \
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
