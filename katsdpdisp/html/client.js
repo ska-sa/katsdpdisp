@@ -293,6 +293,9 @@ function setsignals(){
     }else if (signaltext.slice(0,5)=='wmxhh' || signaltext.slice(0,5)=='wmxvh' || signaltext.slice(0,5)=='wmxhv' || signaltext.slice(0,5)=='wmxvv')
 	{
         handle_data_user_event(signaltext.slice(0,5)+','+signaltext.slice(5));
+    }else if (signaltext.slice(0,6)=='wtabhh' || signaltext.slice(0,6)=='wtabvh' || signaltext.slice(0,6)=='wtabhv' || signaltext.slice(0,6)=='wtabvv')
+	{
+        handle_data_user_event(signaltext.slice(0,6)+','+signaltext.slice(6));
     }else if (signaltext.slice(0,4)=='kick')
 	{
         if (signaltext.length>4)

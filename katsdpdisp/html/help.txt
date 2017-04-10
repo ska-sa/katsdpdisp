@@ -17,6 +17,7 @@ spectrum
 waterfall
 blmx
 wmx
+wtab
 
 Right click the figures to choose viewing options.
 
@@ -315,6 +316,38 @@ Adds a new waterfall plot to the current view showing phase of the data.
 'waterfallphase1h2h' - waterfall (phase) plot of data product 1h2h
 'waterfallphase1h2hdelay100' - waterfall (phase) plot of data product 1h2h with 100ns delay injected
 
+[wtab]
+Generate a waterfall table page using one of the following commands
+
+'wtabhh' - hh polarisation waterfall table
+'wtabhv' - hv polarisation waterfall table
+'wtabvh' - vh polarisation waterfall table
+'wtabvv' - vv polarisation waterfall table
+
+[wtabhh]
+Generates a waterfall table page with hh polarisation.
+
+'wtabhh'              - generates a hh polarisation waterfall table for all antennas using first available antenna as reference
+'wtabhh 2'            - generates a hh polarisation waterfall table for all antennas using antenna 2 as reference
+
+[wtabhv]
+Generates a waterfall table page with hv polarisation.
+
+'wtabhv'              - generates a hv polarisation waterfall table for all antennas using first available antenna as reference
+'wtabhv 2'            - generates a hv polarisation waterfall table for all antennas using antenna 2 as reference
+
+[wtabvh]
+Generates a waterfall table page with vh polarisation.
+
+'wtabvh'              - generates a vh polarisation waterfall table for all antennas using first available antenna as reference
+'wtabvh 2'            - generates a vh polarisation waterfall table for all antennas using antenna 2 as reference
+
+[wtabvv]
+Generates a waterfall table page with vv polarisation.
+
+'wtabvv'              - generates a vv polarisation waterfall table for all antennas using first available antenna as reference
+'wtabvv 2'            - generates a vv polarisation waterfall table for all antennas using antenna 2 as reference
+
 [wmx]
 Generate a waterfall matrix page using one of the following commands
 
@@ -326,28 +359,28 @@ Generate a waterfall matrix page using one of the following commands
 [wmxhh]
 Generates a waterfall matrix page with hh polarisation.
 
-'wmxhh'              - generates a hh polarisation waterfall matrix for all available antennas (up to maximum of 8)
+'wmxhh'              - generates a hh polarisation waterfall matrix for all available antennas (up to maximum of 16)
 'wmxhh 1,2,3,4'      - generates a hh polarisation waterfall matrix for antennas 1,2,3,4 only
 'wmxhh 2..5,10,60..' - generates a hh polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxhv]
 Generates a waterfall matrix page with hv polarisation.
 
-'wmxhv'              - generates a hv polarisation waterfall matrix for all available antennas (up to maximum of 8)
+'wmxhv'              - generates a hv polarisation waterfall matrix for all available antennas (up to maximum of 16)
 'wmxhv 1,2,3,4'      - generates a hv polarisation waterfall matrix for antennas 1,2,3,4 only
 'wmxhv 2..5,10,60..' - generates a hv polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxvh]
 Generates a waterfall matrix page with vh polarisation.
 
-'wmxvh'              - generates a vh polarisation waterfall matrix for all available antennas (up to maximum of 8)
+'wmxvh'              - generates a vh polarisation waterfall matrix for all available antennas (up to maximum of 16)
 'wmxvh 1,2,3,4'      - generates a vh polarisation waterfall matrix for antennas 1,2,3,4 only
 'wmxvh 2..5,10,60..' - generates a vh polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
 [wmxvv]
 Generates a waterfall matrix page with vv polarisation.
 
-'wmxvv'              - generates a vv polarisation waterfall matrix for all available antennas (up to maximum of 8)
+'wmxvv'              - generates a vv polarisation waterfall matrix for all available antennas (up to maximum of 16)
 'wmxvv 1,2,3,4'      - generates a vv polarisation waterfall matrix for antennas 1,2,3,4 only
 'wmxvv 2..5,10,60..' - generates a v polarisation waterfall matrix for antennas 2,3,4,5,10,60,61,62,63 or a subset thereof if some specified antennas are absent.
 
