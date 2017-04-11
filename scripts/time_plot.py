@@ -1360,7 +1360,7 @@ def handle_websock_event(handlerkey,*args):
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-        elif (args[0].startswith('wtab') and (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv'))):
+        elif (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv')):
             logger.info(repr(args))
             antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
             if (len(antnumbers)==0):
@@ -1369,14 +1369,19 @@ def handle_websock_event(handlerkey,*args):
                 if (len(args)==1 or args[1]==''):
                     refantnumber=antnumbers[0]
                 else:#use supplied inputs
-                    refantnumber=parse_antennarange(','.join(args[1:]))[0]
+                    refantnumberlist=parse_antennarange(','.join(args[1:]))
+                    if (len(refantnumberlist)==1):
+                        refantnumber=refantnumberlist[0]
+                    else:
+                        send_websock_cmd('logconsole("Invalid reference antenna specified, using default instead",true,true,true)',handlerkey)
+                        refantnumber=antnumbers[0]
                 send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
                 html_viewsettings[username]=[]
                 html_layoutsettings[username]={'ncols':10,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
-                for iant in range(64):
-                    if (iant<=refantnumber):
+                for iant in range(64): # keep blank placeholder if antenna not present
+                    if (iant<refantnumber):
                         ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
                         ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
