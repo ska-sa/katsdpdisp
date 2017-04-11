@@ -613,7 +613,7 @@ class SignalDisplayStore2(object):
         timeseriesabs = np.zeros(len(bls_ordering),dtype=np.float32)
         for i,t in enumerate(tss):
             print ".",
-            d = h5.vis[i+startrow,:,:].squeeze(axis=0).swapaxes(0,1)
+            d = h5.vis[i+startrow,:,:].swapaxes(0,1)
             # now in baseline, freq, complex order
             for prod in range(len(bls_ordering)):
                 #calculate reduced blmx version of data
