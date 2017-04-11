@@ -285,7 +285,6 @@ def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbuff
                 except Exception,e:
                     logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     fig={}
-                    pass
                 ringbufferresultqueue.put(fig)
                 continue                
             if (thelayoutsettings=='memoryleak'):
@@ -1364,13 +1363,13 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0].startswith('wtab') and (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv'))):
             logger.info(repr(args))
             antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
-            if (len(args)==1 or args[1]==''):
-                refantnumber=antnumbers[0]
-            else:#use supplied inputs
-                refantnumber=parse_antennarange(','.join(args[1:]))[0]
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
+                if (len(args)==1 or args[1]==''):
+                    refantnumber=antnumbers[0]
+                else:#use supplied inputs
+                    refantnumber=parse_antennarange(','.join(args[1:]))[0]
                 send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
@@ -1378,7 +1377,7 @@ def handle_websock_event(handlerkey,*args):
                 html_layoutsettings[username]={'ncols':10,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
                 for iant in range(64):
                     if (iant<=refantnumber):
-                        ijstr=str(iant)+str(args[0][-2])+str(refantnumber)+str(args[0][-1])
+                        ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
                         ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
                     html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
