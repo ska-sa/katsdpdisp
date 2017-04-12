@@ -4,7 +4,11 @@
 import optparse
 import katsdptelstate
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+import tornado.ioloop
+import tornado.httpserver
+import tornado.web
+import tornado.websocket
+import tornado.template
 from pkg_resources import resource_filename
 import mplh5canvas.simple_server as simple_server
 import os
@@ -3105,61 +3109,6 @@ def websock_transfer_data(request):
             logger.warning("Caught exception (%s). Removing registered handler" % str(e))
             deregister_websockrequest_handler(request)
             return
-    
-class htmlHandler(BaseHTTPRequestHandler):
-    #Handler for the GET requests
-    def do_GET(self):
-        try:
-            if self.path=="/":
-                self.path="/index.html"
-
-            #Check the file extension required and
-            #set the right mime type
-
-            sendReply = False
-            if self.path.endswith(".html"):
-                mimetype='text/html'
-                sendReply = True
-            if self.path.endswith(".ico"):
-                mimetype='image/x-icon'
-                sendReply = True
-            if self.path.endswith(".png"):
-                mimetype='image/png'
-                sendReply = True
-            if self.path.endswith(".jpg"):
-                mimetype='image/jpg'
-                sendReply = True
-            if self.path.endswith(".gif"):
-                mimetype='image/gif'
-                sendReply = True
-            if self.path.endswith(".js"):
-                mimetype='application/javascript'
-                sendReply = True
-            if self.path.endswith(".css"):
-                mimetype='text/css'
-                sendReply = True
-
-            if sendReply == True:
-                #Open the static file requested and send it
-                f = open(SERVE_PATH + self.path)
-                self.send_response(200)
-                self.send_header('Content-type',mimetype)
-                self.end_headers()
-                filetext=f.read()
-                if (self.path=="/index.html"):
-                    if ('X-Timeplot-Data-Address' in self.headers):
-                        dataURLheader=self.headers.get('X-Timeplot-Data-Address')
-                        filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
-                    else:
-                        filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'"%(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
-                
-                self.wfile.write(filetext)
-                f.close()
-                    
-            return
-
-        except IOError:
-            self.send_error(404,'File Not Found: %s' % self.path)
 
 #determines unused webid by reusing old webid values
 def getFreeWebID():
@@ -3327,15 +3276,44 @@ except Exception as e:
     logger.warning("Failed to create data websocket server", exc_info=True)
     sys.exit(1)
 
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        loader = tornado.template.Loader(".")
+        filetext=loader.load(SERVE_PATH+"/index.html").generate()
+        if ('X-Timeplot-Data-Address' in self.request.headers):
+            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')
+            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
+        else:
+            filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'"%(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
+        self.write(filetext)
+
+class WSHandler(tornado.websocket.WebSocketHandler):
+    def open(self):
+        print 'connection opened...'
+        self.write_message("The server says: 'Hello'. Connection was accepted.")
+
+    def on_message(self, message):
+        self.write_message("The server says: " + message + " back at you")
+        print 'received:', message
+
+    def on_close(self):
+        print 'connection closed...'
+
+application = tornado.web.Application([
+    (r'/ws', WSHandler),
+    (r'/', MainHandler),
+    (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
+])
+
 try:
-    server = HTTPServer(("", opts.html_port), htmlHandler)
+    httpserver = tornado.httpserver.HTTPServer(application)
+    httpserver.listen(opts.html_port)
     logger.info('Started httpserver on port '+str(opts.html_port))
-    manhole.install(oneshot_on='USR1', locals={'server':server, 'websockserver':websockserver, 'opts':opts})
-     # allow remote debug connections and expose server, websockserver and opts
-    server.serve_forever()
+    # allow remote debug connections and expose httpserver, websockserver and opts
+    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'websockserver':websockserver, 'opts':opts})
+    tornado.ioloop.IOLoop.instance().start()
 except KeyboardInterrupt:
     logger.warning('^C received, shutting down the web server')
-    server.socket.close()
+    tornado.ioloop.IOLoop.instance().stop()
 
 websockserver.shutdown()
-
