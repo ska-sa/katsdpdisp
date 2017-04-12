@@ -9,8 +9,6 @@ linecache2
 manhole
 matplotlib==1.4.3
 mock
-mod_pywebsocket==0.7.9
-mplh5canvas==0.7
 netifaces
 nose
 numpy

@@ -1,5 +1,5 @@
 from websocket import create_connection
-ws = create_connection("ws://10.98.2.111:8001")
+ws = create_connection("ws://10.98.2.111:8000/ws")
 #set username
 ws.send(u"<data_user_event_timeseries args='setusername,pythonclient'>")
 result =  ws.recv()#ignore this reply
@@ -33,7 +33,7 @@ baseport=8000
 active_timeplots={}
 for portoffset in range(0,20,2):
     try:
-        ws = create_connection("ws://10.98.2.111:%d"%(baseport+portoffset+1))
+        ws = create_connection("ws://10.98.2.111:%d/ws"%(baseport+portoffset))
     except Exception, e:
         print 'port %d'%(baseport+portoffset+1),e
         continue

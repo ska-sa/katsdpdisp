@@ -10,7 +10,6 @@ import tornado.web
 import tornado.websocket
 import tornado.template
 from pkg_resources import resource_filename
-import mplh5canvas.simple_server as simple_server
 import os
 import traceback
 import commands
@@ -1003,7 +1002,6 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                   }
 
 help_dict={}
-websockrequest_handlers = {}
 websockrequest_type = {}
 websockrequest_time = {}
 websockrequest_lasttime = {}
@@ -3061,7 +3059,9 @@ def parse_websock_cmd(s, request):
 
 def send_websock_data(binarydata, handlerkey):
     try:
-        handlerkey.ws_stream.send_message(binarydata,binary=True)
+        handlerkey.write_message(binarydata,binary=True)
+        # self.write_message("The server says: " + message + " back at you")
+        # handlerkey.ws_stream.send_message(binarydata,binary=True)
     except AttributeError:         # connection has gone
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
@@ -3073,7 +3073,8 @@ def send_websock_data(binarydata, handlerkey):
 def send_websock_cmd(cmd, handlerkey):
     try:
         frame="/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
-        handlerkey.ws_stream.send_message(frame.decode('utf-8'))
+        handlerkey.write_message(frame.decode('utf-8'))
+        # handlerkey.ws_stream.send_message(frame.decode('utf-8'))
     except AttributeError:
          # connection has gone
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
@@ -3083,9 +3084,6 @@ def send_websock_cmd(cmd, handlerkey):
         logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
         deregister_websockrequest_handler(handlerkey)
 
-def register_websockrequest_handler(request):
-    websockrequest_handlers[request] = request.connection.remote_addr[0]
-    
 def deregister_websockrequest_handler(request):
     if (request in websockrequest_type):
         del websockrequest_type[request]
@@ -3095,20 +3093,28 @@ def deregister_websockrequest_handler(request):
         del websockrequest_lasttime[request]
     if (request in websockrequest_username):
         del websockrequest_username[request]
-    if (request in websockrequest_handlers):
-        del websockrequest_handlers[request]
-    del request
 
-def websock_transfer_data(request):
-    register_websockrequest_handler(request)
-    while True:
-        try:
-            line = request.ws_stream.receive_message()
-            parse_websock_cmd(line,request)
-        except Exception, e:
-            logger.warning("Caught exception (%s). Removing registered handler" % str(e))
-            deregister_websockrequest_handler(request)
-            return
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        loader = tornado.template.Loader(".")
+        filetext=loader.load(SERVE_PATH+"/index.html").generate()
+        if ('X-Timeplot-Data-Address' in self.request.headers):
+            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')#TODO this should change to html address
+            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"/ws'").replace('<!--scriptname_text-->',scriptnametext)
+        else:
+            filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d/ws'"%(opts.html_port)).replace('<!--scriptname_text-->',scriptnametext)
+        self.write(filetext)
+
+class WSHandler(tornado.websocket.WebSocketHandler):
+    def open(self):
+        print 'connection opened...'
+
+    def on_message(self, message):
+        parse_websock_cmd(message,self)
+
+    def on_close(self):
+        deregister_websockrequest_handler(self)
+        print 'connection closed...'
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
@@ -3122,7 +3128,7 @@ parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", def
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%(default)s)")
 parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
-                  help="Port number used to serve data for signal displays (default=%(default)s)")
+                  help="DEPRECATED Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
 parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
@@ -3247,37 +3253,6 @@ signal.signal(signal.SIGTERM, graceful_exit)
  # mostly needed for Docker use since this process runs as PID 1
  # and does not get passed sigterm unless it has a custom listener
 
-try:
-    websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
-    logger.info('Started data websocket server on port '+str(opts.data_port))
-    thread.start_new_thread(websockserver.serve_forever, ())
-except Exception as e:
-    logger.warning("Failed to create data websocket server", exc_info=True)
-    sys.exit(1)
-
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        loader = tornado.template.Loader(".")
-        filetext=loader.load(SERVE_PATH+"/index.html").generate()
-        if ('X-Timeplot-Data-Address' in self.request.headers):
-            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')
-            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
-        else:
-            filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'"%(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
-        self.write(filetext)
-
-class WSHandler(tornado.websocket.WebSocketHandler):
-    def open(self):
-        print 'connection opened...'
-        self.write_message("The server says: 'Hello'. Connection was accepted.")
-
-    def on_message(self, message):
-        self.write_message("The server says: " + message + " back at you")
-        print 'received:', message
-
-    def on_close(self):
-        print 'connection closed...'
-
 application = tornado.web.Application([
     (r'/ws', WSHandler),
     (r'/', MainHandler),
@@ -3289,10 +3264,8 @@ try:
     httpserver.listen(opts.html_port)
     logger.info('Started httpserver on port '+str(opts.html_port))
     # allow remote debug connections and expose httpserver, websockserver and opts
-    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'websockserver':websockserver, 'opts':opts})
+    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
     tornado.ioloop.IOLoop.instance().start()
 except KeyboardInterrupt:
     logger.warning('^C received, shutting down the web server')
     tornado.ioloop.IOLoop.instance().stop()
-
-websockserver.shutdown()
