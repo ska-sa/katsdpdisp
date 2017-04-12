@@ -3107,64 +3107,6 @@ def websock_transfer_data(request):
             return
     
 class htmlHandler(BaseHTTPRequestHandler):
-            
-    def handle_command(self,cmd):
-        cmdlist=cmd.split(',')
-        if (cmdlist[0]=='close websocket'):
-            webid=int(cmdlist[1])
-            deregister_htmlrequest_handler(webid)
-            return 'ok'
-        elif (cmdlist[0]=='set username'):
-            #set username:viewnumber for this handler, copies settings if numbered view corresponds to existing view
-            #could be just username, or username with view specification
-            #if just username provided, then appends unique view specification
-            #if view specification provided then if this view exists elsewhere, then copy its settings
-            webid=int(cmdlist[1])
-            username=cmdlist[2]
-            spusername=username.split(':')
-            if (len(spusername)>1):# eg operator:mainview
-                #copies view settings if defined elsewhere already for this view of this user
-                settingsdict=dict((val['username'],val['settings']) for val in htmlrequest_handlers.values())
-                if (settingsdict.has_key(username)):
-                    htmlrequest_handlers[webid]['settings']=settingsdict[username]
-                #TODO else possibly copy default views settings
-                htmlrequest_handlers[webid]['username']=username
-            else:#append unique view number to username-typical behaviour when creating new web page
-                usernamelist=[val['username'] for val in htmlrequest_handlers.values()]
-                for count in range(len(usernamelist)+1):
-                    if (username+':'+str(count) not in usernamelist):
-                        htmlrequest_handlers[webid]['username']=username+':'+str(count)
-                        break
-            return 'ok'
-        elif (cmdlist[0]=='set settings'):#set settings for all users of this username with same numbered view
-            webid=int(cmdlist[1])
-            settings=cmdlist[2]
-            for key in htmlrequest_handlers.keys():
-                if (htmlrequest_handlers[webid]['username']==htmlrequest_handlers[key]['username']):
-                    htmlrequest_handlers[key]['settings']=settings
-            return 'ok'
-        elif (cmdlist[0]=='get settings'):
-            webdid=int(cmdlist[1])
-            return htmlrequest_handlers[webid]['settings']
-        return 'unknown command: '+cmd
-        
-    #intercepts commands sent from data collector processes
-    def parse_request(self):
-        if (self.raw_requestline[:7]=='/*cmd*/'):
-            try:
-                response=self.handle_command(self.raw_requestline[7:-1])
-                self.wfile.write(response);
-                self.command = None
-                self.requestline = ""
-                self.request_version = self.default_request_version
-                self.close_connection = 1
-                return False
-            except Exception as e:
-                logger.warning("Exception occurred in httpHandler parse_request", exc_info=True)
-
-        return BaseHTTPRequestHandler.parse_request(self)
-        
-        
     #Handler for the GET requests
     def do_GET(self):
         try:
