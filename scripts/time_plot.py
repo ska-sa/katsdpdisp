@@ -1002,7 +1002,6 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                   }
 
 help_dict={}
-websockrequest_type = {}
 websockrequest_time = {}
 websockrequest_lasttime = {}
 websockrequest_username = {}
@@ -3037,10 +3036,7 @@ def pack_binarydata_msg(varname,val,dtype):
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
 def parse_websock_cmd(s, request):
     try:
-        # print 'PARSING s=',s,'thread=',thread.get_ident()
-        action = s[1:s.find(" ")]
-        args = s[s.find("args='")+6:-2].split(",")
-        websockrequest_type[request]=action
+        args = s.split(",")
         if (request in websockrequest_lasttime):
             websockrequest_lasttime[request]=websockrequest_time[request]
         else:
@@ -3051,8 +3047,7 @@ def parse_websock_cmd(s, request):
             else:
                 raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(request))
         websockrequest_time[request]=time.time()
-        if (action=='data_user_event_timeseries'):
-            handle_websock_event(request,*args)
+        handle_websock_event(request,*args)
         
     except AttributeError:
         logger.warning("Cannot find request method %s" % s)
@@ -3060,33 +3055,27 @@ def parse_websock_cmd(s, request):
 def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.write_message(binarydata,binary=True)
-        # self.write_message("The server says: " + message + " back at you")
-        # handlerkey.ws_stream.send_message(binarydata,binary=True)
-    except AttributeError:         # connection has gone
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+    except AttributeError: # connection has gone
+        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
     try:
         frame="/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
         handlerkey.write_message(frame.decode('utf-8'))
-        # handlerkey.ws_stream.send_message(frame.decode('utf-8'))
-    except AttributeError:
-         # connection has gone
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+    except AttributeError: # connection has gone
+        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
 
 def deregister_websockrequest_handler(request):
-    if (request in websockrequest_type):
-        del websockrequest_type[request]
     if (request in websockrequest_time):
         del websockrequest_time[request]
     if (request in websockrequest_lasttime):

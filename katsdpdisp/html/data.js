@@ -152,7 +152,7 @@ function handle_data_user_event(arg_string)
   try {
         if (datasocket.readyState==1)
         {
-            datasocket.send("<data_user_event_timeseries args='" + arg_string + "'>");
+            datasocket.send(arg_string);
         }else if (datasocket.readyState==3)
         {
             logconsole('Websocket connection closed, trying to reestablish',true,false,true)
