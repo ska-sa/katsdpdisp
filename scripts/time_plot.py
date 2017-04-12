@@ -3110,26 +3110,6 @@ def websock_transfer_data(request):
             deregister_websockrequest_handler(request)
             return
 
-#determines unused webid by reusing old webid values
-def getFreeWebID():
-    webid=htmlrequest_handlers.keys()#list of currently used webid's
-    webid.append(0)
-    swebid=np.sort(webid)
-    igaps=np.nonzero(np.diff(swebid)>1)[0]
-    if (len(igaps)>0):
-        freeid=swebid[igaps[0]]+1#chooses first free gap
-    else:
-        freeid=swebid[-1]+1
-    return freeid
-
-def register_htmlrequest_handler(requesthandler):
-    webid=getFreeWebID()
-    htmlrequest_handlers[webid] = {'handler':requesthandler,'username':'','settings':''}
-    return webid
-    
-def deregister_htmlrequest_handler(webid):
-    htmlrequest_handlers.pop(webid)#del rv?
-
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
 
@@ -3238,7 +3218,6 @@ ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
 rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
-htmlrequest_handlers={}
 
 if (opts.datafilename is not 'stream'):
     telstate_script_name=opts.datafilename
