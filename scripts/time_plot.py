@@ -3102,8 +3102,8 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         parse_websock_cmd(message,self)
 
     def on_close(self):
+        print 'connection to %s closed...'%(websockrequest_username[self])
         deregister_websockrequest_handler(self)
-        print 'connection closed...'
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
