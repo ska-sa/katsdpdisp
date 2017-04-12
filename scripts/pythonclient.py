@@ -31,7 +31,7 @@ ws.close()
 from websocket import create_connection
 baseport=8000
 active_timeplots={}
-for portoffset in range(0,20,2):
+for portoffset in range(0,20,1):
     try:
         ws = create_connection("ws://10.98.2.111:%d/ws"%(baseport+portoffset))
     except Exception, e:
