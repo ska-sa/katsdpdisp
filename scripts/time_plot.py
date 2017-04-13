@@ -1003,7 +1003,6 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
 
 help_dict={}
 websockrequest_time = {}
-websockrequest_lasttime = {}
 websockrequest_username = {}
 new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
 
@@ -3037,10 +3036,6 @@ def pack_binarydata_msg(varname,val,dtype):
 def parse_websock_cmd(s, request):
     try:
         args = s.split(",")
-        if (request in websockrequest_lasttime):
-            websockrequest_lasttime[request]=websockrequest_time[request]
-        else:
-            websockrequest_lasttime[request]=time.time()
         if (request not in websockrequest_username):
             if (args[0]=='setusername'):
                 websockrequest_username[request]='no-name'
@@ -3078,8 +3073,6 @@ def send_websock_cmd(cmd, handlerkey):
 def deregister_websockrequest_handler(request):
     if (request in websockrequest_time):
         del websockrequest_time[request]
-    if (request in websockrequest_lasttime):
-        del websockrequest_lasttime[request]
     if (request in websockrequest_username):
         del websockrequest_username[request]
 
