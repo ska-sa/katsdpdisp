@@ -3081,8 +3081,9 @@ class MainHandler(tornado.web.RequestHandler):
         loader = tornado.template.Loader(".")
         filetext=loader.load(SERVE_PATH+"/index.html").generate()
         if ('X-Timeplot-Data-Address' in self.request.headers):
-            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')#TODO this should change to html address
-            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"/ws'").replace('<!--scriptname_text-->',scriptnametext)
+            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')# typically dataURLheader='ws://mc1.sdp.mkat.karoo.kat.ac.za:5002/array_1_c856M4k/data'
+            #TODO  change proxy code to point to html address/ws
+            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
         else:
             filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d/ws'"%(opts.html_port)).replace('<!--scriptname_text-->',scriptnametext)
         self.write(filetext)
