@@ -24,6 +24,10 @@ six
 spead2
 traceback2
 twisted
+singledispatch
+certifi
+backports-abc
+backports.ssl-match-hostname
 tornado
 unittest2
 zope.interface
