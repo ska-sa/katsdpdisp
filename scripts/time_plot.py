@@ -3045,29 +3045,29 @@ def parse_websock_cmd(s, request):
         handle_websock_event(request,*args)
         
     except AttributeError:
-        logger.warning("Cannot find request method %s" % s)
+        logger.warning("Cannot find request method %s", s)
 
 def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.write_message(binarydata,binary=True)
-    except AttributeError: # connection has gone
+    except WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
+        logger.warning("Failed to send message (%s)", str(e), exc_info=True)
         logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
     try:
-        frame="/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
-        handlerkey.write_message(frame.decode('utf-8'))
-    except AttributeError: # connection has gone
-        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
+        frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
+        handlerkey.write_message(frame)
+    except WebSocketClosedError: # connection has gone
+        logger.warning("Connection to %s has gone. Closing...", websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
-        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
+        logger.warning("Failed to send message (%s)", str(e), exc_info=True)
+        logger.warning("Connection to %s has gone. Closing...", websockrequest_username[handlerkey])
         deregister_websockrequest_handler(handlerkey)
 
 def deregister_websockrequest_handler(request):
@@ -3078,25 +3078,20 @@ def deregister_websockrequest_handler(request):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        loader = tornado.template.Loader(".")
-        filetext=loader.load(SERVE_PATH+"/index.html").generate()
-        if ('X-Timeplot-Data-Address' in self.request.headers):
-            dataURLheader=self.request.headers.get('X-Timeplot-Data-Address')# typically dataURLheader='ws://mc1.sdp.mkat.karoo.kat.ac.za:5002/array_1_c856M4k/data'
-            #TODO  change proxy code to point to html address/ws
-            filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
-        else:
-            filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d/ws'"%(opts.html_port)).replace('<!--scriptname_text-->',scriptnametext)
+        loader = tornado.template.Loader(SERVE_PATH)
+        filetext=loader.load("index.html").generate()
+        filetext=filetext.replace('<!--data_URL-->',"'ws://' + document.location.host + document.location.pathname +'ws'").replace('<!--scriptname_text-->',scriptnametext)
         self.write(filetext)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
     def open(self):
-        print 'connection opened...'
+        logger.warning("Connection opened...")
 
     def on_message(self, message):
         parse_websock_cmd(message,self)
 
     def on_close(self):
-        print 'connection to %s closed...'%(websockrequest_username[self])
+        logger.warning("Connection to %s is closed...", websockrequest_username[self])
         deregister_websockrequest_handler(self)
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
@@ -3108,6 +3103,8 @@ parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=floa
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer. If negative then number of megabytes. (default=%(default)s)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%(default)s)")
+parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
+                  help="DEPRECATED Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
 parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
@@ -3242,7 +3239,7 @@ try:
     logger.info('Started httpserver on port '+str(opts.html_port))
     # allow remote debug connections and expose httpserver, websockserver and opts
     manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
-    tornado.ioloop.IOLoop.instance().start()
+    tornado.ioloop.IOLoop.current().start()
 except KeyboardInterrupt:
     logger.warning('^C received, shutting down the web server')
-    tornado.ioloop.IOLoop.instance().stop()
+    tornado.ioloop.IOLoop.current().stop()

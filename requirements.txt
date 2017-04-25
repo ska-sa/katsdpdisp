@@ -24,6 +24,7 @@ six
 spead2
 traceback2
 twisted
+tornado
 unittest2
 zope.interface
 git+ssh://git@github.com/ska-sa/katsdptelstate
