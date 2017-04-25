@@ -3078,10 +3078,7 @@ def deregister_websockrequest_handler(request):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        loader = tornado.template.Loader(SERVE_PATH)
-        filetext=loader.load("index.html").generate()
-        filetext=filetext.replace('<!--data_URL-->',"'ws://' + document.location.host + document.location.pathname +'ws'").replace('<!--scriptname_text-->',scriptnametext)
-        self.write(filetext)
+        self.render(SERVE_PATH+"/index.html",scriptname_text=scriptnametext)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
     def open(self):
