@@ -3051,11 +3051,11 @@ def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.write_message(binarydata,binary=True)
     except WebSocketClosedError: # connection has gone
-        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
+        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)", str(e), exc_info=True)
-        logger.warning("Connection to %s has gone. Closing..." % websockrequest_username[handlerkey])
+        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
@@ -3063,11 +3063,11 @@ def send_websock_cmd(cmd, handlerkey):
         frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
         handlerkey.write_message(frame)
     except WebSocketClosedError: # connection has gone
-        logger.warning("Connection to %s has gone. Closing...", websockrequest_username[handlerkey])
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
         logger.warning("Failed to send message (%s)", str(e), exc_info=True)
-        logger.warning("Connection to %s has gone. Closing...", websockrequest_username[handlerkey])
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
 
 def deregister_websockrequest_handler(request):
@@ -3088,7 +3088,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         parse_websock_cmd(message,self)
 
     def on_close(self):
-        logger.info("Connection to %s is closed...", websockrequest_username[self])
+        logger.info("Connection to %s@%s is closed...", websockrequest_username[self] if (self in websockrequest_username) else '(unknown)', self.request.remote_ip)
         deregister_websockrequest_handler(self)
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
