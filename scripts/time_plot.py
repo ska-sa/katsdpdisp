@@ -3082,13 +3082,13 @@ class MainHandler(tornado.web.RequestHandler):
 
 class WSHandler(tornado.websocket.WebSocketHandler):
     def open(self):
-        logger.warning("Connection opened...")
+        logger.info("Connection opened...")
 
     def on_message(self, message):
         parse_websock_cmd(message,self)
 
     def on_close(self):
-        logger.warning("Connection to %s is closed...", websockrequest_username[self])
+        logger.info("Connection to %s is closed...", websockrequest_username[self])
         deregister_websockrequest_handler(self)
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
