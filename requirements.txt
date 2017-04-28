@@ -9,8 +9,6 @@ linecache2
 manhole
 matplotlib==1.4.3
 mock
-mod_pywebsocket==0.7.9
-mplh5canvas==0.7
 netifaces
 nose
 numpy
@@ -26,6 +24,11 @@ six
 spead2
 traceback2
 twisted
+singledispatch
+certifi
+backports-abc
+backports.ssl-match-hostname
+tornado
 unittest2
 zope.interface
 git+ssh://git@github.com/ska-sa/katsdptelstate

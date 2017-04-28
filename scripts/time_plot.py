@@ -4,9 +4,12 @@
 import optparse
 import katsdptelstate
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
-from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
+import tornado.ioloop
+import tornado.httpserver
+import tornado.web
+import tornado.websocket
+import tornado.template
 from pkg_resources import resource_filename
-import mplh5canvas.simple_server as simple_server
 import os
 import traceback
 import commands
@@ -999,10 +1002,7 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
                   }
 
 help_dict={}
-websockrequest_handlers = {}
-websockrequest_type = {}
 websockrequest_time = {}
-websockrequest_lasttime = {}
 websockrequest_username = {}
 new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
 
@@ -3035,209 +3035,61 @@ def pack_binarydata_msg(varname,val,dtype):
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
 def parse_websock_cmd(s, request):
     try:
-        # print 'PARSING s=',s,'thread=',thread.get_ident()
-        action = s[1:s.find(" ")]
-        args = s[s.find("args='")+6:-2].split(",")
-        websockrequest_type[request]=action
-        if (request in websockrequest_lasttime):
-            websockrequest_lasttime[request]=websockrequest_time[request]
-        else:
-            websockrequest_lasttime[request]=time.time()
+        args = s.split(",")
         if (request not in websockrequest_username):
             if (args[0]=='setusername'):
                 websockrequest_username[request]='no-name'
             else:
                 raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(request))
         websockrequest_time[request]=time.time()
-        if (action=='data_user_event_timeseries'):
-            handle_websock_event(request,*args)
+        handle_websock_event(request,*args)
         
     except AttributeError:
-        logger.warning("Cannot find request method %s" % s)
+        logger.warning("Cannot find request method %s", s)
 
 def send_websock_data(binarydata, handlerkey):
     try:
-        handlerkey.ws_stream.send_message(binarydata,binary=True)
-    except AttributeError:         # connection has gone
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        handlerkey.write_message(binarydata,binary=True)
+    except WebSocketClosedError: # connection has gone
+        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        logger.warning("Failed to send message (%s)", str(e), exc_info=True)
+        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
     try:
-        frame="/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
-        handlerkey.ws_stream.send_message(frame.decode('utf-8'))
-    except AttributeError:
-         # connection has gone
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
+        handlerkey.write_message(frame)
+    except WebSocketClosedError: # connection has gone
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception, e:
-        logger.warning("Failed to send message (%s)" % str(e), exc_info=True)
-        logger.warning("Connection %s has gone. Closing..." % handlerkey.connection.remote_addr[0])
+        logger.warning("Failed to send message (%s)", str(e), exc_info=True)
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
 
-def register_websockrequest_handler(request):
-    websockrequest_handlers[request] = request.connection.remote_addr[0]
-    
 def deregister_websockrequest_handler(request):
-    if (request in websockrequest_type):
-        del websockrequest_type[request]
     if (request in websockrequest_time):
         del websockrequest_time[request]
-    if (request in websockrequest_lasttime):
-        del websockrequest_lasttime[request]
     if (request in websockrequest_username):
         del websockrequest_username[request]
-    if (request in websockrequest_handlers):
-        del websockrequest_handlers[request]
-    del request
 
-def websock_transfer_data(request):
-    register_websockrequest_handler(request)
-    while True:
-        try:
-            line = request.ws_stream.receive_message()
-            parse_websock_cmd(line,request)
-        except Exception, e:
-            logger.warning("Caught exception (%s). Removing registered handler" % str(e))
-            deregister_websockrequest_handler(request)
-            return
-    
-class htmlHandler(BaseHTTPRequestHandler):
-            
-    def handle_command(self,cmd):
-        cmdlist=cmd.split(',')
-        if (cmdlist[0]=='close websocket'):
-            webid=int(cmdlist[1])
-            deregister_htmlrequest_handler(webid)
-            return 'ok'
-        elif (cmdlist[0]=='set username'):
-            #set username:viewnumber for this handler, copies settings if numbered view corresponds to existing view
-            #could be just username, or username with view specification
-            #if just username provided, then appends unique view specification
-            #if view specification provided then if this view exists elsewhere, then copy its settings
-            webid=int(cmdlist[1])
-            username=cmdlist[2]
-            spusername=username.split(':')
-            if (len(spusername)>1):# eg operator:mainview
-                #copies view settings if defined elsewhere already for this view of this user
-                settingsdict=dict((val['username'],val['settings']) for val in htmlrequest_handlers.values())
-                if (settingsdict.has_key(username)):
-                    htmlrequest_handlers[webid]['settings']=settingsdict[username]
-                #TODO else possibly copy default views settings
-                htmlrequest_handlers[webid]['username']=username
-            else:#append unique view number to username-typical behaviour when creating new web page
-                usernamelist=[val['username'] for val in htmlrequest_handlers.values()]
-                for count in range(len(usernamelist)+1):
-                    if (username+':'+str(count) not in usernamelist):
-                        htmlrequest_handlers[webid]['username']=username+':'+str(count)
-                        break
-            return 'ok'
-        elif (cmdlist[0]=='set settings'):#set settings for all users of this username with same numbered view
-            webid=int(cmdlist[1])
-            settings=cmdlist[2]
-            for key in htmlrequest_handlers.keys():
-                if (htmlrequest_handlers[webid]['username']==htmlrequest_handlers[key]['username']):
-                    htmlrequest_handlers[key]['settings']=settings
-            return 'ok'
-        elif (cmdlist[0]=='get settings'):
-            webdid=int(cmdlist[1])
-            return htmlrequest_handlers[webid]['settings']
-        return 'unknown command: '+cmd
-        
-    #intercepts commands sent from data collector processes
-    def parse_request(self):
-        if (self.raw_requestline[:7]=='/*cmd*/'):
-            try:
-                response=self.handle_command(self.raw_requestline[7:-1])
-                self.wfile.write(response);
-                self.command = None
-                self.requestline = ""
-                self.request_version = self.default_request_version
-                self.close_connection = 1
-                return False
-            except Exception as e:
-                logger.warning("Exception occurred in httpHandler parse_request", exc_info=True)
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render(SERVE_PATH+"/index.html",scriptname_text=scriptnametext)
 
-        return BaseHTTPRequestHandler.parse_request(self)
-        
-        
-    #Handler for the GET requests
-    def do_GET(self):
-        try:
-            if self.path=="/":
-                self.path="/index.html"
+class WSHandler(tornado.websocket.WebSocketHandler):
+    def open(self):
+        logger.info("Connection opened...")
 
-            #Check the file extension required and
-            #set the right mime type
+    def on_message(self, message):
+        parse_websock_cmd(message,self)
 
-            sendReply = False
-            if self.path.endswith(".html"):
-                mimetype='text/html'
-                sendReply = True
-            if self.path.endswith(".ico"):
-                mimetype='image/x-icon'
-                sendReply = True
-            if self.path.endswith(".png"):
-                mimetype='image/png'
-                sendReply = True
-            if self.path.endswith(".jpg"):
-                mimetype='image/jpg'
-                sendReply = True
-            if self.path.endswith(".gif"):
-                mimetype='image/gif'
-                sendReply = True
-            if self.path.endswith(".js"):
-                mimetype='application/javascript'
-                sendReply = True
-            if self.path.endswith(".css"):
-                mimetype='text/css'
-                sendReply = True
-
-            if sendReply == True:
-                #Open the static file requested and send it
-                f = open(SERVE_PATH + self.path)
-                self.send_response(200)
-                self.send_header('Content-type',mimetype)
-                self.end_headers()
-                filetext=f.read()
-                if (self.path=="/index.html"):
-                    if ('X-Timeplot-Data-Address' in self.headers):
-                        dataURLheader=self.headers.get('X-Timeplot-Data-Address')
-                        filetext=filetext.replace('<!--data_URL-->',"'"+dataURLheader+"'").replace('<!--scriptname_text-->',scriptnametext)
-                    else:
-                        filetext=filetext.replace('<!--data_URL-->',"'ws://'+document.domain+':%d'"%(opts.data_port)).replace('<!--scriptname_text-->',scriptnametext)
-                
-                self.wfile.write(filetext)
-                f.close()
-                    
-            return
-
-        except IOError:
-            self.send_error(404,'File Not Found: %s' % self.path)
-
-#determines unused webid by reusing old webid values
-def getFreeWebID():
-    webid=htmlrequest_handlers.keys()#list of currently used webid's
-    webid.append(0)
-    swebid=np.sort(webid)
-    igaps=np.nonzero(np.diff(swebid)>1)[0]
-    if (len(igaps)>0):
-        freeid=swebid[igaps[0]]+1#chooses first free gap
-    else:
-        freeid=swebid[-1]+1
-    return freeid
-
-def register_htmlrequest_handler(requesthandler):
-    webid=getFreeWebID()
-    htmlrequest_handlers[webid] = {'handler':requesthandler,'username':'','settings':''}
-    return webid
-    
-def deregister_htmlrequest_handler(webid):
-    htmlrequest_handlers.pop(webid)#del rv?
+    def on_close(self):
+        logger.info("Connection to %s@%s is closed...", websockrequest_username[self] if (self in websockrequest_username) else '(unknown)', self.request.remote_ip)
+        deregister_websockrequest_handler(self)
 
 parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
@@ -3246,16 +3098,12 @@ parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
                   help="Display debug messages.")
 parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=float,
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer. If negative then number of megabytes. (default=%(default)s)")
-parser.add_argument("--rts", action='store_true', dest="rts_antenna_labels", default=True,
-                  help="DEPRECATED Use RTS style antenna labels (eg m001,m002) instead of KAT-7 style (eg ant1,ant2)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%(default)s)")
 parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
-                  help="Port number used to serve data for signal displays (default=%(default)s)")
+                  help="DEPRECATED Port number used to serve data for signal displays (default=%(default)s)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
                   help="Port number used to connect to spead stream (default=%(default)s)")
-parser.add_argument("--capture_server", dest="capture_server", default="localhost:2040", type=str,
-                  help="DEPRECATED Server ip-address:port that runs kat_capture (default=%(default)s)")
 parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp", type=str,
                   help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=int,
@@ -3347,7 +3195,6 @@ ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
 rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
-htmlrequest_handlers={}
 
 if (opts.datafilename is not 'stream'):
     telstate_script_name=opts.datafilename
@@ -3377,23 +3224,19 @@ signal.signal(signal.SIGTERM, graceful_exit)
  # mostly needed for Docker use since this process runs as PID 1
  # and does not get passed sigterm unless it has a custom listener
 
-try:
-    websockserver=simple_server.WebSocketServer(('', opts.data_port), websock_transfer_data, simple_server.WebSocketRequestHandler)
-    logger.info('Started data websocket server on port '+str(opts.data_port))
-    thread.start_new_thread(websockserver.serve_forever, ())
-except Exception as e:
-    logger.warning("Failed to create data websocket server", exc_info=True)
-    sys.exit(1)
+application = tornado.web.Application([
+    (r'/ws', WSHandler),
+    (r'/', MainHandler),
+    (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
+])
 
 try:
-    server = HTTPServer(("", opts.html_port), htmlHandler)
+    httpserver = tornado.httpserver.HTTPServer(application)
+    httpserver.listen(opts.html_port)
     logger.info('Started httpserver on port '+str(opts.html_port))
-    manhole.install(oneshot_on='USR1', locals={'server':server, 'websockserver':websockserver, 'opts':opts})
-     # allow remote debug connections and expose server, websockserver and opts
-    server.serve_forever()
+    # allow remote debug connections and expose httpserver, websockserver and opts
+    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
+    tornado.ioloop.IOLoop.current().start()
 except KeyboardInterrupt:
     logger.warning('^C received, shutting down the web server')
-    server.socket.close()
-
-websockserver.shutdown()
-
+    tornado.ioloop.IOLoop.current().stop()
