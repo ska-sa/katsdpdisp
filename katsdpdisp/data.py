@@ -368,7 +368,7 @@ class SparceMatrix(object):
         sparceindex=self.blslookup[data_index]
         invalid=np.nonzero(np.isnan(sparceindex))[0]
         if (len(invalid)):#trying to read value that is not officially in list yet
-            rv=np.zeros([len(slot) if (type(slot)==np.ndarray) else 1,len(data_index) if (type(data_index)==np.ndarray) else 1,len(chan) if (type(chan)==np.ndarray) else 1],dtype=self.dtype)
+            rv=np.zeros([len(slot) if (type(slot)==np.ndarray or type(slot)==list) else 1,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,len(chan) if (type(chan)==np.ndarray or type(chan)==list) else 1],dtype=self.dtype)
             rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
             return rv
         return self.sparcedata[(slot,sparceindex,chan)]
@@ -380,7 +380,10 @@ class SparceMatrix(object):
     def __setitem__(self, key, value):
         slot,data_index,chan=key
         if (type(data_index)!=np.ndarray):
-            data_index=np.array([data_index])
+            if (type(data_index)==list):
+                data_index=np.array(data_index)
+            else:
+                data_index=np.array([data_index])
         if (len(data_index)>self.maxbaselines):
             logger.warning("Unexpected data_index > maxbaselines. Reducing from %d to %d",len(data_index),self.maxbaselines)
             data_index=data_index[:self.maxbaselines]
