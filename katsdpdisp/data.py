@@ -347,7 +347,7 @@ class SignalDisplayFrame(object):
 
 #manages a sparce matrix to store data of dimensions (n_time_slots,n_max_bls,n_channels) where n_max_bls< true n_bls
 #recycles buffer space
-class SparceMatrix(object):
+class SparceArray(object):
     def __init__(self):
         self.sparcedata=None
         
@@ -409,7 +409,7 @@ class SparceMatrix(object):
         self.sparcedata[(slot,sparceindex,chan)] = value
 
     def __repr__(self):
-        return 'SparceMatrix({})'.format(self.sparcedata)
+        return 'SparceArray({})'.format(self.sparcedata)
         
 class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
