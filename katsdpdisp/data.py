@@ -366,10 +366,12 @@ class SparceArray(object):
     def __getitem__(self, key):
         slot,data_index,chan=key
         sparceindex=self.blslookup[data_index]
-        invalid=np.nonzero(np.isnan(sparceindex))[0]
+        invalid=np.nonzero(sparceindex==self.nan)[0]#index to sparceindex
+        valid=np.nonzero(sparceindex!=self.nan)[0]
         if (len(invalid)):#trying to read value that is not officially in list yet
             rv=np.zeros([len(slot) if (type(slot)==np.ndarray or type(slot)==list) else 1,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,len(chan) if (type(chan)==np.ndarray or type(chan)==list) else 1],dtype=self.dtype)
-            rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
+            if (len(valid)):
+                rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
             return rv
         return self.sparcedata[(slot,sparceindex,chan)]
 
