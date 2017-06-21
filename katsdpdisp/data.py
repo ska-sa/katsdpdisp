@@ -369,7 +369,9 @@ class SparceArray(object):
         invalid=np.nonzero(sparceindex==self.nan)[0]#index to sparceindex
         valid=np.nonzero(sparceindex!=self.nan)[0]
         if (len(invalid)):#trying to read value that is not officially in list yet
-            rv=np.zeros([len(slot) if (type(slot)==np.ndarray or type(slot)==list) else 1,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,len(chan) if (type(chan)==np.ndarray or type(chan)==list) else 1],dtype=self.dtype)
+            slotlen=self.sparcedata[(key,0,0)].shape[0]
+            chanlen=self.sparcedata[(0,0,chan)].shape[0]
+            rv=np.zeros([slotlen,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,chanlen],dtype=self.dtype)
             if (len(valid)):
                 rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
             return rv
