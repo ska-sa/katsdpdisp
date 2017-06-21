@@ -453,7 +453,7 @@ class SignalDisplayStore2(object):
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-        self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
+        self.slots = int(self.mem_cap / (self._frame_size_bytes * (min(self.max_custom_signals,self.n_bls)+nperc)))
         # self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         # self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
         self.data = SparceArray(self.slots,self.n_chans,self.n_bls,min(self.max_custom_signals,self.n_bls),dtype=np.complex64)
