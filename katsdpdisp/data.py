@@ -348,18 +348,13 @@ class SignalDisplayFrame(object):
 #manages a sparce matrix to store data of dimensions (n_time_slots,n_max_bls,n_channels) where n_max_bls< true n_bls
 #recycles buffer space
 class SparceArray(object):
-    def __init__(self):
-        self.sparcedata=None
-        
-    def init_storage(self,n_slots,n_chans,n_bls,maxbaselines,dtype=np.complex64):
+    def __init__(self,n_slots,n_chans,n_bls,maxbaselines,dtype=np.complex64):
         self.dtype=dtype
         self.n_slots=n_slots
         self.n_chans=n_chans
         self.n_bls=n_bls
         self.maxbaselines=maxbaselines
         self.nan=self.maxbaselines
-        if (self.sparcedata is not None):
-            del self.sparcedata
         self.sparcedata=np.zeros((self.n_slots, self.maxbaselines, self.n_chans),dtype=self.dtype)
         self.blslookup=np.tile(self.nan,self.n_bls) #value in this lookup refers to bls index in sparcedata
 
@@ -458,8 +453,10 @@ class SignalDisplayStore2(object):
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
         self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
-        self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
-        self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        # self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
+        # self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        self.data = SparceArray(self.slots,self.n_chans,self.n_bls,64*4,dtype=np.complex64)
+        self.flags = SparceArray(self.slots,self.n_chans,self.n_bls,64*4,dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.timeseriesslots=self.slots
         self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
@@ -2219,7 +2216,7 @@ class DataHandler(object):
                 split_start = max(split_end + end_time,0)
             split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
-            arraylen=self.storage.data.shape[0];
+            arraylen=self.storage.data[:,0,0].shape[0];
             _split_start=split_start%arraylen;
             _split_end=split_end%arraylen;
                     
