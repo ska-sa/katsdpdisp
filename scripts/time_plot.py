@@ -189,7 +189,7 @@ def getstartstoptime(ts,themin,themax):
     return tstart,tstop
 
 #idea is to store the averaged time series profile in channel 0
-def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue):
+def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue):
     thefileoffset=0
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
@@ -197,14 +197,14 @@ def RingBufferProcess(spead_port, memusage, datafilename, cbf_channels, ringbuff
     hpbefore = hp.heap()
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
-        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,cbf_channels=cbf_channels,notifyqueue=ringbuffernotifyqueue,store2=True)
+        dh.start_spead_receiver(port=spead_port,capacity=memusage/100.0,max_custom_signals=max_custom_signals,cbf_channels=cbf_channels,notifyqueue=ringbuffernotifyqueue,store2=True)
         datasd=dh.sd
     elif (datafilename=='k7simulator'):
-        dh.start_direct_spead_receiver(capacity=memusage/100.0,store2=True)
+        dh.start_direct_spead_receiver(capacity=memusage/100.0,max_custom_signals=max_custom_signals,store2=True)
         datasd=dh.sd
     else:
         try:
-            dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True)
+            dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, max_custom_signals=max_custom_signals, store2=True)
         except Exception,e:
             logger.warning(" Failed to load file using ar1 loader (%s)" % e, exc_info=True)
             try:
@@ -1788,7 +1788,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
                 time.sleep(2)
-                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue)).start()
+                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue)).start()
                 logger.info('RESTART performed, using port=%d memusage=%f datafilename=%s'%(opts.spead_port,opts.memusage,opts.datafilename))
                 send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
@@ -3193,7 +3193,7 @@ ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
-rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
+rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
 
 if (opts.datafilename is not 'stream'):

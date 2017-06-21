@@ -362,11 +362,11 @@ class SparceArray(object):
         slot,data_index,chan=key
         sparceindex=self.blslookup[data_index]
         invalid=np.nonzero(sparceindex==self.nan)[0]#index to sparceindex
-        valid=np.nonzero(sparceindex!=self.nan)[0]
         if (len(invalid)):#trying to read value that is not officially in list yet
             slotlen=self.sparcedata[(key,0,0)].shape[0]
             chanlen=self.sparcedata[(0,0,chan)].shape[0]
             rv=np.zeros([slotlen,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,chanlen],dtype=self.dtype)
+            valid=np.nonzero(sparceindex!=self.nan)[0]
             if (len(valid)):
                 rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
             return rv
@@ -414,7 +414,7 @@ class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
     This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
     is done whenever channel or baseline count changes."""
-    def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
+    def __init__(self, n_ants=2, capacity=0.2, max_custom_signals=None, timeseriesmaskstr='', cbf_channels=None):
         if (capacity<0):
             self.mem_cap = int(1024*1024*(-capacity*100))
         else:
@@ -425,6 +425,7 @@ class SignalDisplayStore2(object):
                 self.mem_cap = 1024*1024*128
                  # default to 128 megabytes if we cannot determine system memory
         logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
+        self.max_custom_signals = max_custom_signals
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
@@ -455,8 +456,8 @@ class SignalDisplayStore2(object):
         self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
         # self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
         # self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
-        self.data = SparceArray(self.slots,self.n_chans,self.n_bls,64*4,dtype=np.complex64)
-        self.flags = SparceArray(self.slots,self.n_chans,self.n_bls,64*4,dtype=np.uint8)
+        self.data = SparceArray(self.slots,self.n_chans,self.n_bls,min(self.max_custom_signals,self.n_bls),dtype=np.complex64)
+        self.flags = SparceArray(self.slots,self.n_chans,self.n_bls,min(self.max_custom_signals,self.n_bls),dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.timeseriesslots=self.slots
         self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
@@ -3221,7 +3222,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2, cbf_channels=None, notifyqueue=None, store2=False):
+    def start_spead_receiver(self, port=7149, capacity=0.2, max_custom_signals=None, cbf_channels=None, notifyqueue=None, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -3240,13 +3241,13 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore2(capacity=capacity,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port,st,notifyqueue,cbf_channels=cbf_channels)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
-    def start_direct_spead_receiver(self, port=7148, capacity=0.2, store2=False):
+    def start_direct_spead_receiver(self, port=7148, capacity=0.2, max_custom_signals=None, store2=False):
         """Starts a SPEAD signal display receiver to handle data directly from the correlator.
 
         Parameters
@@ -3260,13 +3261,13 @@ class KATData(object):
             Use the updated signal display store version 2
 
         """
-        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port, st, direct=True)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(dbe=None, receiver=r, store=st)
 
-    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, store2=False, timeseriesmaskstr=''):
+    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, max_custom_signals=None, store2=False, timeseriesmaskstr=''):
         """Load ar1 data from the specified file and use this to populate a signal display storage object.
         The new data handler is available as .sd_hist
 
@@ -3275,7 +3276,7 @@ class KATData(object):
         filename : string
             The fully qualified path to the HDF5 file in question
         """
-        st = SignalDisplayStore2(capacity=capacity, timeseriesmaskstr=timeseriesmaskstr) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,timeseriesmaskstr=timeseriesmaskstr) if store2 else SignalDisplayStore(capacity=capacity)
         st.pc_load_letter(filename, rows=rows, startrow=startrow)
         r = NullReceiver(st)
         r.cpref = st.cpref
