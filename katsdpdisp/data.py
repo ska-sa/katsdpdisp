@@ -345,66 +345,68 @@ class SignalDisplayFrame(object):
 
         #return np.average(np.abs(self.data.view(dtype=np.complex64)[start_channel:stop_channel]))
 
-#manages a sparce matrix to store data of dimensions (n_time_slots,n_max_bls,n_channels) where n_max_bls< true n_bls
-#recycles buffer space
+#manages a sparce array to store data of dimensions (n_time_slots,n_max_bls,n_channels) where n_max_bls< true n_bls
+#thedata for a particular baseline is wiped (lazy deletion) whenever the data_index is absent in a new assignment to a new (time) slot, and this memory could then be used for a new baseline
+#slices are not supported for bls dimension, but integers, arrays and list indexing are supported
+#buffer space is recycled when needed when assignments are made
 class SparceArray(object):
-    def __init__(self,n_slots,n_chans,n_bls,maxbaselines,dtype=np.complex64):
-        self.dtype=dtype
-        self.n_slots=n_slots
-        self.n_chans=n_chans
-        self.n_bls=n_bls
-        self.maxbaselines=maxbaselines
-        self.nan=self.maxbaselines
-        self.sparcedata=np.zeros((self.n_slots, self.maxbaselines, self.n_chans),dtype=self.dtype)
-        self.blslookup=np.tile(self.nan,self.n_bls) #value in this lookup refers to bls index in sparcedata
+    def __init__(self, n_slots, n_chans, n_bls, maxbaselines, dtype=np.complex64):
+        self.dtype = dtype
+        self.n_slots = n_slots
+        self.n_chans = n_chans
+        self.n_bls = n_bls
+        self.maxbaselines = maxbaselines#corresponds to maximum number of (full resolution) baselines hardlimit that can be requested from ingest to be transmitted to katsdpdisp
+        self.nan = self.maxbaselines
+        self.sparcedata = np.zeros((self.n_slots, self.maxbaselines, self.n_chans), dtype=self.dtype)
+        self.blslookup = np.tile(self.nan, self.n_bls) #value in this lookup refers to bls index in sparcedata
 
     def __getitem__(self, key):
-        slot,data_index,chan=key
-        sparceindex=self.blslookup[data_index]
-        invalid=np.nonzero(sparceindex==self.nan)[0]#index to sparceindex
-        if (len(invalid)):#trying to read value that is not officially in list yet
-            slotlen=self.sparcedata[(key,0,0)].shape[0]
-            chanlen=self.sparcedata[(0,0,chan)].shape[0]
-            rv=np.zeros([slotlen,len(data_index) if (type(data_index)==np.ndarray or type(data_index)==list) else 1,chanlen],dtype=self.dtype)
-            valid=np.nonzero(sparceindex!=self.nan)[0]
+        slot,data_index,chan = key
+        sparceindex = self.blslookup[data_index]
+        invalid = np.nonzero(sparceindex == self.nan)[0]#index to sparceindex
+        if (len(invalid)):#trying to read baseline that is not in sparce array
+            slotlen = self.sparcedata[(key,0,0)].shape[0]
+            chanlen = self.sparcedata[(0,0,chan)].shape[0]
+            rv = np.zeros([slotlen, len(data_index) if (type(data_index) == np.ndarray or type(data_index) == list) else 1, chanlen], dtype=self.dtype)
+            valid = np.nonzero(sparceindex != self.nan)[0]
             if (len(valid)):
-                rv[(slot,valid,chan)]=self.sparcedata[(slot,sparceindex[valid],chan)]
+                rv[(slot,valid,chan)] = self.sparcedata[(slot, sparceindex[valid], chan)]
             return rv
         return self.sparcedata[(slot,sparceindex,chan)]
 
-    #full baselines not sent, full_bls [0,1,2,3,4,,,n_bls-1]
+    #full baselines exists only in ingest and is never sent in full, full_bls: [0,1,2,3,4,,,n_bls-1]
     #data_index are sparse indices to full_bls, e.g. [3,4,7,8]
     #blslookup is of full size n_bls, and values indicate which entry in sparcedata corresponds to full bls entry
-    #len(data_index)<=n_bls per definition, but also should be <=maxbaselines where maxbaselines<n_bls
+    #len(data_index)<=n_bls by definition, but also should be <=maxbaselines where maxbaselines<n_bls
     def __setitem__(self, key, value):
-        slot,data_index,chan=key
-        if (type(data_index)!=np.ndarray):
-            if (type(data_index)==list):
-                data_index=np.array(data_index)
+        slot,data_index,chan = key
+        if (type(data_index) != np.ndarray):
+            if (type(data_index) == list):
+                data_index = np.array(data_index)
             else:
-                data_index=np.array([data_index])
-        if (len(data_index)>self.maxbaselines):
-            logger.warning("Unexpected data_index > maxbaselines. Reducing from %d to %d",len(data_index),self.maxbaselines)
-            data_index=data_index[:self.maxbaselines]
-        sparceindex=0+np.array(self.blslookup[data_index])#indices in sparce data
-        cdata_index=np.arange(self.n_bls)
-        cdata_index[data_index]=-1#note self.nan<self.n_bls so use -1 instead
-        cdata_index=np.nonzero(cdata_index!=-1)[0]
-        self.blslookup[cdata_index]=self.nan
-        invalid=np.nonzero(sparceindex==self.nan)[0]#index to sparceindex
-        valid=np.nonzero(sparceindex!=self.nan)[0]
-        topurge=np.ones(self.maxbaselines)#index to sparcedata
-        topurge[valid]=0
-        purgethese=np.nonzero(topurge==1)[0]#indices in sparcedata
-        if (len(invalid)):#trying to assign value to an entry that is not officially in list yet
+                data_index = np.array([data_index])
+        if (len(data_index) > self.maxbaselines):
+            logger.warning("Unexpected data_index > maxbaselines. Reducing from %d to %d", len(data_index), self.maxbaselines)
+            data_index = data_index[:self.maxbaselines]
+        sparceindex = 0+np.array(self.blslookup[data_index])#indices in sparce data
+        cdata_index = np.arange(self.n_bls)
+        cdata_index[data_index] = -1#note self.nan<self.n_bls so use -1 instead
+        cdata_index = np.nonzero(cdata_index != -1)[0]
+        self.blslookup[cdata_index] = self.nan
+        invalid = np.nonzero(sparceindex == self.nan)[0]#index to sparceindex
+        valid = np.nonzero(sparceindex != self.nan)[0]
+        topurge = np.ones(self.maxbaselines)#index to sparcedata
+        topurge[valid] = 0
+        purgethese = np.nonzero(topurge == 1)[0]#indices in sparcedata
+        if (len(invalid)):##trying to assign to baseline that is not in sparce array yet
             #purge entries present in blslookup that are not in data_index, to make space
             #purge only as many as needed right now
-            if (len(invalid)>len(purgethese)):
-                logger.warning('Not enough old entries available (%d) to purge and recycle (%d needed)',len(purgethese),len(invalid))
+            if (len(invalid) > len(purgethese)):
+                logger.warning('Not enough old entries available (%d) to purge and recycle (%d needed)', len(purgethese), len(invalid))
             for ip in range(len(invalid)):
-                self.sparcedata[:,purgethese[ip],:]=0
-                sparceindex[invalid[ip]]=purgethese[ip]
-                self.blslookup[data_index[invalid[ip]]]=purgethese[ip]
+                self.sparcedata[:,purgethese[ip],:] = 0
+                sparceindex[invalid[ip]] = purgethese[ip]
+                self.blslookup[data_index[invalid[ip]]] = purgethese[ip]
         self.sparcedata[(slot,sparceindex,chan)] = value
 
     def __repr__(self):
