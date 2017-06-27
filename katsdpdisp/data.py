@@ -356,23 +356,14 @@ class SparseArray(object):
         self.n_bls = n_bls
         self.n_chans = n_chans
         self.maxbaselines = maxbaselines#corresponds to maximum number of (full resolution) baselines hardlimit that can be requested from ingest to be transmitted to katsdpdisp
-        self.nan = self.maxbaselines
-        self.sparsedata = np.zeros((self.n_slots, self.maxbaselines, self.n_chans), dtype=self.dtype)
+        self.nan = self.maxbaselines#must correspond to maxbaselines column of sparsedata which is zeroed or nan'd, for invalid requests
+        self.sparsedata = np.zeros((self.n_slots, self.maxbaselines+1, self.n_chans), dtype=self.dtype)#extra baseline for zeros if indexing error
         self.blslookup = np.tile(self.nan, self.n_bls) #value in this lookup refers to bls index in sparsedata
-        self.shape = (self.n_slots,self.maxbaselines,self.n_chans)
+        self.shape = (self.n_slots,self.n_bls,self.n_chans)
 
     def __getitem__(self, key):
         slot,data_index,chan = key
-        sparseindex = self.blslookup[data_index]
-        invalid = np.nonzero(sparseindex == self.nan)[0]#index to sparseindex
-        if (len(invalid)):#trying to read baseline that is not in sparse array
-            slotlen = self.sparsedata[(key,0,0)].shape[0]
-            chanlen = self.sparsedata[(0,0,chan)].shape[0]
-            rv = np.zeros([slotlen, len(data_index) if (isinstance(data_index,np.ndarray) or isinstance(data_index,list)) else 1, chanlen], dtype=self.dtype)
-            valid = np.nonzero(sparseindex != self.nan)[0]
-            if (len(valid)):
-                rv[slot,valid,chan] = self.sparsedata[slot, sparseindex[valid], chan]
-            return rv
+        sparseindex = self.blslookup[data_index] #note where sparseindex==self.nan (=maxbaselines) indexes zeroed column for invalid requests directly
         return self.sparsedata[slot,sparseindex,chan]
 
     #full baselines exists only in ingest and is never sent in full, full_bls: [0,1,2,3,4,,,n_bls-1]
@@ -387,17 +378,17 @@ class SparseArray(object):
             else:
                 data_index = np.array([data_index])
         if (len(data_index) > self.maxbaselines):
-            logger.warning("Unexpected data_index > maxbaselines. Reducing from %d to %d", len(data_index), self.maxbaselines)
+            logger.warning("Unexpected: len(data_index) > maxbaselines. Truncating assignment from length %d to %d", len(data_index), self.maxbaselines)
             data_index = data_index[:self.maxbaselines]
-        sparseindex = 0+np.array(self.blslookup[data_index])#indices in sparse data
         cdata_index = np.arange(self.n_bls)
         cdata_index[data_index] = -1#note self.nan<self.n_bls so use -1 instead
         cdata_index = np.nonzero(cdata_index != -1)[0]
         self.blslookup[cdata_index] = self.nan
+        sparseindex = self.blslookup[data_index]#indices in sparse data
         invalid = np.nonzero(sparseindex == self.nan)[0]#index to sparseindex
         valid = np.nonzero(sparseindex != self.nan)[0]
         topurge = np.ones(self.maxbaselines)#index to sparsedata
-        topurge[valid] = 0
+        topurge[sparseindex[valid]] = 0
         purgethese = np.nonzero(topurge == 1)[0]#indices in sparsedata
         if (len(invalid)):##trying to assign to baseline that is not in sparse array yet
             #purge entries present in blslookup that are not in data_index, to make space
