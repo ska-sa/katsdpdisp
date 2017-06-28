@@ -11,14 +11,15 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
     (nslots,maxbaselines,fullchan) is the true size of the sparse array, representing a size of (nslots,fullbls,fullchan)
     where maxbaselines<fullbls
     islot_new_bls is the number of time stamps that passes before there is a new baseline product selected/chosen in the test sequence"""
-    mx=SparseArray(nslots,fullbls,fullchan,maxbaselines,dtype=np.int32)#mx=np.zeros([nslots,fullbls,fullchan],dtype=np.int32)
+    mx=SparseArray(nslots,fullbls,fullchan,maxbaselines,dtype=np.int32)
 
-    fulldata=np.random.random_integers(0,10,[fullslots,fullbls,fullchan])
+    rs = np.random.RandomState(seed=0)
+    fulldata=rs.random_integers(0,10,[fullslots,fullbls,fullchan])
     histbaselines=[]
     for it in range(fullslots):
         if it%islot_new_bls==0:#add a new baseline, remove old, every so often
             while True:
-                newbaseline=np.random.random_integers(0,fullbls-1,[1])
+                newbaseline=rs.random_integers(0,fullbls-1,[1])
                 if len(histbaselines)==0 or (newbaseline not in histbaselines[-1]):
                     break
             if (len(histbaselines)==0):
@@ -32,7 +33,9 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
         for cit in range(islot_new_bls):
             if (cit>=len(histbaselines)):
                 break
-            hasthesebaselines=list(set(histbaselines[-1]) & set(histbaselines[-1-cit]))
+            hasthesebaselines=list(set(histbaselines[-1-cit]) & set(histbaselines[-1]))
+            missingbaselines=list(set(histbaselines[-1-cit]) - set(histbaselines[-1]))
             retrieved=mx[(it-cit)%nslots,hasthesebaselines,:]
-            assert_array_equal(retrieved, fulldata[it-cit,hasthesebaselines,:], 'SparseArray test failed')
-    
+            assert_array_equal(retrieved, fulldata[it-cit,hasthesebaselines,:], 'SparseArray getitem test failed')
+            missingretrieved=mx[(it-cit)%nslots,missingbaselines,:]
+            assert_array_equal(missingretrieved,np.zeros(missingretrieved.shape,dtype=np.int32), 'SparseArray missing baseline test failed')
