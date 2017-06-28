@@ -349,6 +349,12 @@ class SignalDisplayFrame(object):
 #the data for a particular baseline is wiped (lazy deletion) whenever the data_index is absent in a new assignment to a new (time) slot, and this memory could then be used for a new baseline
 #slices are not supported for bls dimension, but integers, arrays and list indexing are supported
 #buffer space is recycled when needed when assignments are made
+#
+#It is the intention that only the baselines last assigned remains valid. Continuity is maintained by for example having a waterfall plot
+#that persistently instructs ingest to send that signal until it is no longer used. The slot buffer fills up for whichever signals are
+#observed. I may add the ability later to retain some (intermittently assigned) historic baselines until absolutely necessary to recycle,
+#with nan's inserted for the times where no data is received from ingest. Currently invalid values assume the value 0, but should be changed
+#to nan - the problem for now is this depends on datatype.
 class SparseArray(object):
     def __init__(self, n_slots, n_bls, n_chans, maxbaselines, dtype=np.complex64):
         self.dtype = dtype
