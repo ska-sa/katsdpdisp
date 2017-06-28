@@ -382,7 +382,6 @@ class SparseArray(object):
             data_index = data_index[:self.maxbaselines]
         sparseindex = self.blslookup[data_index] #indices in sparse data
         self.blslookup[:] = self.nan #clear old indices
-        self.blslookup[data_index] = sparseindex
         invalid = np.nonzero(sparseindex == self.nan)[0] #index to sparseindex
         valid = np.nonzero(sparseindex != self.nan)[0]
         topurge = np.ones(self.maxbaselines) #index to sparsedata
@@ -396,7 +395,7 @@ class SparseArray(object):
             for ip in range(len(invalid)):
                 self.sparsedata[:,purgethese[ip],:] = 0
                 sparseindex[invalid[ip]] = purgethese[ip]
-                self.blslookup[data_index[invalid[ip]]] = purgethese[ip]
+        self.blslookup[data_index] = sparseindex
         self.sparsedata[slot,sparseindex,chan] = value
 
     def __repr__(self):
