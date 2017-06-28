@@ -10,7 +10,7 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
     (fullslots,fullbls,fullchan) is the dimensions of the full/complete dataset
     (nslots,maxbaselines,fullchan) is the true size of the sparse array, representing a size of (nslots,fullbls,fullchan)
     where maxbaselines<fullbls
-    islot_new_bls is the number of time stamps that passes before there a new baseline product selected/chosen in the test sequence"""
+    islot_new_bls is the number of time stamps that passes before there is a new baseline product selected/chosen in the test sequence"""
     mx=SparseArray(nslots,fullbls,fullchan,maxbaselines,dtype=np.int32)#mx=np.zeros([nslots,fullbls,fullchan],dtype=np.int32)
 
     fulldata=np.random.random_integers(0,10,[fullslots,fullbls,fullchan])
