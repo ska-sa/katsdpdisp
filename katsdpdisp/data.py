@@ -381,8 +381,11 @@ class SparseArray(object):
         if (not isinstance(data_index,np.ndarray)):
             if (isinstance(data_index,list)):
                 data_index = np.array(data_index)
+            elif (isinstance(data_index,slice)):
+                data_index = np.arange(self.n_bls)[data_index]
             else:
                 data_index = np.array([data_index])
+                value = value[:,np.newaxis,:]
         if (len(data_index) > self.maxbaselines):
             logger.warning("Unexpected: len(data_index) > maxbaselines. Truncating assignment from length %d to %d", len(data_index), self.maxbaselines)
             data_index = data_index[:self.maxbaselines]

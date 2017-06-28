@@ -39,3 +39,8 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
             assert_array_equal(retrieved, fulldata[it-cit,hasthesebaselines,:], 'SparseArray getitem test failed')
             missingretrieved=mx[(it-cit)%nslots,missingbaselines,:]
             assert_array_equal(missingretrieved,np.zeros(missingretrieved.shape,dtype=np.int32), 'SparseArray missing baseline test failed')
+    mx[:,1:maxbaselines,:]=fulldata[:nslots,1:maxbaselines,:]
+    assert_array_equal(mx[:,1:maxbaselines,:], fulldata[:nslots,1:maxbaselines,:], 'SparseArray slice index test failed')
+    mx[:,0,:]=fulldata[:nslots,0,:]
+    assert_array_equal(mx[:,0,:], fulldata[:nslots,0,:], 'SparseArray scalar index test failed')
+    
