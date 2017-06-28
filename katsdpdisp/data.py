@@ -383,9 +383,8 @@ class SparseArray(object):
         sparseindex = self.blslookup[data_index] #indices in sparse data
         self.blslookup[:] = self.nan #clear old indices
         invalid = np.nonzero(sparseindex == self.nan)[0] #index to sparseindex
-        valid = np.nonzero(sparseindex != self.nan)[0]
-        topurge = np.ones(self.maxbaselines) #index to sparsedata
-        topurge[sparseindex[valid]] = 0
+        topurge = np.ones(self.maxbaselines+1) #index to sparsedata
+        topurge[sparseindex] = 0 #note that invalid sparseindex values point to topurge[maxbaselines] which will not be selected for purging because it is set to 0 here too
         purgethese = np.nonzero(topurge == 1)[0] #indices in sparsedata
         if (len(invalid)): ##trying to assign to baseline that is not in sparse array yet
             #purge entries present in blslookup that are not in data_index, to make space
