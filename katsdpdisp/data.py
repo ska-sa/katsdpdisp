@@ -386,14 +386,14 @@ class SparseArray(object):
         topurge = np.ones(self.maxbaselines+1) #index to sparsedata
         topurge[sparseindex] = 0 #note that invalid sparseindex values point to topurge[maxbaselines] which will not be selected for purging because it is set to 0 here too
         purgethese = np.nonzero(topurge == 1)[0] #indices in sparsedata
-        if (len(invalid)): ##trying to assign to baseline that is not in sparse array yet
+        for ip in range(len(invalid)):
+            #trying to assign to baseline that is not in sparse array yet
             #purge entries present in blslookup that are not in data_index, to make space
             #purge only as many as needed right now
-            if (len(invalid) > len(purgethese)):
-                logger.warning('Not enough old entries available (%d) to purge and recycle (%d needed)', len(purgethese), len(invalid))
-            for ip in range(len(invalid)):
-                self.sparsedata[:,purgethese[ip],:] = 0
-                sparseindex[invalid[ip]] = purgethese[ip]
+            #internal error should happen if (len(invalid) > len(purgethese)), but this should be impossible unless there is 
+            #an error in the code or (len(data_index) > self.maxbaselines) which is already checked and safeguarded against above
+            self.sparsedata[:,purgethese[ip],:] = 0
+            sparseindex[invalid[ip]] = purgethese[ip]
         self.blslookup[data_index] = sparseindex
         self.sparsedata[slot,sparseindex,chan] = value
 
