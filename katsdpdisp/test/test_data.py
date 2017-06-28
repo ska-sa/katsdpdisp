@@ -18,7 +18,7 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
     for it in range(fullslots):
         if it%islot_new_bls==0:#add a new baseline, remove old, every so often
             while True:
-                newbaseline=random.random_integers(0,fullbls-1,[1])
+                newbaseline=np.random.random_integers(0,fullbls-1,[1])
                 if len(histbaselines)==0 or (newbaseline not in histbaselines[-1]):
                     break
             if (len(histbaselines)==0):
