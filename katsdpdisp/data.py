@@ -420,7 +420,7 @@ class SignalDisplayStore2(object):
                  # default to 128 megabytes if we cannot determine system memory
         logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
         if (max_custom_signals==None):
-            logger.error('max_custom_signals is not set')
+            raise Exception('max_custom_signals is not set')
         self.max_custom_signals = max_custom_signals
         self.n_ants = n_ants
         self.center_freqs_mhz = []
