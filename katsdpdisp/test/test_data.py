@@ -39,8 +39,31 @@ def test_sparsearray(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=
             assert_array_equal(retrieved, fulldata[it-cit,hasthesebaselines,:], 'SparseArray getitem test failed')
             missingretrieved=mx[(it-cit)%nslots,missingbaselines,:]
             assert_array_equal(missingretrieved,np.zeros(missingretrieved.shape,dtype=np.int32), 'SparseArray missing baseline test failed')
-    mx[:,1:maxbaselines,:]=fulldata[:nslots,1:maxbaselines,:]
-    assert_array_equal(mx[:,1:maxbaselines,:], fulldata[:nslots,1:maxbaselines,:], 'SparseArray slice index test failed')
-    mx[:,0,:]=fulldata[:nslots,0,:]
-    assert_array_equal(mx[:,0,:], fulldata[:nslots,0,:], 'SparseArray scalar index test failed')
+
+def test_sparsearray_indexing(fullslots=100,fullbls=10,fullchan=5,nslots=10,maxbaselines=6):
+    mx=SparseArray(nslots,fullbls,fullchan,maxbaselines,dtype=np.int32)
+
+    rs = np.random.RandomState(seed=0)
+    fulldata=rs.random_integers(0,10,[fullslots,fullbls,fullchan])
+
+    mx[0,0,0]=fulldata[0,0,0]
+    assert_array_equal(mx[0,0,0], fulldata[0,0,0], 'SparseArray [scalar,scalar,scalar] index test failed')
+
+    mx[1,1,:]=fulldata[1,1,:]
+    assert_array_equal(mx[1,1,:], fulldata[1,1,:], 'SparseArray [scalar,scalar,slice] index test 2 failed') #baseline change so previous assignment purged (in future may retain until running out of memory and necessary to purge)
+
+    mx[2,1,:]=fulldata[2,1,:]
+    assert_array_equal(mx[1:3,1,:], fulldata[1:3,1,:], 'SparseArray retain old value test failed') #assign to same baseline so previous slot value remain
+
+    mx[3,:maxbaselines,0]=fulldata[3,:maxbaselines,0]
+    assert_array_equal(mx[3,:maxbaselines,0], fulldata[3,:maxbaselines,0], 'SparseArray [scalar,slice,scalar] index test failed')
+
+    mx[:,1,3]=fulldata[:nslots,1,3]
+    assert_array_equal(mx[:,1,3], fulldata[:nslots,1,3], 'SparseArray [slice,scalar,scalar] index test failed')
     
+    mx[:,1,:]=fulldata[:nslots,1,:]
+    assert_array_equal(mx[:,1,:], fulldata[:nslots,1,:], 'SparseArray [slice,scalar,slice] index test failed')
+
+    mx[:,1:maxbaselines,:]=fulldata[2:nslots+2,1:maxbaselines,:]
+    assert_array_equal(mx[:,1:maxbaselines,:], fulldata[2:nslots+2,1:maxbaselines,:], 'SparseArray [slice,slice,slice] index test failed')
+

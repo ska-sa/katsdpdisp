@@ -378,6 +378,7 @@ class SparseArray(object):
     #len(data_index)<=n_bls by definition, but also should be <=maxbaselines where maxbaselines<n_bls
     def __setitem__(self, key, value):
         slot,data_index,chan = key
+        isscalar=False
         if (not isinstance(data_index,np.ndarray)):
             if (isinstance(data_index,list)):
                 data_index = np.array(data_index)
@@ -385,7 +386,7 @@ class SparseArray(object):
                 data_index = np.arange(self.n_bls)[data_index]
             else:
                 data_index = np.array([data_index])
-                value = value[:,np.newaxis,:]
+                isscalar=True
         if (len(data_index) > self.maxbaselines):
             logger.warning("Unexpected: len(data_index) > maxbaselines. Truncating assignment from length %d to %d", len(data_index), self.maxbaselines)
             data_index = data_index[:self.maxbaselines]
@@ -405,7 +406,10 @@ class SparseArray(object):
                 sparseindex[invalid[ip]] = purgethese[ip]
         self.blslookup[:] = self.nan #clear old indices
         self.blslookup[data_index] = sparseindex
-        self.sparsedata[slot,sparseindex,chan] = value
+        if (isscalar):
+            self.sparsedata[slot,sparseindex[0],chan] = value
+        else:
+            self.sparsedata[slot,sparseindex,chan] = value
 
     def __repr__(self):
         return 'SparseArray({})'.format(self.sparsedata)
