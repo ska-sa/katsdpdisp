@@ -345,11 +345,80 @@ class SignalDisplayFrame(object):
 
         #return np.average(np.abs(self.data.view(dtype=np.complex64)[start_channel:stop_channel]))
 
+#manages a sparse array to store data of dimensions (n_time_slots,n_max_bls,n_channels) where maxbaselines < true n_bls
+#the data for a particular baseline is wiped (lazy deletion) whenever the data_index is absent in a new assignment to a new (time) slot, and this memory could then be used for a new baseline
+#slices are not supported for bls dimension, but integers, arrays and list indexing are supported
+#buffer space is recycled when needed when assignments are made
+#
+#It is the intention that only the baselines last assigned remains valid. Continuity is maintained by for example having a waterfall plot
+#that persistently instructs ingest to send that signal until it is no longer used. The slot buffer fills up for whichever signals are
+#observed. I may add the ability later to retain some (intermittently assigned) historic baselines until absolutely necessary to recycle,
+#with nan's inserted for the times where no data is received from ingest. Currently invalid values assume the value 0, but should be changed
+#to nan - the problem for now is this depends on datatype.
+class SparseArray(object):
+    def __init__(self, n_slots, n_bls, n_chans, maxbaselines, dtype=np.complex64):
+        self.dtype = dtype
+        self.n_slots = n_slots
+        self.n_bls = n_bls
+        self.n_chans = n_chans
+        self.maxbaselines = maxbaselines #corresponds to maximum number of (full resolution) baselines hardlimit that can be requested from ingest to be transmitted to katsdpdisp
+        self.nan = self.maxbaselines #must correspond to maxbaselines column of sparsedata which is zeroed or nan'd, for invalid requests
+        self.sparsedata = np.zeros((self.n_slots, self.maxbaselines+1, self.n_chans), dtype=self.dtype) #extra baseline for zeros if indexing error
+        self.blslookup = np.tile(self.nan, self.n_bls) #value in this lookup refers to bls index in sparsedata
+        self.shape = (self.n_slots,self.n_bls,self.n_chans)
+
+    def __getitem__(self, key):
+        slot,data_index,chan = key
+        sparseindex = self.blslookup[data_index] #note where sparseindex==self.nan (=maxbaselines) indexes zeroed column for invalid requests directly
+        return self.sparsedata[slot,sparseindex,chan]
+
+    #full baselines exists only in ingest and is never sent in full, full_bls: [0,1,2,3,4,,,n_bls-1]
+    #data_index are sparse indices to full_bls, e.g. [3,4,7,8]
+    #blslookup is of full size n_bls, and values indicate which entry in sparsedata corresponds to full bls entry
+    #len(data_index)<=n_bls by definition, but also should be <=maxbaselines where maxbaselines<n_bls
+    def __setitem__(self, key, value):
+        slot,data_index,chan = key
+        isscalar=False
+        if (not isinstance(data_index,np.ndarray)):
+            if (isinstance(data_index,list)):
+                data_index = np.array(data_index)
+            elif (isinstance(data_index,slice)):
+                data_index = np.arange(self.n_bls)[data_index]
+            else:
+                data_index = np.array([data_index])
+                isscalar=True
+        if (len(data_index) > self.maxbaselines):
+            logger.warning("Unexpected: len(data_index) > maxbaselines. Truncating assignment from length %d to %d", len(data_index), self.maxbaselines)
+            data_index = data_index[:self.maxbaselines]
+        sparseindex = self.blslookup[data_index] #indices in sparse data
+        invalid = np.nonzero(sparseindex == self.nan)[0] #index to sparseindex
+        if (len(invalid)):
+            topurge = np.ones(self.maxbaselines+1) #index to sparsedata
+            topurge[sparseindex] = 0 #note that invalid sparseindex values point to topurge[maxbaselines] which will not be selected for purging because it is set to 0 here too
+            purgethese = np.nonzero(topurge == 1)[0] #indices in sparsedata
+            for ip in range(len(invalid)):
+                #trying to assign to baseline that is not in sparse array yet
+                #purge entries present in blslookup that are not in data_index, to make space
+                #purge only as many as needed right now
+                #internal error should happen if (len(invalid) > len(purgethese)), but this should be impossible unless there is 
+                #an error in the code or (len(data_index) > self.maxbaselines) which is already checked and safeguarded against above
+                self.sparsedata[:,purgethese[ip],:] = 0
+                sparseindex[invalid[ip]] = purgethese[ip]
+        self.blslookup[:] = self.nan #clear old indices
+        self.blslookup[data_index] = sparseindex
+        if (isscalar):
+            self.sparsedata[slot,sparseindex[0],chan] = value
+        else:
+            self.sparsedata[slot,sparseindex,chan] = value
+
+    def __repr__(self):
+        return 'SparseArray({})'.format(self.sparsedata)
+        
 class SignalDisplayStore2(object):
     """A class to store signal display data. Basically a pre-allocated numpy array of sufficient size to store incoming data.
     This will have issues when the incoming sizes change (different channels, baselines) - thus a complete purge of the datastore
     is done whenever channel or baseline count changes."""
-    def __init__(self, n_ants=2, capacity=0.2, timeseriesmaskstr='', cbf_channels=None):
+    def __init__(self, n_ants=2, capacity=0.2, max_custom_signals=None, timeseriesmaskstr='', cbf_channels=None):
         if (capacity<0):
             self.mem_cap = int(1024*1024*(-capacity*100))
         else:
@@ -360,6 +429,9 @@ class SignalDisplayStore2(object):
                 self.mem_cap = 1024*1024*128
                  # default to 128 megabytes if we cannot determine system memory
         logger.info("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
+        if max_custom_signals is None:
+            raise ValueError('max_custom_signals is not set')
+        self.max_custom_signals = max_custom_signals
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
@@ -387,9 +459,10 @@ class SignalDisplayStore2(object):
         self.n_bls = n_bls
         self._frame_size_bytes = np.dtype(np.complex64).itemsize * self.n_chans
         nperc = 5*8 #5 percentile levels [0% 100% 25% 75% 50%] times 8 standard collections [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
-        self.slots = int(self.mem_cap / (self._frame_size_bytes * (self.n_bls+nperc)))
-        self.data = np.zeros((self.slots, self.n_bls, self.n_chans),dtype=np.complex64)
-        self.flags = np.zeros((self.slots, self.n_bls, self.n_chans), dtype=np.uint8)
+        maxbaselines = min(self.max_custom_signals,self.n_bls)
+        self.slots = int(self.mem_cap / (self._frame_size_bytes * (maxbaselines+nperc)))
+        self.data = SparseArray(self.slots,self.n_bls,self.n_chans,maxbaselines,dtype=np.complex64)
+        self.flags = SparseArray(self.slots,self.n_bls,self.n_chans,maxbaselines,dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.timeseriesslots=self.slots
         self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
@@ -3154,7 +3227,7 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2, cbf_channels=None, notifyqueue=None, store2=False):
+    def start_spead_receiver(self, port=7149, capacity=0.2, max_custom_signals=None, cbf_channels=None, notifyqueue=None, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
@@ -3173,13 +3246,13 @@ class KATData(object):
         if self.dbe is None:
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
-        st = SignalDisplayStore2(capacity=capacity,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port,st,notifyqueue,cbf_channels=cbf_channels)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
-    def start_direct_spead_receiver(self, port=7148, capacity=0.2, store2=False):
+    def start_direct_spead_receiver(self, port=7148, capacity=0.2, max_custom_signals=None, store2=False):
         """Starts a SPEAD signal display receiver to handle data directly from the correlator.
 
         Parameters
@@ -3193,13 +3266,13 @@ class KATData(object):
             Use the updated signal display store version 2
 
         """
-        st = SignalDisplayStore2(capacity=capacity) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(port, st, direct=True)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(dbe=None, receiver=r, store=st)
 
-    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, store2=False, timeseriesmaskstr=''):
+    def load_ar1_data(self, filename, rows=None, startrow=None, capacity=0.2, max_custom_signals=None, store2=False, timeseriesmaskstr=''):
         """Load ar1 data from the specified file and use this to populate a signal display storage object.
         The new data handler is available as .sd_hist
 
@@ -3208,7 +3281,7 @@ class KATData(object):
         filename : string
             The fully qualified path to the HDF5 file in question
         """
-        st = SignalDisplayStore2(capacity=capacity, timeseriesmaskstr=timeseriesmaskstr) if store2 else SignalDisplayStore(capacity=capacity)
+        st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,timeseriesmaskstr=timeseriesmaskstr) if store2 else SignalDisplayStore(capacity=capacity)
         st.pc_load_letter(filename, rows=rows, startrow=startrow)
         r = NullReceiver(st)
         r.cpref = st.cpref
