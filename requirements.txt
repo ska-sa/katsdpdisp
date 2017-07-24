@@ -1,8 +1,10 @@
 ansicolors
 pkginfo
+cycler
 Cython
 fakeredis
 funcsigs
+functools32
 future
 guppy==0.1.10
 h5py
@@ -22,6 +24,7 @@ pytz
 redis
 six
 spead2
+subprocess32
 traceback2
 singledispatch
 certifi
