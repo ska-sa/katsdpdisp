@@ -465,6 +465,14 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
 {
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
     {
+        var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+        var figcontext = figcanvas.getContext('2d');
+        if (figcontext)
+        {
+            figcontext.fillStyle = "#F0F0F0";
+            figcontext.fillRect(0, 0, figcanvas.width, figcanvas.height);
+            figcontext.fillStyle = "#000000";
+        }
         return;
     }
     yviewmin=[]
@@ -835,6 +843,14 @@ function drawRelationFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,tit
 {
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
     {
+        var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+        var figcontext = figcanvas.getContext('2d');
+        if (figcontext)
+        {
+            figcontext.fillStyle = "#F0F0F0";
+            figcontext.fillRect(0, 0, figcanvas.width, figcanvas.height);
+            figcontext.fillStyle = "#000000";
+        }
         return;
     }
     yviewmin=[]
@@ -1052,6 +1068,14 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 {
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined" || typeof(dataylist[0])=="undefined")
             {
+                var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+                var figcontext = figcanvas.getContext('2d');
+                if (figcontext)
+                {
+                    figcontext.fillStyle = "#F0F0F0";
+                    figcontext.fillRect(0, 0, figcanvas.width, figcanvas.height);
+                    figcontext.fillStyle = "#000000";
+                }
                 return;
             }
             var localdatay
@@ -1363,6 +1387,14 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
 
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdata=="undefined")
             {
+                var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+                var figcontext = figcanvas.getContext('2d');
+                if (figcontext)
+                {
+                    figcontext.fillStyle = "#F0F0F0";
+                    figcontext.fillRect(0, 0, figcanvas.width, figcanvas.height);
+                    figcontext.fillStyle = "#000000";
+                }
                 return;
             }
           var axiscanvas = document.getElementById('myaxiscanvas'+ifig);

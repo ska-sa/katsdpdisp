@@ -357,6 +357,8 @@ function handle_data_user_event(arg_string)
          thisfigure['version']=-1
          window[sublist[0]][sublist[1]]=undefined
          window['RG_fig'][sublist[1]].figureupdated=true
+         //issue draw instruction
+ 		 setTimeout(redrawfigure,1,sublist[1])
          return;
  	}
  	if (typeof(rcvfig.totcount)!="undefined" && rcvfig.totcount==rcvfig.recvcount)//received complete figure/figure update
@@ -380,6 +382,8 @@ function handle_data_user_event(arg_string)
  			thisfigure.drawstoptts=thisfigure.drawstartts
  		    window['RCV_fig'][sublist[1]]=undefined			
  			completefigure(sublist[1])//RG_fig[sublist[1]].figureupdated=true;set RG_fig[sublist[1]].renderts
+     		//issue draw instruction
+     		setTimeout(redrawfigure,1,sublist[1])
  		    return
  	    }else if (rcvfig.action=='reset')
  		{
@@ -421,6 +425,8 @@ function handle_data_user_event(arg_string)
                  thisfigure['version']=-1
                  window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
      		     window['RG_fig'][sublist[1]].figureupdated=true
+         		 //issue draw instruction
+         		 setTimeout(redrawfigure,1,sublist[1])
                  return;
  		    }
  		    ntwin=thisfigure[aug].length
@@ -432,6 +438,8 @@ function handle_data_user_event(arg_string)
                      thisfigure['version']=-1
                      window[sublist[0]][sublist[1]]=undefined
          		     window['RG_fig'][sublist[1]].figureupdated=true
+              		 //issue draw instruction
+             		 setTimeout(redrawfigure,1,sublist[1])
                      return;
                  }
      		    misalignment=thisfigure['lastts']-rcvfig['xdata'][rcvfig['xdata'].length-rcvfig[aug][itwin][0].length-1]
@@ -444,6 +452,8 @@ function handle_data_user_event(arg_string)
                      thisfigure['version']=-1
                      window[sublist[0]][sublist[1]]=undefined
          		     window['RG_fig'][sublist[1]].figureupdated=true
+             		 //issue draw instruction
+             		 setTimeout(redrawfigure,1,sublist[1])
                      return;
                  }else
  				for (iline=0;iline<thisfigure[aug][itwin].length;iline++)//loops through each line to augment
@@ -470,6 +480,8 @@ function handle_data_user_event(arg_string)
                  thisfigure['version']=-1
                  window[sublist[0]][sublist[1]]=undefined//NOTE DEBUG TODO SHOULD PERHAPS set .figureupdated=true here and likewise below to ensure update will occur!!!
      		     window['RG_fig'][sublist[1]].figureupdated=true
+         		 //issue draw instruction
+         		 setTimeout(redrawfigure,1,sublist[1])
                  return;
  		    }
  		    misalignment=thisfigure['lastts']-rcvfig['ydata'][rcvfig['ydata'].length-rcvfig[aug].length-1]
@@ -481,6 +493,8 @@ function handle_data_user_event(arg_string)
                  thisfigure['version']=-1
                  window[sublist[0]][sublist[1]]=undefined
      		     window['RG_fig'][sublist[1]].figureupdated=true
+         		 //issue draw instruction
+         		 setTimeout(redrawfigure,1,sublist[1])
                  return;
              }else
              {
@@ -502,6 +516,8 @@ function handle_data_user_event(arg_string)
              thisfigure['version']=-1
              window[sublist[0]][sublist[1]]=undefined
  		     window['RG_fig'][sublist[1]].figureupdated=true
+     		 //issue draw instruction
+     		 setTimeout(redrawfigure,1,sublist[1])
              return;
          }
  		//issue draw instruction

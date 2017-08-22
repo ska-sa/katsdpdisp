@@ -471,6 +471,7 @@ class SignalDisplayStore2(object):
         self.blmxslots = 256
         self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)/n_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
+        self.blmxflags = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.uint8)#low resolution baseline matrix data
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
         self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
         self.blmxroll_point = 0
@@ -573,6 +574,7 @@ class SignalDisplayStore2(object):
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
+                self.blmxflags[self.blmxroll_point,:,:] = blmxflags
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
                 for iprod in range(blmxdata.shape[0]):
@@ -623,7 +625,7 @@ class SignalDisplayStore2(object):
                 npercspectrum=np.zeros([self.n_chans,percspectrum.shape[1]],dtype=np.complex64)
                 npercspectrumflags=np.zeros([self.n_chans,percspectrumflags.shape[1]],dtype=np.uint8)
                 nblmxdata=np.zeros([blmxdata.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.complex64)
-                nblmxflags=np.zeros([blmxflags.shape[0],blmxdata.shape[1]*ningestnodes],dtype=np.uint8)
+                nblmxflags=np.zeros([blmxflags.shape[0],blmxflags.shape[1]*ningestnodes],dtype=np.uint8)
                 ntimeseries=np.zeros(np.shape(timeseries),dtype=np.complex64)
                 ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
@@ -2514,11 +2516,11 @@ class DataHandler(object):
             if (_split_start<_split_end):
                 frames=self.storage.blmxdata[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
                 if include_flags:
-                    flags = np.zeros(frames.shape,dtype=np.uint8)
+                    flags = self.storage.blmxflags[_split_start:_split_end,product,start_channel:stop_channel:incr_channel]
             else:
                 frames=np.concatenate((self.storage.blmxdata[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.blmxdata[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
                 if include_flags:
-                    flags = np.zeros(frames.shape,dtype=np.uint8)
+                    flags = np.concatenate((self.storage.blmxflags[_split_start:,product,start_channel:stop_channel:incr_channel], self.storage.blmxflags[:_split_end,product,start_channel:stop_channel:incr_channel]),axis=0)
 
             frames = frames.squeeze()
             if include_flags: flags = flags.squeeze()
