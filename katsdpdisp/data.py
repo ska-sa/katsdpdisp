@@ -581,8 +581,7 @@ class SignalDisplayStore2(object):
                 for iprod in range(blmxdata.shape[0]):
                     try:
                         mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
-                        flags=blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)
-                        valid=np.nonzero(blmxflags[iprod,:].reshape(-1)==0)[0]
+                        valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
                         self.blmxvalue[iprod]=np.mean(mag[valid])/np.std(mag[valid])
                     except Exception, e:
                         logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
