@@ -36,8 +36,8 @@ function setsignals(){
     {
         handle_data_user_event('getoutlierthreshold');
     }else if (signaltext.slice(0,17)=='outlierthreshold=')
-	{
-		outlierthreshold=parseFloat(signaltext.slice(17))
+    {
+        outlierthreshold=parseFloat(signaltext.slice(17))
         if (outlierthreshold<50 || outlierthreshold>100)
         {
             alert('Value for outlierthreshold must be between 50 and 100');
@@ -45,13 +45,13 @@ function setsignals(){
         else
         {
             handle_data_user_event('setoutlierthreshold,'+outlierthreshold);
-        }		
-	}else if (signaltext=='outliertime')
+        }       
+    }else if (signaltext=='outliertime')
     {
         handle_data_user_event('getoutliertime');
     }else if (signaltext.slice(0,12)=='outliertime=')
-	{
-		outliertime=parseFloat(signaltext.slice(12))
+    {
+        outliertime=parseFloat(signaltext.slice(12))
         if (outliertime<1 || outliertime>50.0)
         {
             alert('Value for outliertime must be between 1 and 50');
@@ -60,7 +60,7 @@ function setsignals(){
         {
             handle_data_user_event('setoutliertime,'+outliertime);
         }
-	}else if (signaltext=='flags off')
+    }else if (signaltext=='flags off')
     {
         handle_data_user_event('showflags,off');
     }
@@ -96,91 +96,91 @@ function setsignals(){
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showtitle='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showtitle,off')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showtitle,off')
+        }
     }else if (signaltext=='title on')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showtitle='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showtitle,on')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showtitle,on')
+        }
     }else if (signaltext=='legend off')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showlegend='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showlegend,off')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showlegend,off')
+        }
     }else if (signaltext=='legend on')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showlegend='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showlegend,on')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showlegend,on')
+        }
     }else if (signaltext=='xlabel off')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showxlabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
+        }
     }else if (signaltext=='xlabel on')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showxlabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
+        }
     }else if (signaltext=='ylabel off')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showylabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
+        }
     }else if (signaltext=='ylabel on')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showylabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
+        }
     }else if (signaltext=='labels off')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showxlabel='off'
             RG_fig[ifig].showylabel='off'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showxlabel,off')
+            handle_data_user_event('setfigparam,'+ifig+',showylabel,off')
+        }
     }else if (signaltext=='labels on')
     {
         for (ifig=0;ifig<nfigures;ifig++)
         {
             RG_fig[ifig].showxlabel='on'
             RG_fig[ifig].showylabel='on'
-    	    redrawfigure(ifig)
-    	    handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
-    	    handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
-	    }
+            redrawfigure(ifig)
+            handle_data_user_event('setfigparam,'+ifig+',showxlabel,on')
+            handle_data_user_event('setfigparam,'+ifig+',showylabel,on')
+        }
     }else if (signaltext=='swap')
     {
         swapaxes=!swapaxes
         for (ifig=0;ifig<nfigures;ifig++)
             if (RG_fig[ifig].figtype=='timeseries')
-        	    redrawfigure(ifig)
+                redrawfigure(ifig)
     }
     else if (signaltext.slice(0,5)=='tmin=' || signaltext.slice(0,5)=='tmax=' )
     {
@@ -188,11 +188,11 @@ function setsignals(){
             if (RG_fig[ifig].figtype=='timeseries')
             {
                 if (signaltext.slice(0,5)=='tmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='tmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
+                    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
+                if (signaltext.slice(0,5)=='tmax=')
+                    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
@@ -202,11 +202,11 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='ch' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='cmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='cmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
+                    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
+                if (signaltext.slice(0,5)=='cmax=')
+                    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
@@ -216,11 +216,11 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='mhz' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='fmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='fmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
+                    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
+                if (signaltext.slice(0,5)=='fmax=')
+                    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
@@ -230,11 +230,11 @@ function setsignals(){
             if (RG_fig[ifig].xtype=='ghz' && (RG_fig[ifig].figtype.slice(0,8)=='spectrum' || RG_fig[ifig].figtype.slice(0,9)=='waterfall'))
             {
                 if (signaltext.slice(0,5)=='Fmin=')
-        		    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
-        		if (signaltext.slice(0,5)=='Fmax=')
-            	    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
+                    RG_fig[ifig].xmin=parseFloat(signaltext.slice(5))
+                if (signaltext.slice(0,5)=='Fmax=')
+                    RG_fig[ifig].xmax=parseFloat(signaltext.slice(5))
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
@@ -243,25 +243,25 @@ function setsignals(){
         for (ifig=0;ifig<nfigures;ifig++)
             if (RG_fig[ifig].type=='pow')
             {
-        		if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype.slice(0,8)=='spectrum')
-        		{
+                if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype.slice(0,8)=='spectrum')
+                {
                     if (signaltext.slice(0,5)=='pmin=')
-            		    RG_fig[ifig].ymin=parseFloat(signaltext.slice(5))
-            		if (signaltext.slice(0,5)=='pmax=')
-                	    RG_fig[ifig].ymax=parseFloat(signaltext.slice(5))
-    		    }else
-    		    {
-            		if (signaltext.slice(0,5)=='pmin=')
-            		{
-            		    RG_fig[ifig].cmin=parseFloat(signaltext.slice(5))
-            		}
-            		else
-            		{
-            		    RG_fig[ifig].cmax=parseFloat(signaltext.slice(5))
-        		    }
-    		    }
-        		RG_fig[ifig].overridelimit=1;
-        	    redrawfigure(ifig)
+                        RG_fig[ifig].ymin=parseFloat(signaltext.slice(5))
+                    if (signaltext.slice(0,5)=='pmax=')
+                        RG_fig[ifig].ymax=parseFloat(signaltext.slice(5))
+                }else
+                {
+                    if (signaltext.slice(0,5)=='pmin=')
+                    {
+                        RG_fig[ifig].cmin=parseFloat(signaltext.slice(5))
+                    }
+                    else
+                    {
+                        RG_fig[ifig].cmax=parseFloat(signaltext.slice(5))
+                    }
+                }
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
@@ -279,39 +279,39 @@ function setsignals(){
     {   
         handle_data_user_event('getusers');
     }else if (signaltext=='antennas')
-	{
-		handle_data_user_event('antennas');
+    {
+        handle_data_user_event('antennas');
     }else if (signaltext=='inputs')
-	{
-		handle_data_user_event('inputs');
+    {
+        handle_data_user_event('inputs');
     }else if (signaltext=='info')
-	{
-		handle_data_user_event('info');
+    {
+        handle_data_user_event('info');
     }else if (signaltext=='blmxhh' || signaltext=='blmxvh' || signaltext=='blmxhv' || signaltext=='blmxvv')
-	{
+    {
         handle_data_user_event('blmx,'+signaltext.slice(4));
     }else if (signaltext.slice(0,5)=='wmxhh' || signaltext.slice(0,5)=='wmxvh' || signaltext.slice(0,5)=='wmxhv' || signaltext.slice(0,5)=='wmxvv')
-	{
+    {
         handle_data_user_event(signaltext.slice(0,5)+','+signaltext.slice(5));
     }else if (signaltext.slice(0,6)=='wtabhh' || signaltext.slice(0,6)=='wtabvh' || signaltext.slice(0,6)=='wtabhv' || signaltext.slice(0,6)=='wtabvv')
-	{
+    {
         handle_data_user_event(signaltext.slice(0,6)+','+signaltext.slice(6));
     }else if (signaltext.slice(0,4)=='kick')
-	{
+    {
         if (signaltext.length>4)
             handle_data_user_event('kick,'+signaltext.slice(5));
         else
             handle_data_user_event('kick');
     }else if (signaltext.slice(0,8)=='telstate')
-	{
+    {
         if (signaltext.length>8)
             handle_data_user_event('telstate,'+signaltext.slice(9));
         else
             handle_data_user_event('telstate');
-	}else if (signaltext=='memoryleak')
-	{
-		handle_data_user_event('memoryleak');
-	}else if (signaltext=='timing on')
+    }else if (signaltext=='memoryleak')
+    {
+        handle_data_user_event('memoryleak');
+    }else if (signaltext=='timing on')
     {
         document.getElementById("consoletext").style.display = 'block'
         console_timing='on'
@@ -374,16 +374,16 @@ function setsignals(){
         else
             handle_data_user_event('load');
     }else if (signaltext.slice(0,7)=='delete ')
-	{
-		handle_data_user_event('delete,'+signaltext.slice(7));
-	}else if (signaltext.slice(0,4)=='loop')
     {
-		if (signaltext=='looptime')
-		{
-			logconsole('looptime='+looptime,true,true,true)
-		}else if (signaltext.slice(0,9)=='looptime=')
+        handle_data_user_event('delete,'+signaltext.slice(7));
+    }else if (signaltext.slice(0,4)=='loop')
+    {
+        if (signaltext=='looptime')
         {
-			looptime=parseFloat(signaltext.slice(9))
+            logconsole('looptime='+looptime,true,true,true)
+        }else if (signaltext.slice(0,9)=='looptime=')
+        {
+            looptime=parseFloat(signaltext.slice(9))
         }else if (signaltext=='loop off')
         {
             clearTimeout(looptimer)
@@ -392,8 +392,8 @@ function setsignals(){
             newusernames=signaltext.slice(5).split(',')
             if (newusernames.length>1)
             {
-	            clearTimeout(looptimer)
-				loopusernames=newusernames
+                clearTimeout(looptimer)
+                loopusernames=newusernames
                 looptimer=setTimeout(loopfunction,looptime*1000.0,loopusernames,0)
             }else
             {
@@ -542,14 +542,14 @@ function ApplyViewLayout(figuretypes,nfigcols)
 function updateFigure()
 {
     reqts=(new Date()).getTime()/1000.0
-	time0=(new Date()).getTime();
-	if (timedrawcomplete!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
-	{
-		document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
-	}
-	summary=[]
-	for (ifig=0;ifig<nfigures;ifig++)
-	{
+    time0=(new Date()).getTime();
+    if (timedrawcomplete!=0 && (time0-time_receive_data_user_cmd>10000) && (time0-time_receive_user_cmd>10000))
+    {
+        document.getElementById("healthtext").innerHTML='server not responding for '+Math.round((time0-time_receive_data_user_cmd)/1000)+'s'
+    }
+    summary=[]
+    for (ifig=0;ifig<nfigures;ifig++)
+    {
         if (console_update=='byte')
             summary[ifig]=''+ifig+': '+RG_fig[ifig].ntxbytes
         else if (console_update=='kb')
@@ -569,56 +569,56 @@ function updateFigure()
         else if (console_update=='action')
             summary[ifig]=''+ifig+': '+RG_fig[ifig].action
         
-	    if (RG_fig[ifig].figureupdated)
-	    {
-	        //var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
-		    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
-	        RG_fig[ifig].figureupdated=false
-	        RG_fig[ifig].reqts=reqts
+        if (RG_fig[ifig].figureupdated)
+        {
+            //var axiscanvas = document.getElementById('myaxiscanvas'+ifig)
+            var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+            RG_fig[ifig].figureupdated=false
+            RG_fig[ifig].reqts=reqts
             oldwidth=RG_fig[ifig].viewwidth
             //if (axiscanvas.width!=0)RG_fig[ifig].viewwidth=axiscanvas.width//else already has value from applyviewlayout
-			if (figcanvas.width!=0)RG_fig[ifig].viewwidth=figcanvas.width//else already has value from applyviewlayout
-	        if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
-	        {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': Ok'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash)
-	            if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash,true,false,true)
-	            //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
+            if (figcanvas.width!=0)RG_fig[ifig].viewwidth=figcanvas.width//else already has value from applyviewlayout
+            if (RG_fig.length==nfigures && RG_fig[ifig].xdata.length && oldwidth==RG_fig[ifig].viewwidth)
+            {
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': Ok'
+                handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash)
+                if (console_sendfigure=='on') logconsole("sendfigure,"+ifig+","+RG_fig[ifig].reqts+","+RG_fig[ifig].lastts+","+RG_fig[ifig].version+","+RG_fig[ifig].viewwidth+","+RG_fig[ifig].outlierhash,true,false,true)
+                //if (console_timing=='on') logconsole('figure '+ifig+": serverlag "+(RG_fig[ifig].receivingts-RG_fig[ifig].reqts).toFixed(3)+", receive "+(RG_fig[ifig].receivedts-RG_fig[ifig].receivingts).toFixed(3)+", draw "+(RG_fig[ifig].drawstoptts-RG_fig[ifig].drawstartts).toFixed(3)+", render "+(RG_fig[ifig].renderts-RG_fig[ifig].drawstoptts).toFixed(3),true,false,true)
             }else 
-	        {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': reloading'
-	            handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth+",0")
+            {
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': reloading'
+                handle_data_user_event("sendfigure,"+ifig+","+RG_fig[ifig].reqts+",0,-1"+","+RG_fig[ifig].viewwidth+",0")
             }
         }else
         {
             if (timedrawcomplete!=0 && time0-time_receive_data_user_cmd>10000)
             {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting for server orig'
-				logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig+' reloading page',true,false,true)
-				stop_data()
-				restore_data()
-				return
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': waiting for server orig'
+                logconsole('No data received from server in '+((time0-time_receive_data_user_cmd)/1000.0).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig+' reloading page',true,false,true)
+                stop_data()
+                restore_data()
+                return
             }else
             if ((reqts-RG_fig[ifig].receivingts>120) && (time0-time_receive_data_user_cmd)<10000)
             {//assumes 120 seconds is long enough to wait for a page to load all its figures, then starts requesting figures anew
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting for server'
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': waiting for server'
                 logconsole('No data received from server for figure '+ifig+' in '+(reqts-RG_fig[ifig].receivingts).toFixed(0)+'s despite request '+(reqts-RG_fig[ifig].reqts).toFixed(0)+'s ago for figure '+ifig,true,false,true)
                 RG_fig[ifig].figureupdated=true
             }else if (typeof(RG_fig[ifig].receivingts)=="undefined" && RG_fig[ifig].version>0)//something wrong with the figure, probably due to broken network connection
-			{//BEWARE this might never happen!
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': undefined error'
+            {//BEWARE this might never happen!
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': undefined error'
                 logconsole('Undefined variables in figure '+ifig+' attempting to restore figure'+ifig,true,false,true)
-				//RG_fig[ifig].version=-1//should perhaps try this
+                //RG_fig[ifig].version=-1//should perhaps try this
                 RG_fig[ifig].figureupdated=true
-			}else
+            }else
             {
-	            if (console_update=='status')
-	                summary[ifig]=''+ifig+': waiting'
+                if (console_update=='status')
+                    summary[ifig]=''+ifig+': waiting'
             }
         }
     }
@@ -647,14 +647,14 @@ function updateFigure()
     {
         dt2=RG_fig[0].lastdt.toFixed(2)
         
-    	if ((reqts-local_last_lastts_change)>(dt2*2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
-    	{//checks that longer than dump local delay occur for change in last timestamp while still having received updates within this time
-    	    document.getElementById("healthtext").innerHTML='halted stream'
-    	}else
-    	{
-        	dt1=RG_fig[0].lastdt.toFixed(1)
-        	dt0=RG_fig[0].lastdt.toFixed(0)
-        	if (Math.abs(dt0-dt2)<0.01)
+        if ((reqts-local_last_lastts_change)>(dt2*2+1) && ((time0-time_receive_data_user_cmd)/1000.0) <(dt2) )
+        {//checks that longer than dump local delay occur for change in last timestamp while still having received updates within this time
+            document.getElementById("healthtext").innerHTML='halted stream'
+        }else
+        {
+            dt1=RG_fig[0].lastdt.toFixed(1)
+            dt0=RG_fig[0].lastdt.toFixed(0)
+            if (Math.abs(dt0-dt2)<0.01)
                 document.getElementById("healthtext").innerHTML=''+dt0+'s dumps'
             else if (Math.abs(dt1-dt2)<0.01)
                 document.getElementById("healthtext").innerHTML=''+dt1+'s dumps'

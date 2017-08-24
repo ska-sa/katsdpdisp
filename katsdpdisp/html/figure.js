@@ -460,11 +460,23 @@ function getminmax(datalist,istart,iend)
     return [mn,mx]
 }
 
+function blankFigure(ifig)
+{
+    var figcanvas = document.getElementById('myfigurecanvas'+ifig);
+    var figcontext = figcanvas.getContext('2d');
+    if (figcontext)
+    {
+        figcontext.fillStyle = "#F0F0F0";
+        figcontext.fillRect(0, 0, figcanvas.width, figcanvas.height);
+        figcontext.fillStyle = "#000000";
+    }
+}
 
 function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtextsensor,textsensor,xmin,xmax,ymin,ymax,title,xlabel,ylabel,xunit,yunit,legend,spanlist,spancolorlist)
 {
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
     {
+        blankFigure(ifig);
         return;
     }
     yviewmin=[]
@@ -835,6 +847,7 @@ function drawRelationFigure(ifig,datax,dataylist,clrlist,xmin,xmax,ymin,ymax,tit
 {
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined"  || typeof(dataylist[0])=="undefined")
     {
+        blankFigure(ifig);
         return;
     }
     yviewmin=[]
@@ -1052,6 +1065,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 {
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof datax=="undefined" || typeof dataylist=="undefined" || typeof dataylist.length=="undefined" || typeof(dataylist[0])=="undefined")
             {
+                blankFigure(ifig);
                 return;
             }
             var localdatay
@@ -1363,6 +1377,7 @@ function drawMatrixFigure(ifig,mxdata,phdata,legendx,legendy,title,cunit,clabel)
 
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdata=="undefined")
             {
+                blankFigure(ifig);
                 return;
             }
           var axiscanvas = document.getElementById('myaxiscanvas'+ifig);
