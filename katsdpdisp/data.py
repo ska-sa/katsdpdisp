@@ -1121,7 +1121,7 @@ class SpeadSDReceiver(threading.Thread):
                         self.cpref.precompute()
                         if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                         else:
-                            self.storage.init_storage(n_chans = self._direct_meta['n_chans'], blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
+                            self.storage.init_storage(n_chans = self._direct_meta['n_chans'], blmxn_chans = self._direct_meta['sd_blmx_n_chans']], n_bls = len(self.cpref.bls_ordering))
                             self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                             self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
         else:
@@ -1146,7 +1146,7 @@ class SpeadSDReceiver(threading.Thread):
                             self.update_center_freqs()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmx_n_chans'].value, n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                     with freqlock:#reentrant lock is ok to nest
@@ -1164,7 +1164,7 @@ class SpeadSDReceiver(threading.Thread):
                             logger.info("New bls ordering: {}".format(self.bls_ordering))
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmxdata'].shape[0], n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmx_n_chans'].value, n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         bls_ordering_version = self.ig['bls_ordering'].version
