@@ -8,6 +8,7 @@ functools32
 future
 guppy==0.1.10
 h5py
+ipaddress
 linecache2
 manhole
 matplotlib
