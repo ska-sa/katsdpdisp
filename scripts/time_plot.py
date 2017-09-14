@@ -306,7 +306,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig={'logconsole':'The fileoffset for %s is %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
                 else:
                     thefileoffset=theviewsettings
-                    dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, store2=True, timeseriesmaskstr=datasd.storage.timeseriesmaskstr)
+                    dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, max_custom_signals=max_custom_signals, store2=True, timeseriesmaskstr=datasd.storage.timeseriesmaskstr)
                     datasd=dh.sd_hist
                     fig={'logconsole':'Restarted %s at %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
                 ringbufferresultqueue.put(fig)
