@@ -2002,7 +2002,7 @@ function setaxiscanvasrect(ifig)
         else
             _height+=30
     }
-    if (RG_fig[ifig]!=undefined && RG_fig[ifig].mxdata!=undefined)
+    if (RG_fig[ifig]!=undefined && RG_fig[ifig].mxdatahh!=undefined)
     {
         if (_width>_height)
         {
@@ -2042,7 +2042,7 @@ function redrawfigure(ifig)
     if (typeof(RG_fig[ifig].cmax)!="number")RG_fig[ifig].cmax=NaN
     if (RG_fig[ifig].cdata==undefined)
     {
-        if (RG_fig[ifig].mxdata==undefined)
+        if (RG_fig[ifig].mxdatahh==undefined)
         {
             if (swapaxes && (RG_fig[ifig].figtype=='timeseries'))
                 drawRelationFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
