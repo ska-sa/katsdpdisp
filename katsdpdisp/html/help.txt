@@ -85,24 +85,16 @@ centerfreqMHz=     - clears center frequency override
 centerfreqMHz=1284 - overrides center frequency
 
 [blmx]
-Adds a baseline matrix using one of the following commands. Double click a matrix item to generate a waterfall plot for corresponding signal.
+Adds a SNR baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
-blmxhh - adds a hh pol baseline matrix figure
-blmxhv - adds a hv pol baseline matrix figure
-blmxvh - adds a vh pol baseline matrix figure
-blmxvv - adds a vv pol baseline matrix figure
+See also:
+blmxmean
 
-[blmxhh]
-Adds a hh pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
+[blmxmean]
+Adds a mean baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
-[blmxhv]
-Adds a hv pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
-
-[blmxvh]
-Adds a vh pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
-
-[blmxvv]
-Adds a vv pol baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
+See also:
+blmx
 
 [clear]
 Removes percentile collection plots from figures.

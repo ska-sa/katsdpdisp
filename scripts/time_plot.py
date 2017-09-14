@@ -909,10 +909,17 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     else:
                         fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
-                    polstr = theviewsettings['figtype'][4:]
-                    mxdata,phdata = datasd.select_blxvalue(pol=polstr)
+                    mxdatameanhh,mxdatahh = datasd.select_blxvalue(pol='hh')
+                    mxdatameanvv,mxdatavv = datasd.select_blxvalue(pol='vv')
+                    if (theviewsettings['figtype'][4:]=='mean'):
+                        mxdatahh=mxdatameanhh
+                        mxdatavv=mxdatameanvv
+                        fig['title']='Baseline matrix mean h\\v'
+                    else:
+                        fig['title']='Baseline matrix SNR h\\v'                        
                     if (theviewsettings['type']=='pow'):
-                        mxdata=10.0*np.log10(mxdata)
+                        mxdatahh=10.0*np.log10(mxdatahh)
+                        mxdatavv=10.0*np.log10(mxdatavv)
                         fig['clabel']='Power'
                         fig['cunit']='dB'
                     elif (thetype=='mag'):
@@ -923,24 +930,20 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         fig['cunit']='deg'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
-                    fig['mxdata']=mxdata
-                    fig['phdata']=phdata*180.0/np.pi
+                    fig['mxdatavv']=mxdatavv
+                    fig['mxdatahh']=mxdatahh
                     fig['ydata']=[]
                     fig['xdata']=np.array([0,1])
                     fig['outlierhash']=0
                     fig['color']=[]
                     fig['span']=[]
                     fig['spancolor']=[]
-                    fig['title']='Baseline matrix '+polstr
-                    legendx=[]
-                    legendy=[]
+                    legend=[]
                     for inp in datasd.cpref.inputs:
-                        if (inp[-1]==polstr[0]):
-                            legendx.append(str(int(inp[1:-1]))+inp[-1])
-                        if (inp[-1]==polstr[-1]):
-                            legendy.append(str(int(inp[1:-1]))+inp[-1])
-                    fig['legendx']=legendx
-                    fig['legendy']=legendy
+                        if (inp[-1]=='h'):
+                            legend.append(str(int(inp[1:-1])))
+                    fig['legendx']=legend
+                    fig['legendy']=legend
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
@@ -2931,8 +2934,8 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),theviewsettings['showylabel'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),theviewsettings['showxticklabel'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),theviewsettings['showyticklabel'],'s'),handlerkey);count+=1;
-            send_websock_data(pack_binarydata_msg('fig[%d].mxdata'%(ifigure),(blmx_fig['mxdata'])[:],'B'),handlerkey);count+=1;
-            send_websock_data(pack_binarydata_msg('fig[%d].phdata'%(ifigure),(blmx_fig['phdata'])[:],'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].mxdatahh'%(ifigure),(blmx_fig['mxdatahh'])[:],'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].mxdatavv'%(ifigure),(blmx_fig['mxdatavv'])[:],'B'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         else:#nothing new

@@ -583,7 +583,7 @@ class SignalDisplayStore2(object):
                         mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                         valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
                         if (len(valid)):
-                            self.blmxvalue[iprod]=np.mean(mag[valid])/np.std(mag[valid])
+                            self.blmxvalue[iprod]=np.mean(mag[valid])*(1.0+1j/np.std(mag[valid])) #real component is mean, imag component is SNR
                         else:
                             self.blmxvalue[iprod]=np.nan
                     except Exception, e:

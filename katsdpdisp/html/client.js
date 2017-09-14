@@ -287,7 +287,7 @@ function setsignals(){
     }else if (signaltext=='info')
     {
         handle_data_user_event('info');
-    }else if (signaltext=='blmxhh' || signaltext=='blmxvh' || signaltext=='blmxhv' || signaltext=='blmxvv')
+    }else if (signaltext=='blmx' || signaltext=='blmxmean')
     {
         handle_data_user_event('blmx,'+signaltext.slice(4));
     }else if (signaltext.slice(0,5)=='wmxhh' || signaltext.slice(0,5)=='wmxvh' || signaltext.slice(0,5)=='wmxhv' || signaltext.slice(0,5)=='wmxvv')
