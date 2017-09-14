@@ -914,9 +914,9 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     if (theviewsettings['figtype'][4:]=='mean'):
                         mxdatahh=mxdatameanhh
                         mxdatavv=mxdatameanvv
-                        fig['title']='Baseline matrix mean h\\v'
+                        fig['title']='Baseline matrix mean H\\V'
                     else:
-                        fig['title']='Baseline matrix SNR h\\v'                        
+                        fig['title']='Baseline matrix SNR H\\V'
                     if (theviewsettings['type']=='pow'):
                         mxdatahh=10.0*np.log10(mxdatahh)
                         mxdatavv=10.0*np.log10(mxdatavv)

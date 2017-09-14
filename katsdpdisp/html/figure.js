@@ -1373,7 +1373,7 @@ function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,cla
 {
     var cmin=NaN,cmax=NaN,pmin=NaN,pmax=NaN;
 
-            if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdata=="undefined")
+            if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdatahh=="undefined")
             {
                 blankFigure(ifig);
                 return;
@@ -1522,13 +1522,13 @@ function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,cla
                 // draw colorbar
                 if (RG_fig[ifig].showlegend=='on')
                 {
-                    var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height/2.0-halfgap);
+                    var imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
                     var imgdatalen = imgdata.data.length;
 
                     for(var i=0;i<imgdatalen-4;i+=4)
                     {
                         ih=(i/4)/colorbarwidth;//height
-                        c256=Math.floor((((axiscanvas.height/2-halfgap)-ih)/(axiscanvas.height/2-halfgap))*255)
+                        c256=Math.floor((((axiscanvas.height)-ih)/(axiscanvas.height))*255)
                         if (c256<0)c256=0
                         else if (c256>255)c256=255
                         imgdata.data.set(jetRGB256[c256],i)
@@ -1539,26 +1539,7 @@ function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,cla
                         //imgdata.data[i+3] = 255;//A
                     }
                     figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy);
-                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height/2-halfgap);
-
-                    imgdata = figcontext.getImageData(axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap, colorbarwidth, axiscanvas.height/2.0-halfgap);
-                    imgdatalen = imgdata.data.length;
-
-                    for(var i=0;i<imgdatalen-4;i+=4)
-                    {
-                        ih=(i/4)/colorbarwidth;//height
-                        c256=Math.floor((((axiscanvas.height/2-halfgap)-ih)/(axiscanvas.height/2-halfgap))*255)
-                        if (c256<0)c256=0
-                        else if (c256>255)c256=255
-                        imgdata.data.set(jetRGB256[c256],i)
-                        //RGB=jetRGB256[c256]
-                        //imgdata.data[i] = RGB[0];//R
-                        //imgdata.data[i+1] = RGB[1];//G
-                        //imgdata.data[i+2] = RGB[2];//B
-                        //imgdata.data[i+3] = 255;//A
-                    }
-                    figcontext.putImageData(imgdata,axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap);
-                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy+axiscanvas.height/2.0+halfgap, colorbarwidth, axiscanvas.height/2-halfgap);
+                    figcontext.strokeRect(axisposx+axiscanvas.width+colorbaroff, axisposy, colorbarwidth, axiscanvas.height);
                 }
         }
         RG_fig[ifig].xmin_eval=hviewmin;
