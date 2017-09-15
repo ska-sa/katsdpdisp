@@ -472,7 +472,7 @@ class SignalDisplayStore2(object):
         self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)/n_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxflags = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.uint8)#low resolution baseline matrix data
-        self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing standard deviation in real, and number of phase wraps in imag
+        self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing mean value as real component and standard deviation as imaginary component
         self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
         self.blmxroll_point = 0
         self.outliertime=  5
