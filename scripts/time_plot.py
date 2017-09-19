@@ -3213,7 +3213,7 @@ else:
     if (telstate_bls_ordering_string in telstate):
         telstate_bls_ordering=telstate[telstate_bls_ordering_string]
         inputs=[]
-        for bls in bls_ordering:
+        for bls in telstate_bls_ordering:
             if bls[0] == bls[1]:
                 inputs.append(bls[0])
         telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
