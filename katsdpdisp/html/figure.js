@@ -1548,6 +1548,48 @@ function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,cla
         RG_fig[ifig].ymax_eval=vviewmax;
 }
 
+function getDateString(timestamp){
+    var date = new Date(timestamp*1000);
+    var formattedTime = ""+date.getFullYear()+"-"+("0"+date.getMonth()).substr(-2)+"-"+("0"+date.getDay()).substr(-2)+"%20"+("0"+date.getHours()).substr(-2)+":"+("0" + date.getMinutes()).substr(-2)+":"+("0" + date.getSeconds()).substr(-2);
+    return formattedTime;
+}
+
+function makeElog(ifig){
+    if (RG_fig[ifig].figtype=='timeseries' & RG_fig[ifig].xdata.length>0)
+    {
+        if (isNaN(RG_fig[ifig].xmin))
+            xmin=RG_fig[ifig].xdata[0];
+        else
+            xmin=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]+RG_fig[ifig].xmin;//xmin,xmax is relative to current timestamp which is last one in xdata
+        if (isNaN(RG_fig[ifig].xmax))
+            xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1];
+        else
+            xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]+RG_fig[ifig].xmax;
+
+        var formattedStartTime=getDateString(xmin);
+        var formattedEndTime=getDateString(xmax);
+    }else if (RG_fig[ifig].lastts>0)
+    {
+        var formattedStartTime=getDateString(RG_fig[ifig].lastts);
+        var formattedEndTime=getDateString(RG_fig[ifig].lastts);
+    }else
+    {
+        nowts=(new Date()).getTime() / 1000
+        var formattedStartTime=getDateString(nowts);
+        var formattedEndTime=getDateString(nowts);
+    }
+    arrayname=document.getElementById("arrayname").innerText.substr(1,7)
+    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+'&content=sample text');
+}
+
+function downloadCanvas(canvas,filename){
+    var img     = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    var a = document.createElement('a');
+    a.href = img;
+    a.download = filename;
+    a.click();
+}
+
 function saveFigure(ifig){
     var canvas = document.getElementById("myfigurecanvas"+ifig);
     var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
@@ -1555,9 +1597,8 @@ function saveFigure(ifig){
     context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
     context.strokeStyle = "#000000";
     context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    var img     = canvas.toDataURL("image/png");
+    downloadCanvas(canvas,'MeerKATfigure.png')
     context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    window.open(img);
 }
 
 function savePage(){
@@ -1584,8 +1625,7 @@ function savePage(){
         context.strokeStyle = "#000000";
         context.strokeRect(fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
     }
-    var img = newcanvas.toDataURL("image/png");
-    window.open(img);
+    downloadCanvas(newcanvas,'MeerKATpage.png')
 }
 
 //FIGURE MOUSE EVENTS ===================================================================
