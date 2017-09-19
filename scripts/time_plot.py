@@ -1715,7 +1715,7 @@ def handle_websock_event(handlerkey,*args):
                     if (thekey in telstate):
                         if (thekey=='obs_params'):
                             entries=telstate.get_range('obs_params',0)
-                            obs_params=dict(entry[0].split(' ', 1) for entry in entries)
+                            obs_params=dict(entry[0].split(' ', 1) for entry in entries if entry[0])
                             for obskey,obsvalue in obs_params.iteritems():
                                 send_websock_cmd('logconsole("'+obskey+': '+obsvalue+'",true,true,true)',handlerkey)
                         elif telstate.is_immutable(thekey):
@@ -1947,7 +1947,7 @@ def handle_websock_event(handlerkey,*args):
                 elif (notification=='start of stream'):
                     try:
                         entries=telstate.get_range('obs_params',0)
-                        obs_params=dict(entry[0].split(' ', 1) for entry in entries)
+                        obs_params=dict(entry[0].split(' ', 1) for entry in entries if entry[0])
                         telstate_script_name=obs_params['script_name'][1:-1].split('/')[-1]
                     except Exception, e:
                         logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
