@@ -1946,10 +1946,6 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 elif (notification=='start of stream'):
                     try:
-                        if ('antenna_mask' in telstate):
-                            telstate_antenna_mask=telstate['antenna_mask']
-                        else:
-                            logger.warning("Unexpected antenna_mask not in telstate")
                         entries=telstate.get_range('obs_params',0)
                         obs_params=dict(entry[0].split(' ', 1) for entry in entries)
                         telstate_script_name=obs_params['script_name'][1:-1].split('/')[-1]
@@ -3188,6 +3184,7 @@ telstate_cal_product_B=[]
 telstate_data_target=[]
 telstate_activity=[]
 telstate_antenna_mask=[]
+telstate_bls_ordering_string='sdp_l0_bls_ordering'
 telstate_script_name='No script active'
 scriptnametext=telstate_script_name
 
@@ -3212,6 +3209,17 @@ if (opts.datafilename is not 'stream'):
         telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
     else:
         logger.warning('Error evaluating inputs')
+else:
+    if (telstate_bls_ordering_string in telstate):
+        telstate_bls_ordering=telstate[telstate_bls_ordering_string]
+        inputs=[]
+        for bls in telstate_bls_ordering:
+            if bls[0] == bls[1]:
+                inputs.append(bls[0])
+        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+    else:
+        logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
+    
 
 def graceful_exit(_signo=None, _stack_frame=None):
     logger.info("Exiting time_plot on SIGTERM")
