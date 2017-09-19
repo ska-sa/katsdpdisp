@@ -497,13 +497,17 @@ function ApplyViewLayout(figuretypes,nfigcols)
                             onclick:function() {alert('This is a custom javascript')} },
 
                            {type: RightContext.TYPE_SEPERATOR },
+
+                           {type:RightContext.TYPE_MENU,
+                            text:"Enter Elog",
+                            onclick:function() {makeElog([attr_ifig]);} },
                           
                            {type:RightContext.TYPE_MENU,
-                            text:"PNG figure",
+                            text:"Download figure as PNG",
                             onclick:function() {saveFigure([attr_ifig]);} },
 
                            {type:RightContext.TYPE_MENU,
-                            text:"PNG page",
+                            text:"Download page as PNG",
                             onclick:function() {savePage();} },
 
                            {type: RightContext.TYPE_SEPERATOR },
