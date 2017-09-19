@@ -3224,7 +3224,7 @@ else:
         telstate_array_id=telstate['subarray_product_id']
     else:
         logger.warning("Unexpected subarray_product_id not in telstate")
-    
+
 
 def graceful_exit(_signo=None, _stack_frame=None):
     logger.info("Exiting time_plot on SIGTERM")
