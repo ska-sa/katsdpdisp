@@ -1568,13 +1568,17 @@ function makeElog(ifig){
 
         var formattedStartTime=getDateString(xmin);
         var formattedEndTime=getDateString(xmax);
-        window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,array_1&content=sample text');
     }else if (RG_fig[ifig].lastts>0)
     {
         var formattedStartTime=getDateString(RG_fig[ifig].lastts);
         var formattedEndTime=getDateString(RG_fig[ifig].lastts);
-        window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,array_1&content=sample text');
+    }else
+    {
+        nowts=(new Date()).getTime() / 1000
+        var formattedStartTime=getDateString(nowts);
+        var formattedEndTime=getDateString(nowts);
     }
+    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,array_1&content=sample text');
 }
 
 function saveFigure(ifig){
