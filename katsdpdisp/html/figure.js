@@ -1555,9 +1555,12 @@ function saveFigure(ifig){
     context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
     context.strokeStyle = "#000000";
     context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    var img     = canvas.toDataURL("image/png");
+    var img     = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
     context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    window.open(img);
+    var a = document.createElement('a');
+    a.href = img;
+    a.download = 'MeerKATfigure.png';
+    a.click();
 }
 
 function savePage(){
@@ -1584,8 +1587,11 @@ function savePage(){
         context.strokeStyle = "#000000";
         context.strokeRect(fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
     }
-    var img = newcanvas.toDataURL("image/png");
-    window.open(img);
+    var img = newcanvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    var a = document.createElement('a');
+    a.href = img;
+    a.download = 'MeerKATpage.png';
+    a.click();
 }
 
 //FIGURE MOUSE EVENTS ===================================================================
