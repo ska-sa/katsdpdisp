@@ -1560,7 +1560,7 @@ function makeElog(ifig){
         if (isNaN(RG_fig[ifig].xmin))
             xmin=RG_fig[ifig].xdata[0];
         else
-            xmin=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]+RG_fig[ifig].xmin;
+            xmin=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]+RG_fig[ifig].xmin;//xmin,xmax is relative to current timestamp which is last one in xdata
         if (isNaN(RG_fig[ifig].xmax))
             xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1];
         else
@@ -1582,6 +1582,14 @@ function makeElog(ifig){
     window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+'&content=sample text');
 }
 
+function downloadCanvas(canvas,filename){
+    var img     = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    var a = document.createElement('a');
+    a.href = img;
+    a.download = filename;
+    a.click();
+}
+
 function saveFigure(ifig){
     var canvas = document.getElementById("myfigurecanvas"+ifig);
     var axiscanvas = document.getElementById("myaxiscanvas"+ifig);
@@ -1589,12 +1597,8 @@ function saveFigure(ifig){
     context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
     context.strokeStyle = "#000000";
     context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    var img     = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+    downloadCanvas(canvas,'MeerKATfigure.png')
     context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    var a = document.createElement('a');
-    a.href = img;
-    a.download = 'MeerKATfigure.png';
-    a.click();
 }
 
 function savePage(){
@@ -1621,11 +1625,7 @@ function savePage(){
         context.strokeStyle = "#000000";
         context.strokeRect(fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
     }
-    var img = newcanvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
-    var a = document.createElement('a');
-    a.href = img;
-    a.download = 'MeerKATpage.png';
-    a.click();
+    downloadCanvas(newcanvas,'MeerKATpage.png')
 }
 
 //FIGURE MOUSE EVENTS ===================================================================
