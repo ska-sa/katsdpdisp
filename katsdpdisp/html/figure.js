@@ -1566,9 +1566,9 @@ function makeElog(ifig){
         // if (isNaN(RG_fig[ifig].xmax))
         //     xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]
         //
-        var formattedTimeStart=getDateString(RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]);
+        var formattedTimeStart=getDateString(RG_fig[ifig].xdata[0]);
         var formattedTimeStop=getDateString(RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]);
-         window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime=2017-09-03%2004:34:34&endTime=2017-09-03%2017:11:33&tags=QA2,observation,array_1&content=sample text');
+        window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime=2017-09-03%2004:34:34&endTime=2017-09-03%2017:11:33&tags=QA2,observation,array_1&content=sample text');
     }
 }
 
