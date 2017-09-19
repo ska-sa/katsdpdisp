@@ -3222,7 +3222,7 @@ else:
         logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
     if ('subarray_product_id' in telstate):
         telstate_array_id=telstate('subarray_product_id')
-    else
+    else:
         logger.warning("Unexpected subarray_product_id not in telstate")
     
 
