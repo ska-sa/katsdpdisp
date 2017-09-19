@@ -3077,7 +3077,7 @@ def deregister_websockrequest_handler(request):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render(SERVE_PATH+"/index.html",scriptname_text=scriptnametext)
+        self.render(SERVE_PATH+"/index.html",scriptname_text=scriptnametext,arrayname_text=telstate_array_id)
 
 class WSHandler(tornado.websocket.WebSocketHandler):
     def open(self):
@@ -3186,6 +3186,7 @@ telstate_activity=[]
 telstate_antenna_mask=[]
 telstate_bls_ordering_string='sdp_l0_bls_ordering'
 telstate_script_name='No script active'
+telstate_array_id='unknown_array'
 scriptnametext=telstate_script_name
 
 RingBufferLock=threading.Lock()
@@ -3219,6 +3220,10 @@ else:
         telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
     else:
         logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
+    if ('subarray_product_id' in telstate):
+        telstate_array_id=telstate('subarray_product_id')
+    else
+        logger.warning("Unexpected subarray_product_id not in telstate")
     
 
 def graceful_exit(_signo=None, _stack_frame=None):
