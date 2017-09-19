@@ -1578,7 +1578,8 @@ function makeElog(ifig){
         var formattedStartTime=getDateString(nowts);
         var formattedEndTime=getDateString(nowts);
     }
-    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,array_1&content=sample text');
+    arrayname=document.getElementById("arrayname").innerText.substr(1,7)
+    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+'&content=sample text');
 }
 
 function saveFigure(ifig){
