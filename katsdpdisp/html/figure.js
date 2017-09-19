@@ -1560,7 +1560,7 @@ function makeElog(ifig){
         if (isNaN(RG_fig[ifig].xmin))
             xmin=RG_fig[ifig].xdata[0];
         else
-            xmin=RG_fig[ifig].xdata[0]+RG_fig[ifig].xmin;
+            xmin=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]+RG_fig[ifig].xmin;
         if (isNaN(RG_fig[ifig].xmax))
             xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1];
         else
