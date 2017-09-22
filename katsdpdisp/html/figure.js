@@ -482,6 +482,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
     yviewmin=[]
     yviewmax=[]
     showlegend=new Array(legend.length)
+    shown_inputs=[]
     for (i=0;i<legend.length;i++)
         showlegend[i]=false;
     var localdatax
@@ -595,6 +596,12 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                             if (ypos>=0 && ypos<=yspan)
                             {
                                 showlegend[iline]=true;
+                                match=/^(\d+)(h|H|v|V)(\d+)(h|H|v|V)$/.exec(legend[iline])
+                                if (match!=null)
+                                {
+                                    shown_inputs['m'+('00'+match[1]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[1]).substr(-3)+match[2]]=0
+                                    shown_inputs['m'+('00'+match[3]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[3]).substr(-3)+match[4]]=0
+                                }
                             }
                         }
                         context.stroke();
@@ -602,6 +609,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                     }
             }
         }
+        RG_fig[ifig].shown_inputs=Object.keys(shown_inputs)
         //sensors
         if (xsensor.length>1)
         {
@@ -1555,6 +1563,7 @@ function getDateString(timestamp){
 }
 
 function makeElog(ifig){
+    contenttext=''
     if (RG_fig[ifig].figtype=='timeseries' & RG_fig[ifig].xdata.length>0)
     {
         if (isNaN(RG_fig[ifig].xmin))
@@ -1568,6 +1577,15 @@ function makeElog(ifig){
 
         var formattedStartTime=getDateString(xmin);
         var formattedEndTime=getDateString(xmax);
+    }else if (RG_fig[ifig].figtype=='spectrum' & RG_fig[ifig].xdata.length>0 & RG_fig[ifig].lastts>0)
+    {
+        var formattedStartTime=getDateString(RG_fig[ifig].lastts);
+        var formattedEndTime=getDateString(RG_fig[ifig].lastts);
+        if (isNaN(RG_fig[ifig].xmin)) xmin=RG_fig[ifig].xdata[0]
+        else xmin=RG_fig[ifig].xmin
+        if (isNaN(RG_fig[ifig].xmax)) xmax=RG_fig[ifig].xdata[RG_fig[ifig].xdata.length-1]
+        else xmax=RG_fig[ifig].xmax
+        contenttext=RG_fig[ifig].xlabel+': '+xmin+' '+RG_fig[ifig].xunit+' to '+xmax+' '+RG_fig[ifig].xunit+'\n'
     }else if (RG_fig[ifig].lastts>0)
     {
         var formattedStartTime=getDateString(RG_fig[ifig].lastts);
@@ -1579,7 +1597,8 @@ function makeElog(ifig){
         var formattedEndTime=getDateString(nowts);
     }
     arrayname=document.getElementById("arrayname").innerText.substr(1,7)
-    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+'&content=sample text');
+    antennanames=RG_fig[ifig].shown_inputs.sort().join()
+    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+','+antennanames+'&content='+contenttext);
 }
 
 function downloadCanvas(canvas,filename){

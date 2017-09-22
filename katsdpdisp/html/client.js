@@ -499,7 +499,7 @@ function ApplyViewLayout(figuretypes,nfigcols)
                            {type: RightContext.TYPE_SEPERATOR },
 
                            {type:RightContext.TYPE_MENU,
-                            text:"Enter Elog",
+                            text:"Enter log",
                             onclick:function() {makeElog([attr_ifig]);} },
                           
                            {type:RightContext.TYPE_MENU,
