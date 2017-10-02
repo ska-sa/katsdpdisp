@@ -1598,7 +1598,7 @@ function makeElog(ifig){
     }
     arrayname=document.getElementById("arrayname").innerText.substr(1,7)
     antennanames=RG_fig[ifig].shown_inputs.sort().join()
-    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+','+antennanames+'&content='+contenttext);
+    window.open(url='http://portal.mkat.karoo.kat.ac.za/katgui/userlogs?action=add&startTime='+formattedStartTime+'&endTime='+formattedEndTime+'&tags=QA2,observation,'+arrayname+','+antennanames+'&content='+encodeURIComponent(contenttext));
 }
 
 function downloadCanvas(canvas,filename){
