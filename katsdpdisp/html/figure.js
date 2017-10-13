@@ -853,6 +853,23 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
                         figcontext.moveTo(x,y-legendfontHeight/2.0+legendfontHeight/5.0);
                         figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+legendfontHeight/5.0);
+                        ix=ixstart+1
+                        nstep=5
+                        for (istep=0;istep<nstep;istep++)
+                            for (;ix<(istep+1)*(ixend-ixstart)/nstep && ix<ixend;ix++)
+                            {
+                                steplen=legendfontHeight*0.75/nstep
+                                if (ilinemin[ix]==iline)
+                                {
+                                    figcontext.moveTo(x+istep*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
+                                    figcontext.lineTo(x+(istep+1)*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
+                                }
+                                if (ilinemax[ix]==iline)
+                                {
+                                    figcontext.moveTo(x+istep*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0-3);
+                                    figcontext.lineTo(x+(istep+1)*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0-3);
+                                }
+                            }
                         figcontext.stroke();
                         figcontext.closePath();
                         figcontext.strokeStyle = "#000000";
