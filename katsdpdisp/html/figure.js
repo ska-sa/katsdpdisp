@@ -561,6 +561,12 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
             }
             yscale=yspan/(yviewmax[itwin]-yviewmin[itwin])
             yoff=yspan+yviewmin[itwin]*yscale
+            ilinemin=new Array(dataylist[itwin].length)
+            ilinemax=new Array(dataylist[itwin].length)
+            linemin=new Array(dataylist[itwin].length)
+            linemax=new Array(dataylist[itwin].length)
+            for (x=0;x<dataylist[itwin].length;x++)
+                linemin[x]=linemax[x]=ilinemin[x]=ilinemax[x]=NaN
             for (iline=0;iline<dataylist[itwin].length;iline++)
             {
                     context.beginPath();
@@ -595,12 +601,25 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                             context.lineTo(xoff+xscale*localdatax[x],ypos);
                             if (ypos>=0 && ypos<=yspan)
                             {
-                                showlegend[iline]=true;
-                                match=/^(\d+)(h|H|v|V)(\d+)(h|H|v|V)$/.exec(legend[iline])
-                                if (match!=null)
+                                if (isNaN(linemin[x]) || dataylist[itwin][iline][x]<linemin[x])
                                 {
-                                    shown_inputs['m'+('00'+match[1]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[1]).substr(-3)+match[2]]=0
-                                    shown_inputs['m'+('00'+match[3]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[3]).substr(-3)+match[4]]=0
+                                    linemin[x]=dataylist[itwin][iline][x]
+                                    ilinemin[x]=iline
+                                }
+                                if (isNaN(linemax[x]) || dataylist[itwin][iline][x]>linemax[x])
+                                {
+                                    linemax[x]=dataylist[itwin][iline][x]
+                                    ilinemax[x]=iline
+                                }
+                                if (showlegend[iline]==false)
+                                {
+                                    showlegend[iline]=true;
+                                    match=/^(\d+)(h|H|v|V)(\d+)(h|H|v|V)$/.exec(legend[iline])
+                                    if (match!=null)
+                                    {
+                                        shown_inputs['m'+('00'+match[1]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[1]).substr(-3)+match[2]]=0
+                                        shown_inputs['m'+('00'+match[3]).substr(-3)]=0 // in future, to include polarisation, use: shown_inputs['m'+('00'+match[3]).substr(-3)+match[4]]=0
+                                    }
                                 }
                             }
                         }
@@ -837,7 +856,14 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         figcontext.stroke();
                         figcontext.closePath();
                         figcontext.strokeStyle = "#000000";
-                        figcontext.fillText(legend[iline],x+legendfontHeight*0.75+2,y)
+                        dostar=''
+                        for (ix=ixstart+1;ix<ixend;ix++)
+                            if (ilinemin[ix]==iline || ilinemax[ix]==iline)
+                            {
+                                dostar='*'
+                                break
+                            }
+                        figcontext.fillText(legend[iline]+dostar,x+legendfontHeight*0.75+2,y)
                     }
                     figcontext.lineWidth=1;
                     //figcontext.setLineDash([0])
