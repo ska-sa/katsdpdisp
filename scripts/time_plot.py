@@ -1012,7 +1012,7 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 
 ingest_signals={}
 failed_update_ingest_signals_lastts=0
-max_custom_signals=128
+max_custom_signals=128#NOTE katsdpcontroller/generator.py:428 sd_spead_rate = 700e6 / n_ingest / spectral_info.int_time is dependent on this value
 
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
