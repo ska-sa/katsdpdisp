@@ -545,6 +545,8 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
         if (x>1)ixstart=x-2;else ixstart=0;
         for (x=localdatax.length-1;x>=0 && (xoff+xscale*localdatax[x])>xspan;x--);
         if (x<localdatax.length-1)ixend=x+2;else ixend=localdatax.length;
+        ixstartdatax=ixstart
+        ixenddatax=ixend
         for (itwin=0;itwin<dataylist.length;itwin++)
         {
             if (itwin<1)  minmax=getminmax(dataylist[itwin])
@@ -853,10 +855,10 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         figcontext.strokeStyle = "rgba("+(clrlist[iline][0])+","+(clrlist[iline][1])+","+(clrlist[iline][2])+","+(corrlinealpha[clrlist[iline][3]])+")";
                         figcontext.moveTo(x,y-legendfontHeight/2.0+legendfontHeight/5.0);
                         figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+legendfontHeight/5.0);
-                        ix=ixstart+1
+                        ix=ixstartdatax+1
                         nstep=5
                         for (istep=0;istep<nstep;istep++)
-                            for (;ix<(istep+1)*(ixend-ixstart)/nstep && ix<ixend;ix++)
+                            for (;ix<(istep+1)*(ixenddatax-ixstartdatax)/nstep && ix<ixenddatax;ix++)
                             {
                                 steplen=legendfontHeight*0.75/nstep
                                 if (ilinemin[ix]==iline)
@@ -874,7 +876,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         figcontext.closePath();
                         figcontext.strokeStyle = "#000000";
                         dostar=''
-                        for (ix=ixstart+1;ix<ixend;ix++)
+                        for (ix=ixstartdatax+1;ix<ixenddatax;ix++)
                             if (ilinemin[ix]==iline || ilinemax[ix]==iline)
                             {
                                 dostar='*'
