@@ -3107,6 +3107,8 @@ parser.add_argument("--config_base", dest="config_base", default="~/.katsdpdisp"
                   help="Base configuration directory where persistent user settings are stored (default=%(default)s)")
 parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=int,
                   help="Override total number of cbf_channels (default=%(default)s). There may be fewer channels received per Ingest node.")
+parser.add_argument("--l0_name", dest="l0_name", default="sdp_l0", type=str,
+                  help="Set stream name for telstate keys (default=%(default)s)")
 
 (opts, args) = parser.parse_known_args()
 
@@ -3184,7 +3186,7 @@ telstate_cal_product_B=[]
 telstate_data_target=[]
 telstate_activity=[]
 telstate_antenna_mask=[]
-telstate_bls_ordering_string='sdp_l0_bls_ordering'
+telstate_bls_ordering_string=opts.l0_name+'_bls_ordering'
 telstate_script_name='No script active'
 telstate_array_id='unknown_array'
 scriptnametext=telstate_script_name
