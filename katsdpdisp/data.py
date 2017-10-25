@@ -572,6 +572,7 @@ class SignalDisplayStore2(object):
                 self.percdata[self.roll_point,:,:]=np.array(percspectrum,dtype=np.complex64).swapaxes(0,1)
                 self.percflags[self.roll_point,:,:]=np.array(percspectrumflags,dtype=np.uint8).swapaxes(0,1)
                 self.timeseriespercdata[self.timeseriesroll_point,:] = np.array(perctimeseries,dtype=np.complex64)
+                lastblmxdata = self.blmxdata[self.blmxroll_point,:,:]
                 self.blmxroll_point = (self.frame_count-1) % self.blmxslots
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxflags[self.blmxroll_point,:,:] = blmxflags
@@ -581,9 +582,10 @@ class SignalDisplayStore2(object):
                 for iprod in range(blmxdata.shape[0]):
                     try:
                         mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
+                        lastmag=np.abs(lastblmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                         valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
                         if (len(valid)):
-                            self.blmxvalue[iprod]=np.mean(mag[valid])*(1.0+1j/np.std(mag[valid])) #real component is mean, imag component is SNR
+                            self.blmxvalue[iprod]=np.mean(mag[valid])*(1.0+0.5j/np.std(mag[valid]-lastmag[valid])) #real component is mean, imag component is SNR
                         else:
                             self.blmxvalue[iprod]=np.nan
                     except Exception, e:
