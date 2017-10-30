@@ -452,6 +452,7 @@ class SignalDisplayStore2(object):
         self.timeseriesfirst_pass = True
         self.timeseriesmaskstr = timeseriesmaskstr
         self.framecollector={}
+        self.outliertime = 0
 
     def init_storage(self, n_chans=512, blmxn_chans=256, n_bls=0, timeseriesmaskstr=''):
         gc.collect()#garbage collect before large memory allocation to help prevent fragmentation
@@ -475,7 +476,7 @@ class SignalDisplayStore2(object):
         self.blmxvalue = np.zeros((self.n_bls),dtype=np.complex64)#instantaneous value showing mean value as real component and standard deviation as imaginary component
         self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
         self.blmxroll_point = 0
-        self.outliertime=  5
+        self.outliertime = 5
         self.percdata = np.zeros((self.slots, nperc, self.n_chans),dtype=np.complex64)
         self.timeseriespercdata = np.zeros((self.timeseriesslots, nperc),dtype=np.complex64)
         self.percflags = np.zeros((self.slots, nperc, self.n_chans),dtype=np.uint8)
