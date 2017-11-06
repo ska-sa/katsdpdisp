@@ -956,75 +956,6 @@ class NullReceiver(object):
         self.current_timestamp = 0
         self.last_ip = None
 
-class MultiStream(six.Iterator):
-    """Provides an interface similar to :class:`spead2.recv.Stream` that is
-    useful when a single receiver wants to receive multiple streams, one after
-    the other. It transparently tears down and recreates the underlying stream
-    when an end-of-stream heap is received.
-
-    Iterating over this object will terminate only when :meth:`stop` is
-    called.
-
-    It presents a subset of the interface of :class:`spead2.recv.Stream`. This
-    class is in general *not* thread-safe, but it is safe to call :meth:`stop`
-    from another thread.
-    """
-
-    def __init__(self, *args, **kwargs):
-        self._lock = threading.Lock()   # Protects _stream and _stopped
-        self._construct = lambda: spead2.recv.Stream(*args, **kwargs)
-        self._updaters = []
-        self._stream = self._make_stream()
-        self._stopped = False
-
-    def _make_stream(self):
-        stream = self._construct()
-        for func in self._updaters:
-            func(stream)
-        return stream
-
-    def _add_updater(self, func, args, kwargs):
-        self._updaters.append(lambda stream: func(stream, *args, **kwargs))
-        func(self._stream, *args, **kwargs)
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        with self._lock:
-            if self._stopped:
-                raise StopIteration
-            stream = self._stream
-        try:
-            return six.next(stream)
-        except StopIteration:
-            # Stream has stopped, so start the next one, unless
-            # stop() was called
-            with self._lock:
-                if self._stopped:
-                    raise StopIteration
-                self._stream = self._make_stream()
-            return None
-
-    def stop(self):
-        """Stop the multi-stream, and break out of the iteration. It is safe
-        to call this function from another thread while iterating over the
-        stream."""
-        with self._lock:
-            self._stopped = True
-            self._stream.stop()
-
-    @classmethod
-    def _add_wrapper(cls, name):
-        wrapped = getattr(spead2.recv.Stream, name)
-        @six.wraps(wrapped)
-        def wrapper(self, *args, **kwargs):
-            self._add_updater(wrapped, args, kwargs)
-        setattr(cls, name, wrapper)
-
-for name in ['add_udp_reader', 'add_buffer_reader', 'set_memory_pool']:
-    MultiStream._add_wrapper(name)
-
 class SpeadSDReceiver(threading.Thread):
     """A class to receive signal display data via SPEAD and store it in a SignalDisplayData object.
 
@@ -1044,7 +975,8 @@ class SpeadSDReceiver(threading.Thread):
         self.storage = storage
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
-        self.rx = MultiStream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
+        self.rx = spead2.recv.Stream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
+        self.rx.stop_on_stop_item = False
         self.rx.add_udp_reader(self._port)
         self.ig = spead2.ItemGroup()
         self.heap_count = 0
@@ -1130,7 +1062,7 @@ class SpeadSDReceiver(threading.Thread):
         else:
             bls_ordering_version = -1
             for heap in self.rx:
-                if (heap is None):
+                if (heap.is_end_of_stream()):
                     if (self.notifyqueue):
                         self.notifyqueue.put('end of stream')
                     logger.info("End of stream notification")
