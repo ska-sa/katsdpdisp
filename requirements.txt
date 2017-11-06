@@ -6,6 +6,7 @@ fakeredis
 funcsigs
 functools32
 future
+futures                 # required by trollius
 guppy==0.1.10
 h5py
 ipaddress
@@ -24,9 +25,10 @@ python-dateutil
 pytz
 redis
 six
-spead2
+spead2==1.5.0
 subprocess32
 traceback2
+trollius                # required by spead2
 singledispatch
 certifi
 backports-abc
