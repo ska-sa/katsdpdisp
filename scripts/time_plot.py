@@ -1486,13 +1486,13 @@ def handle_websock_event(handlerkey,*args):
                             send_websock_cmd('logconsole("%d antennas: '%(len(antennas))+','.join(antennas)+'",true,true,true)',handlerkey)
                             for ant in antennas:
                                 if (len(sig)==3):
-                                    decodedsignal=(ant+decodedsignal[0][-1],ant+decodedsignal[1][-1])
+                                    ndecodedsignal=(ant+decodedsignal[0][-1],ant+decodedsignal[1][-1])
                                 elif (ant<decodedsignal[0][:-1]):
-                                    decodedsignal=(ant+decodedsignal[1][-1],decodedsignal[0])
+                                    ndecodedsignal=(ant+decodedsignal[1][-1],decodedsignal[0])
                                 else:
-                                    decodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
-                                if (decodedsignal not in html_customsignals[username]):
-                                    html_customsignals[username].append(decodedsignal)
+                                    ndecodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
+                                if (ndecodedsignal not in html_customsignals[username]):
+                                    html_customsignals[username].append(ndecodedsignal)
                 else:
                     decodedsignal=decodecustomsignal(sig)
                     logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
