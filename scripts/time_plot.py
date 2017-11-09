@@ -1489,6 +1489,8 @@ def handle_websock_event(handlerkey,*args):
                                     ndecodedsignal=(ant+decodedsignal[0][-1],ant+decodedsignal[1][-1])
                                 elif (ant<decodedsignal[0][:-1]):
                                     ndecodedsignal=(ant+decodedsignal[1][-1],decodedsignal[0])
+                                elif (ant==decodedsignal[0][:-1]):#don't include auto corr using eg 32h*h command
+                                    continue
                                 else:
                                     ndecodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
                                 if (ndecodedsignal not in html_customsignals[username]):
