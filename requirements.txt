@@ -2,7 +2,7 @@ ansicolors
 pkginfo
 cycler
 Cython
-fakeredis
+fakenewsredis
 funcsigs
 functools32
 future
