@@ -1488,6 +1488,12 @@ def handle_websock_event(handlerkey,*args):
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='timeseriessnr'):#creates new timeseriessnr plot
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':'timeseriessnr','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0].startswith('periodogram')):#creates new periodogram plot
             logger.info(repr(args))
             if (args[0][11:].replace(' ','').isdigit()):
