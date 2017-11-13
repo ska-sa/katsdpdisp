@@ -460,6 +460,63 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['spancolor']=[]
                     fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
                     fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
+                elif (theviewsettings['figtype']=='timeseriessnr'):
+                    ydata=[]
+                    color=[]
+                    legend=[]
+                    collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
+                    outlierproducts=[]
+                    customproducts=[]
+                    for product in customsignals:
+                        if (list(product) in datasd.cpref.bls_ordering):
+                            customproducts.append(product)
+                            signal = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
+                            signal=np.array(signal).reshape(-1)
+                            if (len(signal)<len(ts)):
+                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                        else:
+                            signal=np.tile(np.nan,len(ts))
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(printablesignal(product))
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
+                    outlierhash=0
+                    for ipr,product in enumerate(outlierproducts):
+                        outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
+                        signal = datasd.select_timeseriessnrdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                        signal=np.array(signal).reshape(-1)
+                        if (len(signal)<len(ts)):
+                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                        ydata.append(signal)#should check that correct corresponding values are returned
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        color.append(np.r_[registeredcolour(legend[-1]),0])
+                    if (len(ydata)==0):
+                        ydata=[np.nan*ts]
+                        color=[np.array([255,255,255,0])]
+                    if (theviewsettings['type']=='pow'):
+                        ydata=10.0*np.log10(ydata)
+                        fig['ylabel']=['Power']
+                        fig['yunit']=['dB']
+                    elif (thetype=='mag'):
+                        fig['ylabel']=['Amplitude']
+                        fig['yunit']=['counts']
+                    else:
+                        fig['ylabel']=['Phase']
+                        fig['yunit']=['rad']
+                    fig['xunit']='s'
+                    fig['xdata']=ts
+                    fig['ydata']=[ydata]
+                    fig['color']=np.array(color)
+                    fig['legend']=legend
+                    fig['outlierhash']=outlierhash
+                    fig['title']='Timeseries SNR'
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['xlabel']='Time since '+time.asctime(time.localtime(ts[-1]))
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
+                    fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
                 elif (theviewsettings['figtype'][:11]=='periodogram'):
                     if (theviewsettings['figtype'][11:].isdigit()):
                         datalength=int(theviewsettings['figtype'][11:])
@@ -909,14 +966,32 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     else:
                         fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
-                    mxdatameanhh,mxdatahh = datasd.select_blxvalue(pol='hh')
-                    mxdatameanvv,mxdatavv = datasd.select_blxvalue(pol='vv')
-                    if (theviewsettings['figtype'][4:]=='mean'):
+                    nant=len(datasd.cpref.inputs)/2 #assumes inputs in order like: m021h,m022h,m023h,m028h,m032h,m034h,m041h,m043h,m044h,m048h,m051h,m053h,m054h,m057h,m059h,m062h,m021v,m022v,m023v,m028v,m032v,m034v,m041v,m043v,m044v,m048v,m051v,m053v,m054v,m057v,m059v,m062v
+                    nprod=nant*(nant+1)/2
+                    mxdatahh=np.zeros(nprod)
+                    mxdatavv=np.zeros(nprod)
+                    mxdatameanhh=np.zeros(nprod)
+                    mxdatameanvv=np.zeros(nprod)
+                    cc=0
+                    for ii in range(len(datasd.cpref.inputs)/2):
+                        mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[ii][:-1]+'h')), end_time=-1, include_ts=False)
+                        mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[ii][:-1]+'v')), end_time=-1, include_ts=False)
+                        mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[ii][:-1]+'h')), end_time=-1, include_ts=False)
+                        mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[ii][:-1]+'v')), end_time=-1, include_ts=False)
+                        cc+=1
+                    for ii in range(len(datasd.cpref.inputs)/2):
+                        for jj in range(ii+1,len(datasd.cpref.inputs)/2):
+                            mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[jj][:-1]+'h')), end_time=-1, include_ts=False)
+                            mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[jj][:-1]+'v')), end_time=-1, include_ts=False)
+                            mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[jj][:-1]+'h')), end_time=-1, include_ts=False)
+                            mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[jj][:-1]+'v')), end_time=-1, include_ts=False)
+                            cc+=1
+                    if (theviewsettings['figtype'][4:]=='snr'):
+                        fig['title']='Baseline matrix SNR H\\V'
+                    else:
                         mxdatahh=mxdatameanhh
                         mxdatavv=mxdatameanvv
                         fig['title']='Baseline matrix mean H\\V'
-                    else:
-                        fig['title']='Baseline matrix SNR H\\V'
                     if (theviewsettings['type']=='pow'):
                         mxdatahh=10.0*np.log10(mxdatahh)
                         mxdatavv=10.0*np.log10(mxdatavv)
@@ -1210,7 +1285,7 @@ def handle_websock_event(handlerkey,*args):
             theviewsettings=html_viewsettings[username][ifigure]
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
-            if (theviewsettings['figtype']=='timeseries'):
+            if (theviewsettings['figtype']=='timeseries' || theviewsettings['figtype']=='timeseriessnr'):
                 customproducts,outlierproducts,processtime=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('periodogram')):
                 customproducts,outlierproducts,processtime=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)

@@ -85,13 +85,13 @@ centerfreqMHz=     - clears center frequency override
 centerfreqMHz=1284 - overrides center frequency
 
 [blmx]
-Adds a SNR baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
+Adds a baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 See also:
-blmxmean
+blmxsnr
 
-[blmxmean]
-Adds a mean baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
+[blmxsnr]
+Adds a SNR baseline matrix figure. Double click a matrix item to generate a waterfall plot for corresponding signal.
 
 See also:
 blmx
@@ -263,6 +263,9 @@ The update command provides the advanced user with useful debugging information 
 
 [timeseries]
 Adds a new time series figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
+
+[timeseriessnr]
+Adds a new SNR time series figure to the current view.
 
 [periodogram]
 Adds a new periodogram figure to the current view. Right click the figure to change, for example, the type to power, magnitude or phase.
