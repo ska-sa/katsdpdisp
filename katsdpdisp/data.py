@@ -690,6 +690,7 @@ class SignalDisplayStore2(object):
         blmxfl = np.zeros([len(bls_ordering),256],dtype=np.uint8)
         timeseries = np.zeros(len(bls_ordering),dtype=np.complex)
         timeseriesabs = np.zeros(len(bls_ordering),dtype=np.float32)
+        timeseriessnr = np.zeros(len(bls_ordering),dtype=np.complex)
         for i,t in enumerate(tss):
             print ".",
             d = h5.vis[i+startrow,:,:].swapaxes(0,1)
