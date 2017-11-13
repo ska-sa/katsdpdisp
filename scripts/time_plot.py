@@ -1285,7 +1285,7 @@ def handle_websock_event(handlerkey,*args):
             theviewsettings=html_viewsettings[username][ifigure]
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
-            if (theviewsettings['figtype']=='timeseries' || theviewsettings['figtype']=='timeseriessnr'):
+            if (theviewsettings['figtype']=='timeseries' or theviewsettings['figtype']=='timeseriessnr'):
                 customproducts,outlierproducts,processtime=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('periodogram')):
                 customproducts,outlierproducts,processtime=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
