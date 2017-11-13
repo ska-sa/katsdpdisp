@@ -700,7 +700,7 @@ class SignalDisplayStore2(object):
                 #calculate timeseries
                 timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
                 timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
-                timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])/np.std(d[prod,self.timeseriesmaskind]) #NOTE this equation should probably be changed
+                timeseriessnr[prod] = np.mean(d[prod,self.timeseriesmaskind])/np.std(d[prod,self.timeseriesmaskind]) #NOTE this equation should probably be changed
             #calculate percentiles
             perc=[]
             percfl=[]
