@@ -617,7 +617,7 @@ class SignalDisplayStore2(object):
         ningestnodes=self.n_chans/frame_nchans
         if (self.n_chans>frame_nchans):
             if (timestamp_ms<=self._last_ts):
-                logger.warning('Discarding late parital data at timestamp %f, because data at timestamp %f already complete.',timestamp_ms,self._last_ts)
+                logger.warning('Discarding late partial data at timestamp %f, because data at timestamp %f already complete.',timestamp_ms,self._last_ts)
                 return
             elif (timestamp_ms not in self.framecollector):
                 if (data is not None):
