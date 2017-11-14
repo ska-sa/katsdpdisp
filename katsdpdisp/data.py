@@ -588,7 +588,11 @@ class SignalDisplayStore2(object):
                             lastmag=np.abs(lastblmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                             valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
                             if (len(valid)):
-                                self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.mean(mag[valid])*(1.0+1j/(np.sqrt(2)*np.std(mag[valid]-lastmag[valid]))) #real component is mean, imag component is SNR
+                                thestd=np.std(mag[valid]-lastmag[valid])
+                                if (thestd>0):
+                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.mean(mag[valid])*(1.0+1j/(np.sqrt(2)*thestd)) #real component is mean, imag component is SNR
+                                else:
+                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.nan
                         except Exception, e:
                             logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
                             pass
@@ -614,6 +618,7 @@ class SignalDisplayStore2(object):
         if (self.n_chans>frame_nchans):
             if (timestamp_ms<=self._last_ts):
                 logger.warning('Discarding late parital data at timestamp %f, because data at timestamp %f already complete.',timestamp_ms,self._last_ts)
+                return
             elif (timestamp_ms not in self.framecollector):
                 if (data is not None):
                     ndata=np.zeros([data.shape[0],self.n_chans],dtype=np.complex64)
