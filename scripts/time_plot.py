@@ -966,7 +966,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     else:
                         fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
-                    antennas=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+                    antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
                     nant=len(antennas)
                     nprod=nant*(nant+1)/2
                     mxdatahh=np.zeros(nprod)
@@ -981,7 +981,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
                         cc+=1
                     for ii in range(len(antennas)):
-                        for jj in range(ii+1,len(datasd.cpref.inputs)/2):
+                        for jj in range(ii+1,len(antennas)):
                             mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
                             mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
                             mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
