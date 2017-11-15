@@ -966,25 +966,26 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     else:
                         fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
-                    nant=len(datasd.cpref.inputs)/2 #assumes inputs in order like: m021h,m022h,m023h,m028h,m032h,m034h,m041h,m043h,m044h,m048h,m051h,m053h,m054h,m057h,m059h,m062h,m021v,m022v,m023v,m028v,m032v,m034v,m041v,m043v,m044v,m048v,m051v,m053v,m054v,m057v,m059v,m062v
+                    antennas=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+                    nant=len(antennas)
                     nprod=nant*(nant+1)/2
                     mxdatahh=np.zeros(nprod)
                     mxdatavv=np.zeros(nprod)
                     mxdatameanhh=np.zeros(nprod)
                     mxdatameanvv=np.zeros(nprod)
                     cc=0
-                    for ii in range(len(datasd.cpref.inputs)/2):
-                        mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[ii][:-1]+'h')), end_time=-1, include_ts=False)
-                        mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[ii][:-1]+'v')), end_time=-1, include_ts=False)
-                        mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[ii][:-1]+'h')), end_time=-1, include_ts=False)
-                        mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[ii][:-1]+'v')), end_time=-1, include_ts=False)
+                    for ii in range(len(antennas)):
+                        mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
+                        mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
+                        mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
+                        mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
                         cc+=1
-                    for ii in range(len(datasd.cpref.inputs)/2):
+                    for ii in range(len(antennas)):
                         for jj in range(ii+1,len(datasd.cpref.inputs)/2):
-                            mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[jj][:-1]+'h')), end_time=-1, include_ts=False)
-                            mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[jj][:-1]+'v')), end_time=-1, include_ts=False)
-                            mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'h',datasd.cpref.inputs[jj][:-1]+'h')), end_time=-1, include_ts=False)
-                            mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((datasd.cpref.inputs[ii][:-1]+'v',datasd.cpref.inputs[jj][:-1]+'v')), end_time=-1, include_ts=False)
+                            mxdatahh[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
+                            mxdatavv[cc] = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
+                            mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
+                            mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
                             cc+=1
                     if (theviewsettings['figtype'][4:]=='snr'):
                         fig['title']='Baseline matrix SNR H\\V'

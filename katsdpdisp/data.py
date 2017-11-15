@@ -590,12 +590,11 @@ class SignalDisplayStore2(object):
                             if (len(valid)):
                                 thestd=np.std(mag[valid]-lastmag[valid])
                                 if (thestd>0):
-                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.mean(mag[valid])*(1.0+1j/(np.sqrt(2)*thestd)) #real component is mean, imag component is SNR
+                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.mean(mag[valid])*(1.0+1j*np.sqrt(2)/(thestd)) #real component is mean, imag component is SNR
                                 else:
                                     self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.nan
-                        except Exception, e:
+                        except Exception as e:
                             logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
-                            pass
                 else:
                     self.timeseriessnrdata[self.timeseriesroll_point,:] = timeseriessnr
 
@@ -693,9 +692,9 @@ class SignalDisplayStore2(object):
         print "Loading %d of %d integrations..." % (len(tss),len(h5.timestamps))
         blmx = np.zeros([len(bls_ordering),256],dtype=np.complex)
         blmxfl = np.zeros([len(bls_ordering),256],dtype=np.uint8)
-        timeseries = np.zeros(len(bls_ordering),dtype=np.complex)
+        timeseries = np.zeros(len(bls_ordering),dtype=np.complex64)
         timeseriesabs = np.zeros(len(bls_ordering),dtype=np.float32)
-        timeseriessnr = np.zeros(len(bls_ordering),dtype=np.complex)
+        timeseriessnr = np.zeros(len(bls_ordering),dtype=np.complex64)
         for i,t in enumerate(tss):
             print ".",
             d = h5.vis[i+startrow,:,:].swapaxes(0,1)
@@ -2137,7 +2136,7 @@ class DataHandler(object):
 
     def _select_data2(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
 
         with datalock:
@@ -2211,7 +2210,7 @@ class DataHandler(object):
 
     def select_timeseriesdata(self, product=None, dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
 
         with datalock:
@@ -2271,7 +2270,7 @@ class DataHandler(object):
 
     def select_timeseriessnrdata(self, product=None, dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
 
         with datalock:
@@ -2333,7 +2332,7 @@ class DataHandler(object):
     def get_data_outlier_products(self, icollection, threshold):
         outlierproducts=[]
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return outlierproducts
             
         with datalock:
@@ -2350,7 +2349,7 @@ class DataHandler(object):
     #product is index to [0,100,25,75,50] for each of [auto,autohh,autovv,autohv,cross,crosshh,crossvv,crosshv]
     def select_data_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
 
         with datalock:
@@ -2420,7 +2419,7 @@ class DataHandler(object):
 
     def select_timeseriesdata_collection(self, product=None, dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
         with datalock:
             ts = []
@@ -2476,7 +2475,7 @@ class DataHandler(object):
 
     def select_blmxdata(self, product=None, dtype='mag', start_time=0, end_time=-120, start_channel=0, stop_channel=None, reverse_order=False, avg_axis=None, sum_axis=None, include_ts=False, include_flags=False, incr_channel=1):
         if self.storage.ts is None:
-            print "Signal display store not yet initialised... (most likely has not received SPEAD headers yet)"
+            logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
             
         with datalock:
