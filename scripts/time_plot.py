@@ -467,6 +467,22 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
                     outlierproducts=[]
                     customproducts=[]
+                    for colprod in collectionsignals:
+                        if (colprod[:8]=='envelope'):
+                            if (colprod[8:] in collections):
+                                icolprod=collections.index(colprod[8:])
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)                                
+                        else:
+                            if (colprod in collections):
+                                icolprod=collections.index(colprod)
+                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
+                                for ip in moreoutlierproducts:
+                                    if (ip not in outlierproducts and ip not in customsignals):
+                                        outlierproducts.append(ip)
+
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
