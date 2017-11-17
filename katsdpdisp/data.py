@@ -580,21 +580,21 @@ class SignalDisplayStore2(object):
                 self.blmxts[self.blmxroll_point] = timestamp_ms
                 #blmx calculation
                 self.timeseriessnrdata[self.timeseriesroll_point,:]=np.tile(np.nan,blmxdata.shape[0])
-                try:
-                    edgewidth=blmxdata.shape[1]/10
-                    for iprod in range(blmxdata.shape[0]):
-                        valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
-                        if (len(valid)):
-                            mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
-                            if timeseriesvar is None:
+                if timeseriesvar is None:
+                    try:
+                        edgewidth=blmxdata.shape[1]/10
+                        for iprod in range(blmxdata.shape[0]):
+                            valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
+                            if (len(valid)):
+                                mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                                 lastmag=np.abs(lastblmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                                 thestd=np.std(mag[valid]-lastmag[valid])
                                 if (thestd>0):
                                     self.timeseriessnrdata[self.timeseriesroll_point,iprod] = timeseriesabs[iprod]*np.sqrt(2)/(thestd) # because of diff from previous sample, variance is doubled
-                            else:
-                                self.timeseriessnrdata[self.timeseriesroll_point,iprod]=timeseriesabs[iprod]/np.sqrt(timeseriesvar[iprod])
-                except Exception as e:
-                    logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
+                    except Exception as e:
+                        logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
+                else:
+                    self.timeseriessnrdata[self.timeseriesroll_point,:]=timeseriesabs/np.sqrt(timeseriesvar)
 
             if (data_index is not None):
                 if (flags is not None):
