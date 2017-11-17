@@ -467,7 +467,7 @@ class SignalDisplayStore2(object):
         self.ts = np.zeros(self.slots, dtype=np.uint64)
         self.timeseriesslots=self.slots
         self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
-        self.timeseriessnrdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
+        self.timeseriessnrdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.float32)
         self.timeseriests = np.zeros(self.timeseriesslots, dtype=np.uint64)
         self.timeseriesroll_point = 0
         self.blmxslots = 256
@@ -631,7 +631,7 @@ class SignalDisplayStore2(object):
                 nblmxflags=np.zeros([blmxflags.shape[0],blmxflags.shape[1]*ningestnodes],dtype=np.uint8)
                 ntimeseries=np.zeros(np.shape(timeseries),dtype=np.complex64)
                 ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
-                ntimeseriesvar=None if timeseriesvar is None else np.zeros(np.shape(timeseries),dtype=np.complex64)
+                ntimeseriesvar=None if timeseriesvar is None else np.zeros(np.shape(timeseries),dtype=np.float32)
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, 0]
             else:
                 [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nchans_sofar]=self.framecollector[timestamp_ms]
@@ -703,7 +703,7 @@ class SignalDisplayStore2(object):
                 #calculate timeseries
                 timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
                 timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
-                timeseriesvar[prod] = np.var(d[prod,self.timeseriesmaskind])
+                timeseriesvar[prod] = np.var(np.abs(d[prod,self.timeseriesmaskind]))
             #calculate percentiles
             perc=[]
             percfl=[]
@@ -1121,7 +1121,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None, \
                                                         self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
                                                         self.ig['sd_timeseriesabs'].value.astype(np.float32), \
-                                                        # (self.ig['sd_timeseriesstd'].value.astype(np.float32).view(np.complex64)[:,0])**2, \
+                                                        # (self.ig['sd_timeseriesstd'].value.astype(np.float32))**2, \
                                                         None, \
                                                         self.ig['sd_percspectrum'].value.astype(np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
