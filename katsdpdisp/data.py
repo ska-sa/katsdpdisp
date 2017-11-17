@@ -590,9 +590,9 @@ class SignalDisplayStore2(object):
                                 lastmag=np.abs(lastblmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
                                 thestd=np.std(mag[valid]-lastmag[valid])
                                 if (thestd>0):
-                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod]=np.mean(mag[valid])*np.sqrt(2)/(thestd) # because of diff from previous sample, variance is doubled
+                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod] = np.median(mag[valid])*np.sqrt(2)/(thestd) # because of diff from previous sample, variance is doubled
                             else:
-                                self.timeseriessnrdata[self.timeseriesroll_point,iprod] = np.mean(mag[valid])/np.sqrt(timeseriesvar[iprod])
+                                self.timeseriessnrdata[self.timeseriesroll_point,iprod] = np.median(mag[valid])/np.sqrt(timeseriesvar[iprod])
                 except Exception as e:
                     logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
 
