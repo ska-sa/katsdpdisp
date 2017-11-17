@@ -560,6 +560,7 @@ class SignalDisplayStore2(object):
                 #first replace absolute value
                 timeseries=timeseriesabs*np.exp(1j*np.angle(timeseries))
                 self.timeseriesdata[self.timeseriesroll_point,:] = timeseries
+                self.timeseriessnrdata[self.timeseriesroll_point,:]=timeseriesabs/np.sqrt(timeseriesvar)
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
@@ -578,23 +579,6 @@ class SignalDisplayStore2(object):
                 self.blmxdata[self.blmxroll_point,:,:] = blmxdata
                 self.blmxflags[self.blmxroll_point,:,:] = blmxflags
                 self.blmxts[self.blmxroll_point] = timestamp_ms
-                #blmx calculation
-                self.timeseriessnrdata[self.timeseriesroll_point,:]=np.tile(np.nan,blmxdata.shape[0])
-                try:
-                    edgewidth=blmxdata.shape[1]/10
-                    for iprod in range(blmxdata.shape[0]):
-                        valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
-                        if (len(valid)):
-                            mag=np.abs(blmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
-                            if timeseriesvar is None:
-                                lastmag=np.abs(lastblmxdata[iprod,edgewidth:-edgewidth].reshape(-1))
-                                thestd=np.std(mag[valid]-lastmag[valid])
-                                if (thestd>0):
-                                    self.timeseriessnrdata[self.timeseriesroll_point,iprod] = np.median(mag[valid])*np.sqrt(2)/(thestd) # because of diff from previous sample, variance is doubled
-                            else:
-                                self.timeseriessnrdata[self.timeseriesroll_point,iprod] = np.median(mag[valid])/np.sqrt(timeseriesvar[iprod])
-                except Exception as e:
-                    logger.warning('Exception in blmx calculation (blmxdata shape: %s): '%(repr(blmxdata.shape))+str(e), exc_info=True)
 
             if (data_index is not None):
                 if (flags is not None):
