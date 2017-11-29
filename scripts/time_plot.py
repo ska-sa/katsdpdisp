@@ -361,7 +361,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     samplingtime=ts[-1]-ts[-2]
                 else:
                     samplingtime=np.nan
-                if (theviewsettings['figtype']=='timeseries'):
+                if (theviewsettings['figtype']=='timeseries' or theviewsettings['figtype']=='timeseriessnr'):
                     ydata=[]
                     color=[]
                     legend=[]
@@ -375,20 +375,21 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                                 moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
-                                        outlierproducts.append(ip)                                
-                                cbase=registeredcolour(colprod[8:])
-                                c=np.array(np.r_[cbase,1],dtype='int')
-                                for iprod in range(2):#only min and max
-                                    product=icolprod*5+iprod
-                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
-                                    signal=signal.reshape(-1)
-                                    if (len(signal)<len(ts)):
-                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                                    ydata.append(signal)
-                                    legend.append(colprod[8:])
-                                    if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
-                                        c=np.array(np.r_[cbase,0],dtype='int')
-                                    color.append(c)
+                                        outlierproducts.append(ip)
+                                if (theviewsettings['figtype']=='timeseries'):
+                                    cbase=registeredcolour(colprod[8:])
+                                    c=np.array(np.r_[cbase,1],dtype='int')
+                                    for iprod in range(2):#only min and max
+                                        product=icolprod*5+iprod
+                                        signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                                        signal=signal.reshape(-1)
+                                        if (len(signal)<len(ts)):
+                                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
+                                        ydata.append(signal)
+                                        legend.append(colprod[8:])
+                                        if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
+                                            c=np.array(np.r_[cbase,0],dtype='int')
+                                        color.append(c)
                         else:
                             if (colprod in collections):
                                 icolprod=collections.index(colprod)
@@ -396,27 +397,28 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
                                         outlierproducts.append(ip)
-                                cbase=registeredcolour(colprod)
-                                c=np.array(np.r_[cbase,1],dtype='int')
-                                for iprod in range(5):
-                                    product=icolprod*5+iprod
-                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
-                                    signal=signal.reshape(-1)
-                                    if (len(signal)<len(ts)):
-                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                                    ydata.append(signal)
-                                    legend.append(colprod)
-                                    if (iprod==4):
-                                        c=np.array(np.r_[cbase,0],dtype='int')
-                                    color.append(c)
-                        
+                                if (theviewsettings['figtype']=='timeseries'):
+                                    cbase=registeredcolour(colprod)
+                                    c=np.array(np.r_[cbase,1],dtype='int')
+                                    for iprod in range(5):
+                                        product=icolprod*5+iprod
+                                        signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                                        signal=signal.reshape(-1)
+                                        if (len(signal)<len(ts)):
+                                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
+                                        ydata.append(signal)
+                                        legend.append(colprod)
+                                        if (iprod==4):
+                                            c=np.array(np.r_[cbase,0],dtype='int')
+                                        color.append(c)
+
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, snr=(theviewsettings['figtype']=='timeseriessnr'))
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<len(ts)):
-                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         else:
                             signal=np.tile(np.nan,len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
@@ -425,10 +427,10 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, snr=(theviewsettings['figtype']=='timeseriessnr'))
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<len(ts)):
-                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
@@ -451,7 +453,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['color']=np.array(color)
                     fig['legend']=legend
                     fig['outlierhash']=outlierhash
-                    fig['title']='Timeseries'
+                    fig['title']='Timeseries SNR' if (theviewsettings['figtype']=='timeseriessnr') else 'Timeseries'
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
@@ -909,14 +911,33 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     else:
                         fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
-                    mxdatameanhh,mxdatahh = datasd.select_blxvalue(pol='hh')
-                    mxdatameanvv,mxdatavv = datasd.select_blxvalue(pol='vv')
-                    if (theviewsettings['figtype'][4:]=='mean'):
+                    antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
+                    nant=len(antennas)
+                    nprod=nant*(nant+1)/2
+                    mxdatahh=np.zeros(nprod)
+                    mxdatavv=np.zeros(nprod)
+                    mxdatameanhh=np.zeros(nprod)
+                    mxdatameanvv=np.zeros(nprod)
+                    cc=0
+                    for ii in range(len(antennas)):
+                        mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False, snr=True)
+                        mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False, snr=True)
+                        mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
+                        mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
+                        cc+=1
+                    for ii in range(len(antennas)):
+                        for jj in range(ii+1,len(antennas)):
+                            mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False, snr=True)
+                            mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False, snr=True)
+                            mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
+                            mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
+                            cc+=1
+                    if (theviewsettings['figtype'][4:]=='snr'):
+                        fig['title']='Baseline matrix SNR H\\V'
+                    else:
                         mxdatahh=mxdatameanhh
                         mxdatavv=mxdatameanvv
                         fig['title']='Baseline matrix mean H\\V'
-                    else:
-                        fig['title']='Baseline matrix SNR H\\V'
                     if (theviewsettings['type']=='pow'):
                         mxdatahh=10.0*np.log10(mxdatahh)
                         mxdatavv=10.0*np.log10(mxdatavv)
@@ -1210,7 +1231,7 @@ def handle_websock_event(handlerkey,*args):
             theviewsettings=html_viewsettings[username][ifigure]
             thesignals=(html_collectionsignals[username],html_customsignals[username])
             thelayoutsettings=html_layoutsettings[username]
-            if (theviewsettings['figtype']=='timeseries'):
+            if (theviewsettings['figtype']=='timeseries' or theviewsettings['figtype']=='timeseriessnr'):
                 customproducts,outlierproducts,processtime=send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('periodogram')):
                 customproducts,outlierproducts,processtime=send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
@@ -1410,6 +1431,12 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='timeseries'):#creates new timeseries plot
             logger.info(repr(args))
             html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='timeseriessnr'):#creates new timeseriessnr plot
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':'timeseriessnr','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
