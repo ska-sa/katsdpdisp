@@ -361,7 +361,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     samplingtime=ts[-1]-ts[-2]
                 else:
                     samplingtime=np.nan
-                if (theviewsettings['figtype']=='timeseries'):
+                if (theviewsettings['figtype']=='timeseries' or theviewsettings['figtype']=='timeseriessnr'):
                     ydata=[]
                     color=[]
                     legend=[]
@@ -375,20 +375,21 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                                 moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
-                                        outlierproducts.append(ip)                                
-                                cbase=registeredcolour(colprod[8:])
-                                c=np.array(np.r_[cbase,1],dtype='int')
-                                for iprod in range(2):#only min and max
-                                    product=icolprod*5+iprod
-                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
-                                    signal=signal.reshape(-1)
-                                    if (len(signal)<len(ts)):
-                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                                    ydata.append(signal)
-                                    legend.append(colprod[8:])
-                                    if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
-                                        c=np.array(np.r_[cbase,0],dtype='int')
-                                    color.append(c)
+                                        outlierproducts.append(ip)
+                                if (theviewsettings['figtype']=='timeseries'):
+                                    cbase=registeredcolour(colprod[8:])
+                                    c=np.array(np.r_[cbase,1],dtype='int')
+                                    for iprod in range(2):#only min and max
+                                        product=icolprod*5+iprod
+                                        signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                                        signal=signal.reshape(-1)
+                                        if (len(signal)<len(ts)):
+                                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
+                                        ydata.append(signal)
+                                        legend.append(colprod[8:])
+                                        if (iprod==1):#note this is kindof a hack to get legend and drawing of envelopes to work
+                                            c=np.array(np.r_[cbase,0],dtype='int')
+                                        color.append(c)
                         else:
                             if (colprod in collections):
                                 icolprod=collections.index(colprod)
@@ -396,100 +397,28 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                                 for ip in moreoutlierproducts:
                                     if (ip not in outlierproducts and ip not in customsignals):
                                         outlierproducts.append(ip)
-                                cbase=registeredcolour(colprod)
-                                c=np.array(np.r_[cbase,1],dtype='int')
-                                for iprod in range(5):
-                                    product=icolprod*5+iprod
-                                    signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
-                                    signal=signal.reshape(-1)
-                                    if (len(signal)<len(ts)):
-                                        signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                                    ydata.append(signal)
-                                    legend.append(colprod)
-                                    if (iprod==4):
-                                        c=np.array(np.r_[cbase,0],dtype='int')
-                                    color.append(c)
-                        
-                    for product in customsignals:
-                        if (list(product) in datasd.cpref.bls_ordering):
-                            customproducts.append(product)
-                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
-                            signal=np.array(signal).reshape(-1)
-                            if (len(signal)<len(ts)):
-                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                        else:
-                            signal=np.tile(np.nan,len(ts))
-                        ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(printablesignal(product))
-                        color.append(np.r_[registeredcolour(legend[-1]),0])
-                    outlierhash=0
-                    for ipr,product in enumerate(outlierproducts):
-                        outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
-                        signal=np.array(signal).reshape(-1)
-                        if (len(signal)<len(ts)):
-                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
-                        ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
-                        color.append(np.r_[registeredcolour(legend[-1]),0])
-                    if (len(ydata)==0):
-                        ydata=[np.nan*ts]
-                        color=[np.array([255,255,255,0])]
-                    if (theviewsettings['type']=='pow'):
-                        ydata=10.0*np.log10(ydata)
-                        fig['ylabel']=['Power']
-                        fig['yunit']=['dB']
-                    elif (thetype=='mag'):
-                        fig['ylabel']=['Amplitude']
-                        fig['yunit']=['counts']
-                    else:
-                        fig['ylabel']=['Phase']
-                        fig['yunit']=['rad']
-                    fig['xunit']='s'
-                    fig['xdata']=ts
-                    fig['ydata']=[ydata]
-                    fig['color']=np.array(color)
-                    fig['legend']=legend
-                    fig['outlierhash']=outlierhash
-                    fig['title']='Timeseries'
-                    fig['lastts']=ts[-1]
-                    fig['lastdt']=samplingtime
-                    fig['version']=theviewsettings['version']
-                    fig['xlabel']='Time since '+time.asctime(time.localtime(ts[-1]))
-                    fig['span']=[]
-                    fig['spancolor']=[]
-                    fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
-                    fig['customproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in customproducts]
-                elif (theviewsettings['figtype']=='timeseriessnr'):
-                    ydata=[]
-                    color=[]
-                    legend=[]
-                    collections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv']
-                    outlierproducts=[]
-                    customproducts=[]
-                    for colprod in collectionsignals:
-                        if (colprod[:8]=='envelope'):
-                            if (colprod[8:] in collections):
-                                icolprod=collections.index(colprod[8:])
-                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
-                                for ip in moreoutlierproducts:
-                                    if (ip not in outlierproducts and ip not in customsignals):
-                                        outlierproducts.append(ip)                                
-                        else:
-                            if (colprod in collections):
-                                icolprod=collections.index(colprod)
-                                moreoutlierproducts=datasd.get_data_outlier_products(icollection=icolprod, threshold=thelayoutsettings['outlierthreshold'])
-                                for ip in moreoutlierproducts:
-                                    if (ip not in outlierproducts and ip not in customsignals):
-                                        outlierproducts.append(ip)
+                                if (theviewsettings['figtype']=='timeseries'):
+                                    cbase=registeredcolour(colprod)
+                                    c=np.array(np.r_[cbase,1],dtype='int')
+                                    for iprod in range(5):
+                                        product=icolprod*5+iprod
+                                        signal = datasd.select_timeseriesdata_collection(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                                        signal=signal.reshape(-1)
+                                        if (len(signal)<len(ts)):
+                                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
+                                        ydata.append(signal)
+                                        legend.append(colprod)
+                                        if (iprod==4):
+                                            c=np.array(np.r_[cbase,0],dtype='int')
+                                        color.append(c)
 
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False) if (theviewsettings['figtype']=='timeseries') else signal = datasd.select_timeseriessnrdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<len(ts)):
-                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                                signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         else:
                             signal=np.tile(np.nan,len(ts))
                         ydata.append(signal)#should check that correct corresponding values are returned
@@ -498,10 +427,10 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_timeseriessnrdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
+                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False) if (theviewsettings['figtype']=='timeseries') else signal = datasd.select_timeseriessnrdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<len(ts)):
-                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]                                                        
+                            signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
                         legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
@@ -524,7 +453,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['color']=np.array(color)
                     fig['legend']=legend
                     fig['outlierhash']=outlierhash
-                    fig['title']='Timeseries SNR'
+                    fig['title']='Timeseries' if (theviewsettings['figtype']=='timeseries') else 'Timeseries SNR'
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
