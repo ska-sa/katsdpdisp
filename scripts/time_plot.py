@@ -427,7 +427,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False) if (theviewsettings['figtype']=='timeseries', snr=(theviewsettings['figtype']=='timeseriessnr'))
+                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, snr=(theviewsettings['figtype']=='timeseriessnr'))
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<len(ts)):
                             signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
