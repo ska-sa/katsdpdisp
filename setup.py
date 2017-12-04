@@ -13,6 +13,6 @@ setup (
         ],
     zip_safe = False,
     setup_requires=["katversion"],
-    install_requires=["spead2>=1.5.0"],
+    install_requires=["spead2>=1.5.0", "katsdpservices[argparse]"],
     use_katversion=True
 )

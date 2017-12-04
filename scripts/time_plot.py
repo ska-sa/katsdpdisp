@@ -2,7 +2,7 @@
 
 ####!/usr/bin/env python
 import optparse
-import katsdptelstate
+import katsdpservices
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
 import tornado.ioloop
 import tornado.httpserver
@@ -3119,7 +3119,7 @@ class WSHandler(tornado.websocket.WebSocketHandler):
         logger.info("Connection to %s@%s is closed...", websockrequest_username[self] if (self in websockrequest_username) else '(unknown)', self.request.remote_ip)
         deregister_websockrequest_handler(self)
 
-parser = katsdptelstate.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
+parser = katsdpservices.ArgumentParser(usage="%(prog)s [options] <file or 'stream' or 'k7simulator'>",
                                description="Launches the HTML5 signal displays front end server. If no <file> is given then it defaults to 'stream'.")
 
 parser.add_argument("-d", "--debug", dest="debug", type=bool, default=False,
