@@ -1170,7 +1170,7 @@ def handle_websock_event(handlerkey,*args):
     global telstate_cal_product_K
     global telstate_cal_product_B
     global telstate_cal_antlist
-    global telstate_data_target
+    global telstate_cbf_target
     global telstate_antenna_mask
     global telstate_activity
     global telstate_script_name
@@ -1948,10 +1948,10 @@ def handle_websock_event(handlerkey,*args):
         if ((handlerkey in websockrequest_time) and (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0)):#don't check more than once a second
             poll_telstate_lasttime=websockrequest_time[handlerkey]
             try:
-                if ('data_target' in telstate):
-                    data_target=telstate.get_range('data_target',st=0 if (len(telstate_data_target)==0) else telstate_data_target[-1][1]+0.01)
-                    for thisdata_target in data_target:
-                        telstate_data_target.append((thisdata_target[0].split(',')[0].split(' |')[0].split('|')[0],thisdata_target[1]))
+                if ('cbf_target' in telstate):
+                    cbf_target=telstate.get_range('cbf_target',st=0 if (len(telstate_cbf_target)==0) else telstate_cbf_target[-1][1]+0.01)
+                    for thiscbf_target in cbf_target:
+                        telstate_cbf_target.append((thiscbf_target[0].split(',')[0].split(' |')[0].split('|')[0],thiscbf_target[1]))
                 if (len(telstate_cal_antlist)==0 and 'cal_antlist' in telstate):
                     telstate_cal_antlist=telstate.get('cal_antlist')
                 if ('cal_product_B' in telstate):
@@ -2099,9 +2099,9 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                     if (startslew is not None):
                         if ((timeseries_fig['xdata'][0]<=startslew and startslew<=timeseries_fig['xdata'][-1]) or (timeseries_fig['xdata'][0]<=telstate_activity[idata][1] and telstate_activity[idata][1]<=timeseries_fig['xdata'][-1])):
                             span[0].append([startslew,telstate_activity[idata][1]])
-                        while (itarget<len(telstate_data_target)):
-                            if (telstate_data_target[itarget][1]<telstate_activity[idata][1]):
-                                currenttargetname=telstate_data_target[itarget][0]
+                        while (itarget<len(telstate_cbf_target)):
+                            if (telstate_cbf_target[itarget][1]<telstate_activity[idata][1]):
+                                currenttargetname=telstate_cbf_target[itarget][0]
                                 itarget+=1
                             else:
                                 break
@@ -3212,7 +3212,7 @@ telstate_cal_antlist=[]
 telstate_cal_product_G=[]
 telstate_cal_product_K=[]
 telstate_cal_product_B=[]
-telstate_data_target=[]
+telstate_cbf_target=[]
 telstate_activity=[]
 telstate_antenna_mask=[]
 telstate_bls_ordering_string=opts.l0_name+'_bls_ordering'
