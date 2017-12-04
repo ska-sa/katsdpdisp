@@ -983,7 +983,7 @@ class SpeadSDReceiver(threading.Thread):
         self.storage = storage
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
-        self.rx = spead2.recv.Stream(spead2.ThreadPool(), bug_compat=spead2.BUG_COMPAT_PYSPEAD_0_5_2)
+        self.rx = spead2.recv.Stream(spead2.ThreadPool())
         self.rx.stop_on_stop_item = False
         self.rx.add_udp_reader(self._port)
         self.ig = spead2.ItemGroup()
