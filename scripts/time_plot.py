@@ -1072,7 +1072,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
         logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
-            result=telstate.add('sdp_sdisp_custom_signals',thecustomsignals)
+            result=telstate_l0.add('sdisp_custom_signals',thecustomsignals)
             logger.info('telstate set custom signals result: '+repr(result))
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
@@ -1642,7 +1642,7 @@ def handle_websock_event(handlerkey,*args):
             elif (opts.datafilename is 'stream'):
                 ####set timeseries mask on ingest
                 try:
-                    result=telstate.add('sdp_sdisp_timeseries_mask',weightedmask)
+                    result=telstate_l0.add('sdisp_timeseries_mask',weightedmask)
                     logger.info('telstate setflags result: '+repr(result))
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(newflagstrlist)+'",true,false,true)',handlerkey)
                 except Exception, e:
@@ -3206,6 +3206,9 @@ except:
 telstate=opts.telstate
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
+    telstate_l0 = None
+else:
+    telstate_l0 = telstate.view(opts.l0_name)
 
 poll_telstate_lasttime=0
 telstate_cal_antlist=[]
@@ -3242,8 +3245,8 @@ if (opts.datafilename is not 'stream'):
     else:
         logger.warning('Error evaluating inputs')
 else:
-    if (telstate_bls_ordering_string in telstate):
-        telstate_bls_ordering=telstate[telstate_bls_ordering_string]
+    if ('bls_ordering' in telstate_l0):
+        telstate_bls_ordering=telstate_l0['bls_ordering']
         inputs=[]
         for bls in telstate_bls_ordering:
             if bls[0] == bls[1]:
