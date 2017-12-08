@@ -2282,9 +2282,9 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                 ydata=[]
                 color=[]
                 legend=[]
-                cfreq=telstate.get('cbf_center_freq')*1e-6
-                bwidth=telstate.get('cbf_bandwidth')*1e-6
-                nchan=telstate.get('sdp_cbf_channels')
+                cfreq=telstate_l0.get('center_freq')*1e-6
+                bwidth=telstate_l0.get('bandwidth')*1e-6
+                nchan=telstate_l0.get('n_chans')
                 ch=cfreq - bwidth/2.0 + np.arange(nchan) * (bwidth/nchan) 
                 start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                 thech_=np.arange(start_chan,stop_chan,chanincr)
