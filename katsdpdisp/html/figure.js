@@ -1603,7 +1603,7 @@ function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,cla
 
 function getDateString(timestamp){
     var date = new Date(timestamp*1000);
-    var formattedTime = ""+date.getFullYear()+"-"+("0"+date.getMonth()).substr(-2)+"-"+("0"+date.getDay()).substr(-2)+"%20"+("0"+date.getHours()).substr(-2)+":"+("0" + date.getMinutes()).substr(-2)+":"+("0" + date.getSeconds()).substr(-2);
+    var formattedTime = ""+date.getFullYear()+"-"+("0"+(date.getMonth()+1)).substr(-2)+"-"+("0"+date.getDate()).substr(-2)+"%20"+("0"+date.getHours()).substr(-2)+":"+("0" + date.getMinutes()).substr(-2)+":"+("0" + date.getSeconds()).substr(-2);
     return formattedTime;
 }
 
