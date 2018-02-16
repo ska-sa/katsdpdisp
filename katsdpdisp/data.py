@@ -390,6 +390,7 @@ class SparseArray(object):
         if (len(data_index) > self.maxbaselines):
             logger.warning("Unexpected: len(data_index) > maxbaselines. Truncating assignment from length %d to %d", len(data_index), self.maxbaselines)
             data_index = data_index[:self.maxbaselines]
+            value = value[:self.maxbaselines]
         sparseindex = self.blslookup[data_index] #indices in sparse data
         invalid = np.nonzero(sparseindex == self.nan)[0] #index to sparseindex
         if (len(invalid)):
