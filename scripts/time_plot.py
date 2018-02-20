@@ -3138,7 +3138,7 @@ parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=in
 parser.add_argument("--l0_name", dest="l0_name", default="sdp_l0", type=str,
                   help="Set stream name for telstate keys (default=%(default)s)")
 parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=128, type=int,
-                  help="Maximum number of custom signals. NOTE keep in synch with katsdpcontroller/generator.py (default=%(default)s)")
+                  help="Maximum number of custom signals (default=%(default)s).")
 
 (opts, args) = parser.parse_known_args()
 
