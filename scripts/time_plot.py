@@ -1033,7 +1033,6 @@ new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax
 
 ingest_signals={}
 failed_update_ingest_signals_lastts=0
-max_custom_signals=128  #NOTE keep this in sync with katsdpcontroller/generator.py
 
 #adds or removes custom signals requested from ingest
 #if an outlier signal is detected the intention is that it keeps being transmitted for at least a minute
@@ -1060,12 +1059,12 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         if sig not in ingest_signals.keys():
             changed=True
         ingest_signals[sig]=time.time()
-    if (len(ingest_signals)>max_custom_signals):
-        logger.info('Number of customsignals %d exceeds %d:'%(len(ingest_signals),max_custom_signals))
+    if (len(ingest_signals)>opts.max_custom_signals):
+        logger.info('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
         sigs=ingest_signals.keys()
         times=[ingest_signals[sig] for sig in sigs]
         sind=np.argsort(times)
-        for ind in sind[max_custom_signals:]:
+        for ind in sind[opts.max_custom_signals:]:
             del ingest_signals[sigs[ind]]
     if (changed):
         ####set custom signals on ingest
@@ -1820,7 +1819,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
                 time.sleep(2)
-                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue)).start()
+                Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue)).start()
                 logger.info('RESTART performed, using port=%d memusage=%f datafilename=%s'%(opts.spead_port,opts.memusage,opts.datafilename))
                 send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
@@ -3138,6 +3137,8 @@ parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=in
                   help="Override total number of cbf_channels (default=%(default)s). There may be fewer channels received per Ingest node.")
 parser.add_argument("--l0_name", dest="l0_name", default="sdp_l0", type=str,
                   help="Set stream name for telstate keys (default=%(default)s)")
+parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=128, type=int,
+                  help="Maximum number of custom signals. NOTE keep in synch with katsdpcontroller/generator.py (default=%(default)s)")
 
 (opts, args) = parser.parse_known_args()
 
@@ -3228,7 +3229,7 @@ ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
-rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
+rb_process = Process(target=RingBufferProcess,args=(opts.spead_port, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
 rb_process.start()
 
 if (opts.datafilename is not 'stream'):
