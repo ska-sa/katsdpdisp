@@ -41,8 +41,8 @@ np.seterr(all='ignore')
 #To run RTS ingestor simulator (in git/katsdpingest/scripts/):
 #python ingest.py --sdisp-ips=192.168.1.235;python cbf_simulator.py --standalone;python cam2spead.py --fake-cam;python sim_observe.py;python ~/git/katsdpdisp/time_plot.py
 
-#To run simulator: 
-#first ./time_plot.py k7simulator 
+#To run simulator:
+#first ./time_plot.py k7simulator
 #then run ./k7_simulator.py --test-addr :7149 --standalone
 #
 #if there is a crash that blocks port - use lsof (ls open files) to determine if there is a  process still running that should be killed
@@ -80,7 +80,7 @@ np.seterr(all='ignore')
 #kat.dbe7.print_sensors('chan')
 ######################
 # import katcp
-# 
+#
 # logger_katcp=logging.getLogger("katcp")
 # logger_katcp.setLevel(logging.CRITICAL)
 # client = katcp.BlockingClient('192.168.193.5',2040)#note this is kat-dc1.karoo.kat.ac.za
@@ -150,7 +150,7 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
             stop_channel=len(ch_mhz)
         else:
             stop_channel=int(themax+1)
-        
+
     if (start_channel>stop_channel):#ensures at least 2 channels even if clipped
         tmp=start_channel
         start_channel=stop_channel
@@ -163,7 +163,7 @@ def getstartstopchannels(ch_mhz,thetype,themin,themax,view_nchannels):
         stop_channel=len(ch_mhz)
     elif (stop_channel<=0):
         stop_channel=1
-    
+
     if (view_nchannels==None or view_nchannels<1):
         channelincr=1
     else:
@@ -289,7 +289,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     fig={}
                 ringbufferresultqueue.put(fig)
-                continue                
+                continue
             if (thelayoutsettings=='memoryleak'):
                 gc.collect()
                 hpafter = hp.heap()
@@ -344,17 +344,17 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig={'logignore':'empty signal buffer'}
                 ringbufferresultqueue.put(fig)
                 warnOnce=False
-                continue            
+                continue
             else:
                 warnOnce=True
-                
+
             fig={}
             try:
                 thetype=typelookup[theviewsettings['type']]
                 #hfeeds=datasd.cpref.inputs
                 collectionsignals=thesignals[0]
                 customsignals=thesignals[1]
-                
+
                 ts = datasd.select_timeseriesdata(product=0, start_time=0, end_time=1e100, include_ts=True)[0]#gets all timestamps only
                 ch=datasd.receiver.center_freqs_mhz[:]
                 if (len(ts)>1):
@@ -591,7 +591,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                                     if (iprod==4):
                                         c=np.array(np.r_[cbase,0],dtype='int')
                                     color.append(c)
-                                
+
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
@@ -679,7 +679,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         if (thelayoutsettings['showflags']=='on' and len(datasd.storage.spectrum_flag0)):
                             spancolor.append([255,0,0,128])
                             span.append([[datasd.storage.spectrum_flag0[a],datasd.storage.spectrum_flag1[a]] for a in range(len(datasd.storage.spectrum_flag0))])
-                        
+
                     fig['spancolor']=np.array(spancolor)
                     fig['span']=span
                     fig['outlierproducts']=[sig if isinstance(sig,int) else datasd.cpref.bls_ordering.index(list(sig)) for sig in outlierproducts]
@@ -729,12 +729,12 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                             else:
                                 thets=datasd.select_data(product=0, start_time=start_time, end_time=end_time, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 limitedts=thets
-                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
-                        
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
+
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])
                             flags=np.array([flags])
-                    
+
                         cdata=np.array(rvcdata[1])
                         if (len(np.shape(flags))>0):
                             shp=np.shape(cdata)
@@ -768,12 +768,12 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                             else:
                                 thets=datasd.select_data(product=0, start_time=start_time, end_time=end_time, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 limitedts=thets
-                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]                            
-                        
+                                rvcdata=[thets,np.nan*np.ones([len(thets),len(thech)])]
+
                         if (len(rvcdata[0])==1):#reshapes in case one time dump of data (select data changes shape)
                             rvcdata[1]=np.array([rvcdata[1]])
                         cdata=np.array(rvcdata[1])
-                    
+
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(cdata)
                         fig['clabel']='Power'
@@ -981,12 +981,12 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                 pass
             if (fig!={}):
                 fig['processtime']=time.time()-startproctime
-            
+
             ringbufferresultqueue.put(fig)
-            
+
     except KeyboardInterrupt:
         logger.warning('^C received, shutting down the ringbuffer process')
-        
+
 
 html_customsignals= {'default': [],
                     'inspectauto': [],
@@ -1259,7 +1259,7 @@ def handle_websock_event(handlerkey,*args):
                 logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
                 return
             theviewsettings=html_viewsettings[username][ifigure]
-            
+
             theviewsettings['xmin']=float(args[2])
             theviewsettings['xmax']=float(args[3])
             theviewsettings['ymin']=float(args[4])
@@ -1282,13 +1282,13 @@ def handle_websock_event(handlerkey,*args):
                 theviewsettings['xmin']=np.nan
                 theviewsettings['xmax']=np.nan
             theviewsettings['version']+=1
-                
+
         elif (args[0]=='deletefigure'):
             logger.info(repr(args))
             ifigure=int(args[1])
             if (ifigure<0 or ifigure>=len(html_viewsettings[username])):
                 logger.warning('Warning: Update requested by %s for figure %d which does not exist'%(username,ifigure))
-                return            
+                return
             html_viewsettings[username].pop(ifigure)
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
@@ -1310,7 +1310,7 @@ def handle_websock_event(handlerkey,*args):
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating getoutliertime",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
-                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
         elif (args[0]=='getflags'):
             logger.info(repr(args))
             with RingBufferLock:
@@ -1319,7 +1319,7 @@ def handle_websock_event(handlerkey,*args):
             if (fig=={}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating getflags",true,true,true)',handlerkey)
             elif ('logconsole' in fig):
-                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)            
+                send_websock_cmd('logconsole("'+fig['logconsole']+'",true,true,true)',handlerkey)
             try:
                 flagfile=open(SETTINGS_PATH+'/userflags.json','r')
                 flagdictstr=flagfile.read()
@@ -1787,7 +1787,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("Non-real valued keys in telstate: '+repr(unreal)+'",true,true,true)',handlerkey)
                     send_websock_cmd('logconsole("Sensor keys in telstate: '+repr(sens)+'",true,true,true)',handlerkey)
             else:
-                send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)                
+                send_websock_cmd('logconsole("No telstate object",true,true,true)',handlerkey)
         elif (args[0]=='memoryleak'):
             logger.info(repr(args))
             with RingBufferLock:
@@ -1802,10 +1802,10 @@ def handle_websock_event(handlerkey,*args):
                 deregisterhandlers=[]
                 for thishandler in websockrequest_username.keys():
                     timedelay=(time.time()-websockrequest_time[thishandler])
-                    printline=websockrequest_username[thishandler]+': %.1fs'%(timedelay)                        
+                    printline=websockrequest_username[thishandler]+': %.1fs'%(timedelay)
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
                     if (timedelay>60):# connection been inactive for 1 minute
-                        deregisterhandlers.append(thishandler)                    
+                        deregisterhandlers.append(thishandler)
                 for thishandler in deregisterhandlers:
                     deregister_websockrequest_handler(thishandler)
                 #extramsg='\n'.join([websockrequest_username[key]+': %.1fs'%(time.time()-websockrequest_time[key]) for key in websockrequest_username.keys()])
@@ -1857,10 +1857,10 @@ def handle_websock_event(handlerkey,*args):
                 startupfile.seek(0)
                 startupfile.truncate(0)
                 startupfile.write(startupdictstr)
-                startupfile.close()        
+                startupfile.close()
                 send_websock_cmd('logconsole("Deleted '+theusername+' from '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
             else:
-                startupfile.close()        
+                startupfile.close()
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
             if (theusername in html_viewsettings):
                 html_viewsettings.pop(theusername)
@@ -1869,7 +1869,7 @@ def handle_websock_event(handlerkey,*args):
                 html_layoutsettings.pop(theusername)
                 send_websock_cmd('logconsole("Deleted '+theusername+' from active server memory",true,true,true)',handlerkey)
                 logusers(handlerkey)
-        elif (args[0]=='save'):#saves this user's settings in startup settings file        
+        elif (args[0]=='save'):#saves this user's settings in startup settings file
             logger.info(repr(args))
             if (len(args)==2):
                 theusername=str(args[1])#load another user's settings
@@ -1908,7 +1908,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
                 send_websock_cmd('logconsole("0 saved",true,false,true)',handlerkey)
-        elif (args[0]=='load'):#loads this user's settings from startup settings file        
+        elif (args[0]=='load'):#loads this user's settings from startup settings file
             logger.info(repr(args))
             if (len(args)==2):
                 theusername=str(args[1])#load another user's settings
@@ -1992,7 +1992,7 @@ def handle_websock_event(handlerkey,*args):
 
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-        
+
 def convertunicode(input):
     if isinstance(input, dict):
         return dict((convertunicode(key), convertunicode(value)) for key, value in input.iteritems())
@@ -2004,29 +2004,29 @@ def convertunicode(input):
         return input.encode('utf-8')
     else:
         return input
-        
+
 #decodes abreviated signals of form 1h3h to ('ant1h','ant3h')
 #else decodes, eg d0001hd0003v into ('d0001h','d0003v')
 #returns () if otherwise invalid
 #note this is not foolproof
 def decodecustomsignal(signalstr):
-    sreg=re.compile('[h|v|H|V|x|y]').split(signalstr)    
+    sreg=re.compile('[h|v|H|V|x|y]').split(signalstr)
     if (len(sreg)!=3 or len(sreg[2])!=0):
         return ();
     if ((not sreg[0].isdigit()) or (not sreg[1].isdigit())):
         return (sreg[0]+signalstr[len(sreg[0])],sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])])
     return (ANTNAMEPREFIX%(int(sreg[0]))+signalstr[len(sreg[0])].lower(),ANTNAMEPREFIX%(int(sreg[1]))+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
-    
+
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
 def printablesignal(product):
-    return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]    
+    return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]
 
 def getsensordata(sensorname, start_time=0, end_time=-120):
     if telstate is None or sensorname not in telstate:
         return [np.array([]),np.array([])]
     if (end_time>=0):
-        values=telstate.get_range(sensorname,st=start_time,et=end_time,include_previous=True) 
+        values=telstate.get_range(sensorname,st=start_time,et=end_time,include_previous=True)
     else:
         values=telstate.get_range(sensorname,st=end_time,include_previous=True)# typical values=[(25.0, 1458820419.843372)]
     if (not isinstance(values,list) or len(values)<1 or not isinstance(values[0][0], (numbers.Real, str))):
@@ -2034,7 +2034,7 @@ def getsensordata(sensorname, start_time=0, end_time=-120):
     if (len(values)==1):
         sensorvalues=np.array([values[0][0],values[0][0]])
         timestamps=np.array([start_time,end_time])
-    else:    
+    else:
         sensorvalues=np.array([val[0] for val in values])
         timestamps=np.array([val[1] for val in values])
     return [timestamps,sensorvalues]
@@ -2063,7 +2063,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
             return [],[],processtime
         if ('processtime' in timeseries_fig):
             processtime=timeseries_fig['processtime']
-            
+
         sensorsignal=[]
         sensorts=[]
         sensorname=''
@@ -2286,7 +2286,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
                 cfreq=telstate_l0.get('center_freq')*1e-6
                 bwidth=telstate_l0.get('bandwidth')*1e-6
                 nchan=telstate_l0.get('n_chans')
-                ch=cfreq - bwidth/2.0 + np.arange(nchan) * (bwidth/nchan) 
+                ch=cfreq - bwidth/2.0 + np.arange(nchan) * (bwidth/nchan)
                 start_chan,stop_chan,chanincr,thech=getstartstopchannels(ch,theviewsettings['xtype'],theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                 thech_=np.arange(start_chan,stop_chan,chanincr)
                 typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
@@ -2433,7 +2433,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
                 fig['ydata']=[ydata]
                 fig['color']=np.array(color)
                 fig['legend']=legend
-                fig['outlierhash']=outlierhash                    
+                fig['outlierhash']=outlierhash
                 fig['title']='Gain' if (not dodelay) else 'Delay'
                 fig['lastts']=ts[-1]
                 fig['lastdt']=0
@@ -2734,7 +2734,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
         with RingBufferLock:
             ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
             waterfall_fig=ringbufferresultqueue.get()
-            
+
         count=0
         processtime=0
         if (waterfall_fig=={}):#an exception occurred
@@ -2995,7 +2995,7 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
 #if val is a list in cannot contain sublists - must be only one dimensional
 #val can be multidimensional if it is a np.dnarray
 #dtype:
-# B: original array is double precision, but min, max determined and array it is transmitted as bytes, and rescaled on other side. 
+# B: original array is double precision, but min, max determined and array it is transmitted as bytes, and rescaled on other side.
 # m: only first, last and count is sent over, it is assumed to be monotonic, and array is rebuilt on other side
 def pack_binarydata_msg(varname,val,dtype):
     bytesize  ={'s':1, 'f':4,   'd':8,   'b':1,   'h':2,   'i':4,   'B':1,   'H':2,   'I':4, 'm':4, 'M':8}
@@ -3034,7 +3034,7 @@ def pack_binarydata_msg(varname,val,dtype):
                 maxval=minval+1
 
             maxrange=2**(8*bytesize[dtype])-4;#also reserve -inf,inf,nan
-            wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3            
+            wval[finiteind]=np.array(((val[finiteind]-minval)/(maxval-minval)*(maxrange)),dtype=npconv[dtype])+3
 
         #note- improvement could be done. It seems lines are sent as channels individually spanning time, should possibly rather send a spectrum for waterfall plot updates
         # if (dtype=='B' and ((not np.isfinite(minval)) or np.isnan(minval)) ):
@@ -3043,8 +3043,8 @@ def pack_binarydata_msg(varname,val,dtype):
         if (len(finiteind) != len(wval)):
             wval[np.nonzero(val==-np.inf)[0]]=0
             wval[np.nonzero(val==np.inf)[0]]=1
-            wval[np.nonzero(np.isnan(val)==True)[0]]=2            
-                
+            wval[np.nonzero(np.isnan(val)==True)[0]]=2
+
         buff+=struct.pack('<%d'%(len(val))+structconv[dtype],*wval.tolist())
         if (dtype=='I'):
             buff+=struct.pack('<d',minval)#use double precision limits here
@@ -3058,7 +3058,7 @@ def pack_binarydata_msg(varname,val,dtype):
     elif (dtype=='m' or dtype=='M'):
         wval=np.array([val[0],val[-1]],dtype=npconv[dtype])
         buff+=struct.pack('<%d'%(len(wval))+structconv[dtype],*wval.tolist())
-        
+
     return buff
 
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
@@ -3072,7 +3072,7 @@ def parse_websock_cmd(s, request):
                 raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(request))
         websockrequest_time[request]=time.time()
         handle_websock_event(request,*args)
-        
+
     except AttributeError:
         logger.warning("Cannot find request method %s", s)
 
@@ -3168,7 +3168,7 @@ if (len(args)==0):
     args=['stream']
 
 ANTNAMEPREFIX='m%03d' #meerkat; ANTNAMEPREFIX='ant%d' #kat7
-    
+
 # loads usersettings
 try:
     if not os.path.exists(SETTINGS_PATH):
@@ -3189,7 +3189,7 @@ try:
 except:
     logger.warning('Unable to import saved user settings from '+SETTINGS_PATH+'/usersettings.json')
     pass
-    
+
 helpdict={}
 try:
     hfile=open(SERVE_PATH+'/help.txt','r')
