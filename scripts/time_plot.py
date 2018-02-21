@@ -1740,11 +1740,11 @@ def handle_websock_event(handlerkey,*args):
             if (telstate is not None):
                 if (len(args)>1):
                     thekey=str(args[1])
-                        if (thekey=='obs_params'):
+                    if (thekey=='obs_params'):
                         cbid=str(telstate['sdp_capture_block_id'])
                         obs_params_key=telstate.SEPARATOR.join((cbid, 'obs_params'))
                         obs_params=telstate.get(obs_params_key, {})
-                            for obskey,obsvalue in obs_params.iteritems():
+                        for obskey,obsvalue in obs_params.iteritems():
                             send_websock_cmd('logconsole("'+obskey+': '+repr(obsvalue)+'",true,true,true)',handlerkey)
                     elif (thekey in telstate):
                         if telstate.is_immutable(thekey):
