@@ -1740,13 +1740,14 @@ def handle_websock_event(handlerkey,*args):
             if (telstate is not None):
                 if (len(args)>1):
                     thekey=str(args[1])
-                    if (thekey in telstate):
                         if (thekey=='obs_params'):
-                            entries=telstate.get_range('obs_params',0)
-                            obs_params=dict(entry[0].split(' ', 1) for entry in entries if entry[0])
+                        cbid=str(telstate['sdp_capture_block_id'])
+                        obs_params_key=telstate.SEPARATOR.join((cbid, 'obs_params'))
+                        obs_params=telstate.get(obs_params_key, {})
                             for obskey,obsvalue in obs_params.iteritems():
-                                send_websock_cmd('logconsole("'+obskey+': '+obsvalue+'",true,true,true)',handlerkey)
-                        elif telstate.is_immutable(thekey):
+                            send_websock_cmd('logconsole("'+obskey+': '+repr(obsvalue)+'",true,true,true)',handlerkey)
+                    elif (thekey in telstate):
+                        if telstate.is_immutable(thekey):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
                         elif(not isinstance(telstate[thekey],numbers.Real)):
                             send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
@@ -1974,9 +1975,10 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 elif (notification=='start of stream'):
                     try:
-                        entries=telstate.get_range('obs_params',0)
-                        obs_params=dict(entry[0].split(' ', 1) for entry in entries if entry[0])
-                        telstate_script_name=obs_params['script_name'][1:-1].split('/')[-1]
+                        cbid=str(telstate['sdp_capture_block_id'])
+                        obs_params_key=telstate.SEPARATOR.join((cbid, 'obs_params'))
+                        obs_params=telstate.get(obs_params_key, {})
+                        telstate_script_name=os.path.basename(obs_params['script_name'])
                     except Exception, e:
                         logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
                         telstate_script_name='undisclosed script'
