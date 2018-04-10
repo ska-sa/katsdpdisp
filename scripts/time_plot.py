@@ -918,7 +918,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         signal,theflags = datasd.select_data(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False,include_flags=True)
                         nch=len(theflags.reshape(-1))
                         for c in range(1,7):
-                            flagdata[c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
+                            flagdata[ii,c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
 
                     fig['title']='Flag count'
                     if (theviewsettings['type']=='pow'):
