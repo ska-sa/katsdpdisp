@@ -1496,9 +1496,10 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         {
             figcontext.strokeStyle =colours[i]
             figcontext.moveTo(x,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
-            figcontext.lineTo(x+(istep+1)*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
+            figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
             figcontext.fillText(legendy[i],x+legendfontHeight*0.75+2,y)
         }
+        figcontext.strokeStyle = "#000000";
         figcontext.save();
         figcontext.rotate(-Math.PI/2);
         figcontext.font=""+tickfont2Height+"px sans-serif";
