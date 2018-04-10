@@ -1467,7 +1467,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         for (var iant=0;iant<legendx.length;iant++)
         {
             sofary=0
-            for (var ibar=0;ibar<legendy.length;ibar++)
+            for (var ibar=legendy.length-1;ibar>=0;ibar--)
             {
                 context.fillStyle = colours[ibar]
                 thisheight=flagcount[iant][ibar]/legendy.length
