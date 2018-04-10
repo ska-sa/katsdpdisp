@@ -913,24 +913,16 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                 elif (theviewsettings['figtype']=='flagcount'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
                     nant=len(antennas)
-                    flagdata=np.zeros([nant,6])
+                    flagdata=np.zeros([nant,8])
                     for ii in range(nant):
                         signal,theflags = datasd.select_data(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False,include_flags=True)
                         nch=len(theflags.reshape(-1))
-                        for c in range(1,7):
-                            flagdata[ii,c-1]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
+                        for c in range(0,8):
+                            flagdata[ii,c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
 
                     fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
-                    if (theviewsettings['type']=='pow'):
-                        flagdata=10.0*np.log10(flagdata)
-                        fig['clabel']='Power'
-                        fig['cunit']='dB'
-                    elif (thetype=='mag'):
-                        fig['clabel']='Amplitude'
-                        fig['cunit']='counts'
-                    else:
-                        fig['clabel']='Phase'
-                        fig['cunit']='deg'
+                    fig['clabel']='Amplitude'
+                    fig['cunit']='counts'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['flagdata']=flagdata
@@ -945,7 +937,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         if (inp[-1]=='h'):
                             legend.append(str(int(inp[1:-1])))
                     fig['legendx']=legend
-                    fig['legendy']=['static','cam','data','ingest','predict','cal']
+                    fig['legendy']=['res0','static','cam','lost','ingest','predict','cal','res7']
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']
