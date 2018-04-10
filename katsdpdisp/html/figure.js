@@ -1454,7 +1454,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         figcontext.fillStyle = "#000000";
     }
     var context = axiscanvas.getContext('2d');
-    var colours=["#FFFF00","#FF00FF","#00FFFF","#FF0000","#0000FF","#F0000F","#00FF00"]
+    var colours=["#FF00FF","#00FFFF","#FF0000","#0000FF","#AAAA00","#00FF00"]
     ixstart=0;ixend=0;
     if (context)
     {
@@ -1487,30 +1487,33 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
             //fillText by default draws at this height ___ and starts at start of string
             figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
         }
-        legendfontHeight=labelfontHeight*0.9
-        figcontext.font=""+legendfontHeight+"px sans-serif";
-        x=figcanvas.width-75
-        y=axisposv+legendfontHeight
-        for (i=0;i<legendy.length;i++,y+=legendfontHeight)
+        if (RG_fig[ifig].showlegend=='on')
         {
-            figcontext.beginPath()
-            figcontext.strokeStyle =colours[i]
-            figcontext.moveTo(x,y-legendfontHeight/2.0+3);
-            figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+3);
-            figcontext.stroke();
-            figcontext.closePath();
-            figcontext.fillText(legendy[i],x+legendfontHeight*0.75+2,y)
+            legendfontHeight=labelfontHeight*0.9
+            figcontext.font=""+legendfontHeight+"px sans-serif";
+            x=figcanvas.width-75
+            y=axisposv+legendfontHeight
+            for (i=0;i<legendy.length;i++,y+=legendfontHeight)
+            {
+                figcontext.beginPath()
+                figcontext.strokeStyle =colours[i]
+                figcontext.moveTo(x,y-legendfontHeight/2.0+3);
+                figcontext.lineTo(x+legendfontHeight*0.75,y-legendfontHeight/2.0+3);
+                figcontext.stroke();
+                figcontext.closePath();
+                figcontext.fillText(legendy[i],x+legendfontHeight*0.75+2,y)
+            }
+            figcontext.strokeStyle = "#000000";
+            figcontext.save();
+            figcontext.rotate(-Math.PI/2);
+            figcontext.font=""+tickfont2Height+"px sans-serif";
+            for (i=0;i<legendx.length;i++)
+            {
+                sz=figcontext.measureText(legendx[i])
+                figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendx.length)
+            }
+            figcontext.restore();
         }
-        figcontext.strokeStyle = "#000000";
-        figcontext.save();
-        figcontext.rotate(-Math.PI/2);
-        figcontext.font=""+tickfont2Height+"px sans-serif";
-        for (i=0;i<legendx.length;i++)
-        {
-            sz=figcontext.measureText(legendx[i])
-            figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendx.length)
-        }
-        figcontext.restore();
         figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
     }
     RG_fig[ifig].xmin_eval=hviewmin;
