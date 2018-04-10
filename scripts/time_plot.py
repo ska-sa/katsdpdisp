@@ -945,7 +945,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         if (inp[-1]=='h'):
                             legend.append(str(int(inp[1:-1])))
                     fig['legendx']=legend
-                    fig['legendy']=['static','cam','data lost','ingest rfi','predicted rfi','cal rfi']
+                    fig['legendy']=['static','cam','data','ingest','predict','cal']
                     fig['lastts']=ts[-1]
                     fig['lastdt']=samplingtime
                     fig['version']=theviewsettings['version']

@@ -1454,6 +1454,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         figcontext.fillStyle = "#000000";
     }
     var context = axiscanvas.getContext('2d');
+    var colours=["#FFFFAA","#FFAAFF","#AAFFFF","#FFAAAA","#AAAAFF","#FAAAAF","#AAFFAA"]
     ixstart=0;ixend=0;
     if (context)
     {
@@ -1463,7 +1464,6 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         context.fillStyle = "#000000"
         var imgdata = context.getImageData(0,0,axiscanvas.width,axiscanvas.height)
         var imgdatalen = imgdata.data.length
-        colours=["#FFFFAA","#FFAAFF","#AAFFFF","#FFAAAA","#AAAAFF","#FAAAAF","#AAFFAA"]
         for (var iant=0;iant<legendx.length;iant++)
         {
             sofary=0
@@ -1488,11 +1488,16 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
             //fillText by default draws at this height ___ and starts at start of string
             figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
         }
+        legendfontHeight=labelfontHeight*0.9
         figcontext.font=""+legendfontHeight+"px sans-serif";
-        for (i=0;i<legendy.length;i++)
+        x=figcanvas.width-75
+        y=axisposv+legendfontHeight
+        for (i=0;i<legendy.length;i++,y+=legendfontHeight)
         {
-            sz=figcontext.measureText(legendy[i])
-            figcontext.fillText(legendy[i],axisposx+axiscanvas.width,axisposy+tickfont2Height/2+(i+0.5)*legendfontHeight)
+            figcontext.strokeStyle =colours[i]
+            figcontext.moveTo(x,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
+            figcontext.lineTo(x+(istep+1)*steplen,y-legendfontHeight/2.0+legendfontHeight/5.0+3);
+            figcontext.fillText(legendy[i],x+legendfontHeight*0.75+2,y)
         }
         figcontext.save();
         figcontext.rotate(-Math.PI/2);
