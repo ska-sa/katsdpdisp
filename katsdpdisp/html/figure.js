@@ -1454,7 +1454,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         figcontext.fillStyle = "#000000";
     }
     var context = axiscanvas.getContext('2d');
-    var colours=["#FFFFAA","#FFAAFF","#AAFFFF","#FFAAAA","#AAAAFF","#FAAAAF","#AAFFAA"]
+    var colours=["#FFFF00","#FF00FF","#00FFFF","#FF0000","#0000FF","#F0000F","#00FF00"]
     ixstart=0;ixend=0;
     if (context)
     {

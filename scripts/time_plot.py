@@ -920,7 +920,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         for c in range(1,7):
                             flagdata[ii,c-1]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
 
-                    fig['title']='Flag count'
+                    fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
                     if (theviewsettings['type']=='pow'):
                         flagdata=10.0*np.log10(flagdata)
                         fig['clabel']='Power'
