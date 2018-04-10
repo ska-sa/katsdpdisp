@@ -910,6 +910,42 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         fig['customproducts']=[datasd.cpref.bls_ordering.index(list(product))]
                     else:
                         fig['customproducts']=[]
+                elif (theviewsettings['figtype']=='flagcount'):
+                    antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
+                    nant=len(antennas)
+                    flagdata=np.zeros([nant,8])
+                    for ii in range(nant):
+                        signal,theflags = datasd.select_data(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False,include_flags=True)
+                        nch=len(theflags.reshape(-1))
+                        for c in range(0,8):
+                            flagdata[ii,c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
+
+                    fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
+                    fig['clabel']='Amplitude'
+                    fig['cunit']='counts'
+                    fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
+                    fig['yunit']='s'
+                    fig['flagdata']=flagdata
+                    fig['ydata']=[]
+                    fig['xdata']=np.array([0,1])
+                    fig['outlierhash']=0
+                    fig['color']=[]
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    legend=[]
+                    for inp in datasd.cpref.inputs:
+                        if (inp[-1]=='h'):
+                            legend.append(str(int(inp[1:-1])))
+                    fig['legendx']=legend
+                    fig['legendy']=['res0','static','cam','lost','ingest','predict','cal','res7']
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['xdata']=[]
+                    fig['xlabel']=''
+                    fig['xunit']=''
+                    fig['outlierproducts']=[]
+                    fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
                     nant=len(antennas)
@@ -1240,6 +1276,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('lag')):
                 customproducts,outlierproducts,processtime=send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'].startswith('flagcount')):
+                customproducts,outlierproducts,processtime=send_flagcount(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('blmx')):
                 customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('bandpass')):
@@ -1341,6 +1379,12 @@ def handle_websock_event(handlerkey,*args):
             logger.info(repr(args))
             with RingBufferLock:
                 ringbufferrequestqueue.put(['setoutliertime',float(args[1]),0,0,0,0])
+        elif (args[0]=='flagcount'):
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':'flagcount' ,'type':'mag','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0]=='blmx'):
             logger.info(repr(args))
             html_viewsettings[username].append({'figtype':'blmx'+str(args[1]) ,'type':'pow','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
@@ -2905,6 +2949,68 @@ def send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,last
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return lag_fig['customproducts'],lag_fig['outlierproducts'],processtime
+    except Exception, e:
+        logger.warning("User event exception %s" % str(e), exc_info=True)
+    return [],[],processtime#customproducts,outlierproducts,processtime
+
+def send_flagcount(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure):
+    try:
+        with RingBufferLock:
+            ringbufferrequestqueue.put([thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels])
+            flagcount_fig=ringbufferresultqueue.get()
+        count=0
+        processtime=0
+        if (flagcount_fig=={}):#an exception occurred
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("Server exception occurred evaluating figure'+str(ifigure)+'",true,false,true)',handlerkey)
+            return [],[],0
+        elif ('logconsole' in flagcount_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            send_websock_cmd('logconsole("'+flagcount_fig['logconsole']+'",true,false,true)',handlerkey)
+            return [],[],0
+        elif ('logignore' in flagcount_fig):
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+            return [],[],0
+        if ('processtime' in flagcount_fig):
+            processtime=flagcount_fig['processtime']
+        if (lastrecalc<flagcount_fig['version'] or flagcount_fig['lastts']>lastts+0.01):
+            send_websock_data(pack_binarydata_msg('fig[%d].version'%(ifigure),flagcount_fig['version'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastts'%(ifigure),flagcount_fig['lastts'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].lastdt'%(ifigure),flagcount_fig['lastdt'],'d'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].title'%(ifigure),flagcount_fig['title'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].clabel'%(ifigure),flagcount_fig['clabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xlabel'%(ifigure),flagcount_fig['xlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ylabel'%(ifigure),flagcount_fig['ylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cunit'%(ifigure),flagcount_fig['cunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xunit'%(ifigure),flagcount_fig['xunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].yunit'%(ifigure),flagcount_fig['yunit'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legendx'%(ifigure),flagcount_fig['legendx'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].legendy'%(ifigure),flagcount_fig['legendy'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].outlierhash'%(ifigure),flagcount_fig['outlierhash'],'i'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xdata'%(ifigure),flagcount_fig['xdata'],'I'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].figtype'%(ifigure),theviewsettings['figtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].type'%(ifigure),theviewsettings['type'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xtype'%(ifigure),theviewsettings['xtype'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmin'%(ifigure),theviewsettings['xmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),theviewsettings['showtitle'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),theviewsettings['showlegend'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),theviewsettings['showxlabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showylabel'%(ifigure),theviewsettings['showylabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showxticklabel'%(ifigure),theviewsettings['showxticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].showyticklabel'%(ifigure),theviewsettings['showyticklabel'],'s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].flagdata'%(ifigure),(flagcount_fig['flagdata'])[:],'B'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'reset','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        else:#nothing new
+            send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
+        return flagcount_fig['customproducts'],flagcount_fig['outlierproducts'],processtime
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
