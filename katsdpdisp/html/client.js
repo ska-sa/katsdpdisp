@@ -287,6 +287,9 @@ function setsignals(){
     }else if (signaltext=='info')
     {
         handle_data_user_event('info');
+    }else if (signaltext=='flagcount')
+    {
+        handle_data_user_event('flagcount');
     }else if (signaltext=='blmx' || signaltext=='blmxsnr')
     {
         handle_data_user_event('blmx,'+signaltext.slice(4));
