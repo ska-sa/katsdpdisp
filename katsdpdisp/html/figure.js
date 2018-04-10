@@ -1467,13 +1467,12 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         for (var iant=0;iant<legendx.length;iant++)
         {
             sofary=0
-            nflagtypes=6
-            for (var ibar=0;ibar<nflagtypes;ibar++)
+            for (var ibar=0;ibar<legendy.length;ibar++)
             {
                 context.fillStyle = colours[ibar]
-                thisheight=flagcount[iant][ibar]/nflagtypes
-                context.fillRect(iant*axiscanvas.width/legendx.length, axiscanvas.height*(1.0-sofary), axiscanvas.width/legendx.length, axiscanvas.height*thisheight)
+                thisheight=flagcount[iant][ibar]/legendy.length
                 sofary+=thisheight
+                context.fillRect(iant*axiscanvas.width/legendx.length, axiscanvas.height*(1.0-sofary), axiscanvas.width/legendx.length, axiscanvas.height*thisheight)
             }
         }
     }
