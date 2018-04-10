@@ -1488,19 +1488,19 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
             //fillText by default draws at this height ___ and starts at start of string
             figcontext.fillText(title,axisposx+axiscanvas.width/2-sz.width/2.0,axisposy/2+(titlefontHeight-titlefontHeightspace)/2)
         }
-        // figcontext.font=""+tickfont2Height+"px sans-serif";
-        // for (i=0;i<legendy.length;i++)
-        // {
-        //     sz=figcontext.measureText(legendy[i])
-        //     figcontext.fillText(legendy[i],axisposx-sz.width-2,axisposy+tickfont2Height/2+(i+0.5)*axiscanvas.height/legendy.length)
-        // }
+        figcontext.font=""+tickfont2Height+"px sans-serif";
+        for (i=0;i<legendy.length;i++)
+        {
+            sz=figcontext.measureText(legendy[i])
+            figcontext.fillText(legendy[i],axisposx+axiscanvas.width,axisposy+tickfont2Height/2+(i+0.5)*sz.height)
+        }
         figcontext.save();
         figcontext.rotate(-Math.PI/2);
         figcontext.font=""+tickfont2Height+"px sans-serif";
         for (i=0;i<legendx.length;i++)
         {
             sz=figcontext.measureText(legendx[i])
-            figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendy.length)
+            figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendx.length)
         }
         figcontext.restore();
         figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
