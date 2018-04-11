@@ -3108,8 +3108,8 @@ def deregister_websockrequest_handler(request):
 class MainHandler(tornado.web.RequestHandler):
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Origin", "x-requested-with")
-        self.set_header("Access-Control-Allow-Origin", "POST, GET, OPTIONS")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     def get(self):
         self.render(SERVE_PATH+"/index.html",scriptname_text=scriptnametext,arrayname_text=telstate_array_id)
