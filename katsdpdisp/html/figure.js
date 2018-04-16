@@ -1455,6 +1455,16 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
     }
     var context = axiscanvas.getContext('2d');
     var colours=["#000000","#FF00FF","#00FFFF","#FF0000","#0000FF","#AAAA00","#00FF00","#888888"]
+    var usebar=[0,0,0,0,0,0,0,0]
+    var totbars=0
+    for (var ibar=0;ibar<legendy.length;ibar++)
+        for (var iant=0;iant<legendx.length;iant++)
+            if (flagcount[iant][ibar]>0.001)
+            {
+                usebar[ibar]=1
+                totbars++
+                break
+            }
     ixstart=0;ixend=0;
     if (context)
     {
@@ -1462,15 +1472,15 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         context.fillStyle = "#FFFFFF"
         context.fillRect(0, 0, axiscanvas.width, axiscanvas.height)
         context.fillStyle = "#000000"
-        var imgdata = context.getImageData(0,0,axiscanvas.width,axiscanvas.height)
-        var imgdatalen = imgdata.data.length
         for (var iant=0;iant<legendx.length;iant++)
         {
             sofary=0
             for (var ibar=legendy.length-1;ibar>=0;ibar--)
             {
+                if (!usebar[ibar])
+                    continue
                 context.fillStyle = colours[ibar]
-                thisheight=flagcount[iant][ibar]/legendy.length
+                thisheight=flagcount[iant][ibar]/totbars
                 sofary+=thisheight
                 context.fillRect(iant*axiscanvas.width/legendx.length, axiscanvas.height*(1.0-sofary), axiscanvas.width/legendx.length, axiscanvas.height*thisheight)
             }
@@ -1493,8 +1503,11 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
             figcontext.font=""+legendfontHeight+"px sans-serif";
             x=figcanvas.width-75
             y=axisposv+legendfontHeight
-            for (i=0;i<legendy.length;i++,y+=legendfontHeight)
+            for (i=0;i<legendy.length;i++)
             {
+                if (!usebar[i])
+                    continue
+                y+=legendfontHeight
                 figcontext.beginPath()
                 figcontext.strokeStyle =colours[i]
                 figcontext.moveTo(x,y-legendfontHeight/2.0+3);
