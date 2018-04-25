@@ -915,10 +915,9 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     nant=len(antennas)
                     flagdata=np.zeros([nant,8])
                     for ii in range(nant):
-                        signal,theflags = datasd.select_data(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False,include_flags=True)
-                        nch=len(theflags.reshape(-1))
-                        for c in range(0,8):
-                            flagdata[ii,c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
+                        theflagshh = datasd.select_flagfraction(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
+                        theflagsvv = datasd.select_flagfraction(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
+                        flagdata[ii,:]=0.5*(theflagshh+theflagsvv)
 
                     fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
                     fig['clabel']='Amplitude'
