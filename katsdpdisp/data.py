@@ -562,7 +562,7 @@ class SignalDisplayStore2(object):
                 #first replace absolute value
                 timeseries=timeseriesabs*np.exp(1j*np.angle(timeseries))
                 self.timeseriesdata[self.timeseriesroll_point,:] = timeseries
-                self.timeseriesflagfractiondata[self.timeseriesroll_point,:,:] = np.float(flagcounts)/np.float(self.n_chans)
+                self.timeseriesflagfractiondata[self.timeseriesroll_point,:,:] = np.array(flagcounts,dtype=np.float32)/np.float(self.n_chans)
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
