@@ -547,7 +547,7 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[nsignals/2]]],percrunavg]
         
         
-    def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagfraction=None):
+    def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagcounts=None):
         with datalock:
             if timestamp_ms != self._last_ts: self.frame_count += 1
             if self.first_pass and self.frame_count > self.slots: self.first_pass = False
@@ -562,7 +562,7 @@ class SignalDisplayStore2(object):
                 #first replace absolute value
                 timeseries=timeseriesabs*np.exp(1j*np.angle(timeseries))
                 self.timeseriesdata[self.timeseriesroll_point,:] = timeseries
-                self.timeseriesflagfractiondata[self.timeseriesroll_point,:,:] = flagfraction
+                self.timeseriesflagfractiondata[self.timeseriesroll_point,:,:] = np.float(flagcounts)/np.float(self.n_chans)
                 #calculate percentile statistics [0% 100% 25% 75% 50%] for autohhvv,autohh,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv
                 #percdata bl ordering: autohhvv 0% 100% 25% 75% 50%,autohh 0% 100% 25% 75% 50%,autovv,autohv,crosshhvv,crosshh,crossvv,crosshv        
                 perctimeseries=[]
@@ -610,7 +610,7 @@ class SignalDisplayStore2(object):
     #calculate percentile statistics
     #calculates masked average for this single timestamp for each data product (incl for percentiles)
     #assumes bls_ordering of form [['ant1h','ant1h'],['ant1h','ant1v'],[]]
-    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagfraction=None, channel_offset=0):
+    def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagcounts=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[0] #data may be None if ingest sends no full signals, so use percspectrum to get shape
         reduction=frame_nchans/blmxdata.shape[1]
@@ -635,10 +635,10 @@ class SignalDisplayStore2(object):
                 ntimeseries=np.zeros(np.shape(timeseries),dtype=np.complex64)
                 ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
                 ntimeseriesvar=None if timeseriesvar is None else np.zeros(np.shape(timeseries),dtype=np.float32)
-                nflagfraction=np.zeros([blmxdata.shape[0],8],dtype=np.float32)
-                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
+                nflagcounts=np.zeros([blmxdata.shape[0],8],dtype=np.uint32)
+                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts, 0]
             else:
-                [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
+                [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts, nchans_sofar]=self.framecollector[timestamp_ms]
             if (ndata is not None):
                 ndata[:,channel_offset:channel_offset+frame_nchans]=data
             if (nflags is not None):
@@ -649,8 +649,8 @@ class SignalDisplayStore2(object):
             nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
             ntimeseries+=timeseries
             ntimeseriesabs+=timeseriesabs
-            if flagfraction is not None:
-                nflagfraction+=flagfraction/ningestnodes
+            if flagcounts is not None:
+                nflagcounts+=flagcounts
             if timeseriesvar is not None:
                 ntimeseriesvar+=timeseriesvar
             self.framecollector[timestamp_ms][-1]+=frame_nchans
@@ -658,20 +658,20 @@ class SignalDisplayStore2(object):
             if (self.framecollector[timestamp_ms][-1]==self.n_chans):
                 #flush all framecollector entries up to timestamp_ms, even if they are not complete
                 for key in np.sort(self.framecollector.keys()):
-                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[key]
+                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts, nchans_sofar]=self.framecollector[key]
                     if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
                         logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
                     elif (key>timestamp_ms):
                         break
-                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction)
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts)
                     del self.framecollector[key]
             if (len(self.framecollector.keys())>3):#flush old data even if just one ingest working, results will be lagging by 3 timestamps if not all ingest nodes are working
                 for key in np.sort(self.framecollector.keys())[:-3]:
-                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[key]
-                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction)
+                    [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts, nchans_sofar]=self.framecollector[key]
+                    self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagcounts)
                     del self.framecollector[key]
         else:
-            self._add_data2(timestamp_ms, data, flags, data_index, timeseries, timeseriesabs, timeseriesvar, percspectrum, percspectrumflags, blmxdata, blmxflags, flagfraction)
+            self._add_data2(timestamp_ms, data, flags, data_index, timeseries, timeseriesabs, timeseriesvar, percspectrum, percspectrumflags, blmxdata, blmxflags, flagcounts)
 
     def pc_load_letter(self, filename, rows=None, startrow=0, cf=1.8e9, nc=512):
         """Load signal display data from an hdf5 v2 generated by the packetised correlator."""
@@ -699,7 +699,7 @@ class SignalDisplayStore2(object):
         timeseries = np.zeros(len(bls_ordering),dtype=np.complex64)
         timeseriesabs = np.zeros(len(bls_ordering),dtype=np.float32)
         timeseriesvar = np.zeros(len(bls_ordering),dtype=np.float32)
-        flagfraction = np.zeros([len(bls_ordering),8],dtype=np.float32)
+        flagcounts = np.zeros([len(bls_ordering),8],dtype=np.uint32)
         for i,t in enumerate(tss):
             print ".",
             d = h5.vis[i+startrow,:,:].swapaxes(0,1)
@@ -712,7 +712,7 @@ class SignalDisplayStore2(object):
                 timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
                 timeseriesvar[prod] = np.var(np.abs(d[prod,self.timeseriesmaskind]))
                 for b in range(8):
-                    flagfraction[prod,b] = np.float(np.sum(np.bitwise_and(h5.flags[i+startrow,:,prod]>>b,1)))/np.float(h5.flags.shape[1])
+                    flagcounts[prod,b] = np.sum(np.bitwise_and(h5.flags[i+startrow,:,prod]>>b,1))
             #calculate percentiles
             perc=[]
             percfl=[]
@@ -729,7 +729,7 @@ class SignalDisplayStore2(object):
             perc=np.array(perc).swapaxes(0,1)
             percfl=np.array(percfl,dtype=np.uint8).swapaxes(0,1)
 
-            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, timeseriesabs, timeseriesvar, perc, percfl, blmx, blmxfl, flagfraction, 0)
+            self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, timeseriesabs, timeseriesvar, perc, percfl, blmx, blmxfl, flagcounts, 0)
             sys.stdout.flush()
         print "\nLoad complete..."
 
@@ -1136,7 +1136,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
                                                         self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1), \
-                                                        self.ig['sd_flag_fraction'].value.astype(np.float32), \
+                                                        self.ig['sd_flag_counts'].value.astype(np.uint32), \
                                                         self.ig['frequency'].value if ('frequency' in self.ig) else 0)
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
