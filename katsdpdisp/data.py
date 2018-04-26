@@ -2261,7 +2261,7 @@ class DataHandler(object):
             return
 
         with datalock:
-            frames = getframes(product, self.storage.timeseriessnrdata if snr else self.storage.timeseriesdata)
+            frames = self.getframes(product, self.storage.timeseriessnrdata if snr else self.storage.timeseriesdata)
 
             if dtype == 'mag':
                 frames = np.abs(frames)
@@ -2285,7 +2285,7 @@ class DataHandler(object):
 
         with datalock:
             thedata=self.storage.timeseriesflagfractiondata
-            frames = getframes(product, self.storage.timeseriesflagfractiondata)
+            frames = self.getframes(product, self.storage.timeseriesflagfractiondata)
 
             if include_ts:
                 frames = [np.take(self.storage.timeseriests, range(split_start,split_end),mode='wrap') / 1000.0, frames]
