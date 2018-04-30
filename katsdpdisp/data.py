@@ -711,8 +711,9 @@ class SignalDisplayStore2(object):
                 timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
                 timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
                 timeseriesvar[prod] = np.var(np.abs(d[prod,self.timeseriesmaskind]))
+                thisflag=h5.flags[i+startrow,:,prod]
                 for b in range(8):
-                    flagfraction[prod,b] = np.float(np.sum(np.bitwise_and(h5.flags[i+startrow,:,prod]>>b,1)))/np.float(h5.flags.shape[1])
+                    flagfraction[prod,b] = np.float(np.sum(np.bitwise_and(thisflag>>b,1)))/np.float(h5.flags.shape[1])
             #calculate percentiles
             perc=[]
             percfl=[]
