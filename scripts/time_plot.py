@@ -415,7 +415,10 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     for product in customsignals:
                         if (list(product) in datasd.cpref.bls_ordering):
                             customproducts.append(product)
-                            signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, snr=(theviewsettings['figtype']=='timeseriessnr'))
+                            if (theviewsettings['figtype']=='timeseriessnr'):
+                                signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False, source='timeseriessnrdata')
+                            else:
+                                signal = datasd.select_timeseriesdata(dtype=thetype, product=tuple(product), start_time=ts[0], end_time=ts[-1], include_ts=False)
                             signal=np.array(signal).reshape(-1)
                             if (len(signal)<len(ts)):
                                 signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
@@ -427,7 +430,10 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     outlierhash=0
                     for ipr,product in enumerate(outlierproducts):
                         outlierhash=(outlierhash+product<<3)%(2147483647+ipr)
-                        signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, snr=(theviewsettings['figtype']=='timeseriessnr'))
+                        if (theviewsettings['figtype']=='timeseriessnr'):
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False, source='timeseriessnrdata')
+                        else:
+                            signal = datasd.select_timeseriesdata(dtype=thetype, product=product, start_time=ts[0], end_time=ts[-1], include_ts=False)
                         signal=np.array(signal).reshape(-1)
                         if (len(signal)<len(ts)):
                             signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
@@ -915,10 +921,9 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     nant=len(antennas)
                     flagdata=np.zeros([nant,8])
                     for ii in range(nant):
-                        signal,theflags = datasd.select_data(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False,include_flags=True)
-                        nch=len(theflags.reshape(-1))
-                        for c in range(0,8):
-                            flagdata[ii,c]=np.sum(np.bitwise_and(theflags.reshape(-1)>>c,1))/np.float(nch)
+                        theflagshh = datasd.select_timeseriesdata(product=tuple((antennas[ii]+'h',antennas[ii]+'h')), dtype=None, end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
+                        theflagsvv = datasd.select_timeseriesdata(product=tuple((antennas[ii]+'v',antennas[ii]+'v')), dtype=None, end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
+                        flagdata[ii,:]=0.5*(theflagshh+theflagsvv)
 
                     fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
                     fig['clabel']='Amplitude'
