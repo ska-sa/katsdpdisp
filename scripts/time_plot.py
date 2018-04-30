@@ -961,15 +961,15 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     mxdatameanvv=np.zeros(nprod)
                     cc=0
                     for ii in range(len(antennas)):
-                        mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False, snr=True)
-                        mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False, snr=True)
+                        mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False, source='timeseriessnrdata')
+                        mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False, source='timeseriessnrdata')
                         mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
                         mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
                         cc+=1
                     for ii in range(len(antennas)):
                         for jj in range(ii+1,len(antennas)):
-                            mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False, snr=True)
-                            mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False, snr=True)
+                            mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False, source='timeseriessnrdata')
+                            mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False, source='timeseriessnrdata')
                             mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
                             mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
                             cc+=1
