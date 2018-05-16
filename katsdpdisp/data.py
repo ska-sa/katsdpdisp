@@ -2218,7 +2218,7 @@ class DataHandler(object):
 
     # source can be 'timeseriesdata', 'timeseriessnrdata', or 'timeseriesflagfractiondata'; dtype=None when source=='timeseriesflagfractiondata'
     # selects multiple data products at a single time instant only
-    def select_allblmxdata(self, products=[], dtype='mag', end_time=-120, include_ts=False, source='timeseriesdata'):
+    def select_multiproductdata(self, products=[], dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata'):
         if self.storage.ts is None:
             logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
