@@ -953,26 +953,19 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
-                    nant=len(antennas)
-                    nprod=nant*(nant+1)/2
-                    mxdatahh=np.zeros(nprod)
-                    mxdatavv=np.zeros(nprod)
-                    mxdatameanhh=np.zeros(nprod)
-                    mxdatameanvv=np.zeros(nprod)
-                    cc=0
+                    productshh=[]
+                    productsvv=[]
                     for ii in range(len(antennas)):
-                        mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False, source='timeseriessnrdata')
-                        mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False, source='timeseriessnrdata')
-                        mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[ii]+'h')), end_time=-1, include_ts=False)
-                        mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[ii]+'v')), end_time=-1, include_ts=False)
-                        cc+=1
+                        productshh.append(tuple((antennas[ii]+'h',antennas[ii]+'h')))
+                        productsvv.append(tuple((antennas[ii]+'v',antennas[ii]+'v')))
                     for ii in range(len(antennas)):
                         for jj in range(ii+1,len(antennas)):
-                            mxdatahh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False, source='timeseriessnrdata')
-                            mxdatavv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False, source='timeseriessnrdata')
-                            mxdatameanhh[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'h',antennas[jj]+'h')), end_time=-1, include_ts=False)
-                            mxdatameanvv[cc] = datasd.select_timeseriesdata(dtype=thetype, product=tuple((antennas[ii]+'v',antennas[jj]+'v')), end_time=-1, include_ts=False)
-                            cc+=1
+                            productshh.append(tuple((antennas[ii]+'h',antennas[jj]+'h')))
+                            productsvv.append(tuple((antennas[ii]+'v',antennas[jj]+'v')))
+                    mxdatahh=datasd.select_allblmxdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
+                    mxdatavv=datasd.select_allblmxdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
+                    mxdatameanhh=datasd.select_allblmxdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                    mxdatameanvv=datasd.select_allblmxdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
                     if (theviewsettings['figtype'][4:]=='snr'):
                         fig['title']='Baseline matrix SNR H\\V'
                     else:
