@@ -956,16 +956,16 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     productshh=[]
                     productsvv=[]
                     for ii in range(len(antennas)):
-                        productshh.append(tuple((antennas[ii]+'h',antennas[ii]+'h')))
-                        productsvv.append(tuple((antennas[ii]+'v',antennas[ii]+'v')))
+                        productshh.append((antennas[ii]+'h',antennas[ii]+'h'))
+                        productsvv.append((antennas[ii]+'v',antennas[ii]+'v'))
                     for ii in range(len(antennas)):
                         for jj in range(ii+1,len(antennas)):
-                            productshh.append(tuple((antennas[ii]+'h',antennas[jj]+'h')))
-                            productsvv.append(tuple((antennas[ii]+'v',antennas[jj]+'v')))
-                    mxdatahh=datasd.select_multiproductdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
-                    mxdatavv=datasd.select_multiproductdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
-                    mxdatameanhh=datasd.select_multiproductdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
-                    mxdatameanvv=datasd.select_multiproductdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                            productshh.append((antennas[ii]+'h',antennas[jj]+'h'))
+                            productsvv.append((antennas[ii]+'v',antennas[jj]+'v'))
+                    mxdatahh=datasd.select_timeseriesdata(multiproducts=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
+                    mxdatavv=datasd.select_timeseriesdata(multiproducts=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
+                    mxdatameanhh=datasd.select_timeseriesdata(multiproducts=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                    mxdatameanvv=datasd.select_timeseriesdata(multiproducts=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
                     if (theviewsettings['figtype'][4:]=='snr'):
                         fig['title']='Baseline matrix SNR H\\V'
                     else:
