@@ -953,25 +953,22 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
-                    productshh=[]
-                    productsvv=[]
-                    for ii in range(len(antennas)):
-                        productshh.append((antennas[ii]+'h',antennas[ii]+'h'))
-                        productsvv.append((antennas[ii]+'v',antennas[ii]+'v'))
-                    for ii in range(len(antennas)):
-                        for jj in range(ii+1,len(antennas)):
-                            productshh.append((antennas[ii]+'h',antennas[jj]+'h'))
-                            productsvv.append((antennas[ii]+'v',antennas[jj]+'v'))
-                    mxdatahh=datasd.select_timeseriesdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
-                    mxdatavv=datasd.select_timeseriesdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
-                    mxdatameanhh=datasd.select_timeseriesdata(products=productshh, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
-                    mxdatameanvv=datasd.select_timeseriesdata(products=productsvv, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                    products=[]
+                    for iant in antennas:
+                        products.append((iant+'h',iant+'h'))
+                        products.append((iant+'v',iant+'v'))
+                    for ii,iant in enumerate(antennas):
+                        for jant in antennas[ii+1:]:
+                            products.append((iant+'h',jant+'h'))
+                            products.append((iant+'v',jant+'v'))
                     if (theviewsettings['figtype'][4:]=='snr'):
                         fig['title']='Baseline matrix SNR H\\V'
+                        mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
                     else:
-                        mxdatahh=mxdatameanhh
-                        mxdatavv=mxdatameanvv
                         fig['title']='Baseline matrix mean H\\V'
+                        mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                    mxdatahh=mxdata[::2]
+                    mxdatavv=mxdata[1::2]
                     if (theviewsettings['type']=='pow'):
                         mxdatahh=10.0*np.log10(mxdatahh)
                         mxdatavv=10.0*np.log10(mxdatavv)
