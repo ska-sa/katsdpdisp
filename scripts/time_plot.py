@@ -3255,11 +3255,7 @@ parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=1
 (opts, args) = parser.parse_known_args()
 
 if len(logging.root.handlers) > 0: logging.root.removeHandler(logging.root.handlers[0])
-formatter = logging.Formatter("%(asctime)s.%(msecs)dZ - %(filename)s:%(lineno)s - %(levelname)s - %(message)s",
-                                  datefmt="%Y-%m-%d %H:%M:%S")
-sh = logging.StreamHandler()
-sh.setFormatter(formatter)
-logging.root.addHandler(sh)
+katsdpservices.setup_logging()
 
 logger = logging.getLogger("katsdpdisp.time_plot")
 if (opts.debug):
