@@ -919,9 +919,9 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                 elif (theviewsettings['figtype']=='flagcount'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
                     products=[]
-                    for ii in range(len(antennas)):
-                        products.append((antennas[ii]+'h',antennas[ii]+'h'))
-                        products.append((antennas[ii]+'v',antennas[ii]+'v'))
+                    for ant in antennas:
+                        products.append((ant+'h',ant+'h'))
+                        products.append((ant+'v',ant+'v'))
                     theflags = datasd.select_timeseriesdata(products=products, dtype=None, end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
                     flagdata=0.5*(theflags[::2]+theflags[1::2])
 
