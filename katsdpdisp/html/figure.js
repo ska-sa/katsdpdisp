@@ -1502,7 +1502,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
             legendfontHeight=labelfontHeight*0.9
             figcontext.font=""+legendfontHeight+"px sans-serif";
             x=figcanvas.width-75
-            y=axisposv+legendfontHeight
+            y=axisposy+legendfontHeight
             for (i=0;i<legendy.length;i++)
             {
                 if (!usebar[i])
