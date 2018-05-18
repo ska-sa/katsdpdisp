@@ -2217,21 +2217,14 @@ class DataHandler(object):
             return frames
 
     # source can be 'timeseriesdata', 'timeseriessnrdata', or 'timeseriesflagfractiondata'; dtype=None when source=='timeseriesflagfractiondata'
-    # multiproducts may be a list of products, then only a single time sample is returned
-    def select_timeseriesdata(self, product=None, multiproducts=[], dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False, source='timeseriesdata'):
+    def select_timeseriesdata(self, products=[], dtype='mag', start_time=0, end_time=-120, reverse_order=False, include_ts=False, source='timeseriesdata'):
         if self.storage.ts is None:
             logger.warning("Signal display store not yet initialised... (most likely has not received SPEAD headers yet)")
             return
 
         with datalock:
             thedata = getattr(self.storage,source)
-            if (len(multiproducts)):
-                multiproducts = np.array([self.cpref.user_to_id(product) for product in multiproducts])
-                start_time = end_time #supports only one time sample
-                reverse_order = False #supports only False
-            else:
-                if product is None: product = self.default_product
-                product = self.cpref.user_to_id(product)
+            products = np.array([self.cpref.user_to_id(product) for product in products])
 
             ts = []
             roll_point = (0 if self.storage.timeseriesfirst_pass else (self.storage.timeseriesroll_point+1))
@@ -2259,13 +2252,10 @@ class DataHandler(object):
             _split_start=split_start%arraylen;
             _split_end=split_end%arraylen;
 
-            if (len(multiproducts)):
-                frames=thedata[_split_start,multiproducts]
+            if (_split_start<_split_end):
+                frames=thedata[_split_start:_split_end,products]
             else:
-                if (_split_start<_split_end):
-                    frames=thedata[_split_start:_split_end,product]
-                else:
-                    frames=np.concatenate((thedata[_split_start:,product], thedata[:_split_end,product]),axis=0)
+                frames=np.concatenate((thedata[_split_start:,products], thedata[:_split_end,products]),axis=0)
 
             frames = frames.squeeze()
 
