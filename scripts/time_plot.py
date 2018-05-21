@@ -961,21 +961,12 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         for jant in antennas[ii+1:]:
                             products.append((iant+'h',jant+'h'))
                             products.append((iant+'v',jant+'v'))
-                    fig['title']='Baseline ingest-flags matrix H\\V'
+                    fig['title']='Baseline ingest flags matrix H\\V'
                     mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
-                    mxdatahh=mxdata[::2,4]
-                    mxdatavv=mxdata[1::2,4]
-                    if (theviewsettings['type']=='pow'):
-                        mxdatahh=10.0*np.log10(mxdatahh)
-                        mxdatavv=10.0*np.log10(mxdatavv)
-                        fig['clabel']='Power'
-                        fig['cunit']='dB'
-                    elif (thetype=='mag'):
-                        fig['clabel']='Amplitude'
-                        fig['cunit']='counts'
-                    else:
-                        fig['clabel']='Phase'
-                        fig['cunit']='deg'
+                    mxdatahh=mxdata[::2,4]*100
+                    mxdatavv=mxdata[1::2,4]*100
+                    fig['clabel']='flagged channels'
+                    fig['cunit']='%'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['mxdatavv']=mxdatavv
