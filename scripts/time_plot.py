@@ -961,7 +961,7 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                         for jant in antennas[ii+1:]:
                             products.append((iant+'h',jant+'h'))
                             products.append((iant+'v',jant+'v'))
-                    fig['title']='Baseline ingest flags matrix H\\V'
+                    fig['title']='Ingest flags baseline matrix H\\V'
                     mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
                     mxdatahh=mxdata[::2,4]*100
                     mxdatavv=mxdata[1::2,4]*100
