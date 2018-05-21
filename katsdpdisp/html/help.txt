@@ -19,6 +19,7 @@ blmx
 wmx
 wtab
 flagcount
+flagmx
 
 Right click the figures to choose viewing options.
 
@@ -206,6 +207,9 @@ A few examples:
 
 [flagcount]
 Adds a flagcount figure which displays the current flagging status per antenna.
+
+[flagmx]
+Adds a flag baseline matrix figure which displays the current flagging status per baseline.
 
 [inputs]
 Displays a list of inputs available in current spead stream.

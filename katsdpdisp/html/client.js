@@ -290,6 +290,9 @@ function setsignals(){
     }else if (signaltext=='flagcount')
     {
         handle_data_user_event('flagcount');
+    }else if (signaltext=='flagmx')
+    {
+        handle_data_user_event('flagmx');
     }else if (signaltext=='blmx' || signaltext=='blmxsnr')
     {
         handle_data_user_event('blmx,'+signaltext.slice(4));
@@ -460,7 +463,7 @@ function ApplyViewLayout(figuretypes,nfigcols)
         RG_fig[ifig].version=-1
         RG_fig[ifig].viewwidth=parseInt(figwidth)
         RG_fig[ifig].figureupdated=true
-        if (figuretypes[ifig].slice(0,4)=='blmx')
+        if (figuretypes[ifig].slice(0,4)=='blmx' || figuretypes[ifig].slice(0,6)=='flagmx')
             thisfigheight=figwidth*0.9
         else
             thisfigheight=figheight
