@@ -1131,7 +1131,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             changed=True
         ingest_signals[sig]=time.time()
     if (len(ingest_signals)>opts.max_custom_signals):
-        logger.info('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
+        logger.debug('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
         sigs=ingest_signals.keys()
         times=[ingest_signals[sig] for sig in sigs]
         sind=np.argsort(times)
@@ -1140,10 +1140,10 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     if (changed):
         ####set custom signals on ingest
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
-        logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
+        logger.debug('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
             result=telstate_l0.add('sdisp_custom_signals',thecustomsignals)
-            logger.info('telstate set custom signals result: '+repr(result))
+            logger.debug('telstate set custom signals result: '+repr(result))
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
         except Exception, e:
