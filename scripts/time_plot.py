@@ -951,6 +951,46 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['xunit']=''
                     fig['outlierproducts']=[]
                     fig['customproducts']=[]
+                elif (theviewsettings['figtype']=='flagmx'):
+                    antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
+                    products=[]
+                    for iant in antennas:
+                        products.append((iant+'h',iant+'h'))
+                        products.append((iant+'v',iant+'v'))
+                    for ii,iant in enumerate(antennas):
+                        for jant in antennas[ii+1:]:
+                            products.append((iant+'h',jant+'h'))
+                            products.append((iant+'v',jant+'v'))
+                    fig['title']='Ingest flags baseline matrix H\\V'
+                    mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriesflagfractiondata')
+                    mxdatahh=mxdata[::2,4]*100
+                    mxdatavv=mxdata[1::2,4]*100
+                    fig['clabel']='flagged channels'
+                    fig['cunit']='%'
+                    fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
+                    fig['yunit']='s'
+                    fig['mxdatavv']=mxdatavv
+                    fig['mxdatahh']=mxdatahh
+                    fig['ydata']=[]
+                    fig['xdata']=np.array([0,1])
+                    fig['outlierhash']=0
+                    fig['color']=[]
+                    fig['span']=[]
+                    fig['spancolor']=[]
+                    legend=[]
+                    for inp in datasd.cpref.inputs:
+                        if (inp[-1]=='h'):
+                            legend.append(str(int(inp[1:-1])))
+                    fig['legendx']=legend
+                    fig['legendy']=legend
+                    fig['lastts']=ts[-1]
+                    fig['lastdt']=samplingtime
+                    fig['version']=theviewsettings['version']
+                    fig['xdata']=[]
+                    fig['xlabel']=''
+                    fig['xunit']=''
+                    fig['outlierproducts']=[]
+                    fig['customproducts']=[]
                 elif (theviewsettings['figtype'][:4]=='blmx'):
                     antennas=np.unique([inputname[:-1] for inputname in datasd.cpref.inputs]).tolist()
                     products=[]
@@ -1091,7 +1131,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             changed=True
         ingest_signals[sig]=time.time()
     if (len(ingest_signals)>opts.max_custom_signals):
-        logger.info('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
+        logger.debug('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
         sigs=ingest_signals.keys()
         times=[ingest_signals[sig] for sig in sigs]
         sind=np.argsort(times)
@@ -1100,10 +1140,10 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     if (changed):
         ####set custom signals on ingest
         thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
-        logger.info('Trying to set customsignals to:'+repr(thecustomsignals))
+        logger.debug('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
             result=telstate_l0.add('sdisp_custom_signals',thecustomsignals)
-            logger.info('telstate set custom signals result: '+repr(result))
+            logger.debug('telstate set custom signals result: '+repr(result))
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
         except Exception, e:
@@ -1273,6 +1313,8 @@ def handle_websock_event(handlerkey,*args):
                 customproducts,outlierproducts,processtime=send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('flagcount')):
                 customproducts,outlierproducts,processtime=send_flagcount(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
+            elif (theviewsettings['figtype'].startswith('flagmx')):
+                customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('blmx')):
                 customproducts,outlierproducts,processtime=send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,lastrecalc,view_npixels,outlierhash,ifigure)
             elif (theviewsettings['figtype'].startswith('bandpass')):
@@ -1377,6 +1419,12 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0]=='flagcount'):
             logger.info(repr(args))
             html_viewsettings[username].append({'figtype':'flagcount' ,'type':'mag','xtype':'','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+            for thishandler in websockrequest_username.keys():
+                if (websockrequest_username[thishandler]==username):
+                    send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0]=='flagmx'):
+            logger.info(repr(args))
+            html_viewsettings[username].append({'figtype':'flagmx' ,'type':'mag','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
             for thishandler in websockrequest_username.keys():
                 if (websockrequest_username[thishandler]==username):
                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
