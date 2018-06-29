@@ -1456,13 +1456,12 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
     var context = axiscanvas.getContext('2d');
     var colours=["#000000","#FF00FF","#00FFFF","#FF0000","#0000FF","#AAAA00","#00FF00","#888888"]
     var usebar=[0,0,0,0,0,0,0,0]
-    var totbars=0
+    var flagthreshold=0.001
     for (var ibar=0;ibar<legendy.length;ibar++)
         for (var iant=0;iant<legendx.length;iant++)
-            if (flagcount[iant][ibar]>0.001)
+            if (flagcount[iant][ibar]>flagthreshold)
             {
                 usebar[ibar]=1
-                totbars++
                 break
             }
     ixstart=0;ixend=0;
@@ -1474,15 +1473,19 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         context.fillStyle = "#000000"
         for (var iant=0;iant<legendx.length;iant++)
         {
-            sofary=0
+            nbars=0
+            sofarx=0.0
+            for (var ibar=0;ibar<legendy.length;ibar++)
+                if (flagcount[iant][ibar]>flagthreshold)
+                    nbars++
             for (var ibar=legendy.length-1;ibar>=0;ibar--)
             {
-                if (!usebar[ibar])
+                if (!(flagcount[iant][ibar]>flagthreshold))
                     continue
                 context.fillStyle = colours[ibar]
-                thisheight=flagcount[iant][ibar]/totbars
-                sofary+=thisheight
-                context.fillRect(iant*axiscanvas.width/legendx.length, axiscanvas.height*(1.0-sofary), axiscanvas.width/legendx.length, axiscanvas.height*thisheight)
+                thisheight=flagcount[iant][ibar]
+                context.fillRect(iant*axiscanvas.width/legendx.length+sofarx, axiscanvas.height*(1.0-thisheight), axiscanvas.width/(legendx.length*nbars), axiscanvas.height*thisheight)
+                sofarx+=axiscanvas.width/(legendx.length*nbars)
             }
         }
     }
