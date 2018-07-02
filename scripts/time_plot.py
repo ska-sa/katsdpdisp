@@ -928,8 +928,8 @@ def RingBufferProcess(spead_port, memusage, max_custom_signals, datafilename, cb
                     fig['title']='Flag count at '+time.asctime(time.localtime(ts[-1]))
                     fig['clabel']='Amplitude'
                     fig['cunit']='counts'
-                    fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
-                    fig['yunit']='s'
+                    fig['ylabel']='Autocorrelation channels'
+                    fig['yunit']='%'
                     fig['flagdata']=flagdata
                     fig['ydata']=[]
                     fig['xdata']=np.array([0,1])

@@ -1423,7 +1423,7 @@ function drawImageFigure(ifig,datax,datay,dataylist,clrlist,xmin,xmax,ymin,ymax,
 }
 
 //assumes values in flagcount are in range 0-1
-function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
+function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel,yunit,ylabel,ymin,ymax)
 {
     var cmin=NaN,cmax=NaN,pmin=NaN,pmax=NaN;
     if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof flagcount=="undefined")
@@ -1433,13 +1433,12 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
     }
     var axiscanvas = document.getElementById('myaxiscanvas'+ifig);
     var figcanvas = document.getElementById('myfigurecanvas'+ifig);
-    axisposx=axiscanvas.offsetLeft
-    axisposy=axiscanvas.offsetTop
+    var axisposx=axiscanvas.offsetLeft
+    var axisposy=axiscanvas.offsetTop
+    var yspan=axiscanvas.height
     var figcontext = figcanvas.getContext('2d');
     var hviewmin=0
     var hviewmax=legendx.length
-    var vviewmin=0
-    var vviewmax=legendy.length
     var dataxmin=0
     var dataxmax=legendx.length
     var dataymin=0
@@ -1457,15 +1456,19 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
     var colours=["#000000","#FF00FF","#00FFFF","#FF0000","#0000FF","#AAAA00","#00FF00","#888888"]
     var usebar=[0,0,0,0,0,0,0,0]
     var totbars=0
+    var flagthreshold=0.001
     for (var ibar=0;ibar<legendy.length;ibar++)
         for (var iant=0;iant<legendx.length;iant++)
-            if (flagcount[iant][ibar]>0.001)
+            if (flagcount[iant][ibar]>flagthreshold)
             {
                 usebar[ibar]=1
                 totbars++
                 break
             }
-    ixstart=0;ixend=0;
+    yviewmin[0]=0.0
+    yviewmax[0]=100.0
+    if (!isNaN(ymin)) yviewmin[0]=ymin
+    if (!isNaN(ymax)) yviewmax[0]=ymax
     if (context)
     {
         oldlinewidth=context.lineWidth
@@ -1474,15 +1477,17 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
         context.fillStyle = "#000000"
         for (var iant=0;iant<legendx.length;iant++)
         {
-            sofary=0
+            var sofarx=0.0
+            var barwidth=axiscanvas.width/(legendx.length*totbars)
             for (var ibar=legendy.length-1;ibar>=0;ibar--)
             {
                 if (!usebar[ibar])
                     continue
                 context.fillStyle = colours[ibar]
-                thisheight=flagcount[iant][ibar]/totbars
-                sofary+=thisheight
-                context.fillRect(iant*axiscanvas.width/legendx.length, axiscanvas.height*(1.0-sofary), axiscanvas.width/legendx.length, axiscanvas.height*thisheight)
+                thisheight=-(flagcount[iant][ibar])/(yviewmax[0]/100.0-yviewmin[0]/100.0)
+                startheight=(0.0-yviewmin[0]/100.0)/(yviewmax[0]/100.0-yviewmin[0]/100.0)
+                context.fillRect(iant*axiscanvas.width/legendx.length+sofarx, axiscanvas.height*(1.0-startheight), barwidth, axiscanvas.height*thisheight)
+                sofarx+=barwidth
             }
         }
     }
@@ -1525,14 +1530,28 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel)
                 sz=figcontext.measureText(legendx[i])
                 figcontext.fillText(legendx[i],-axiscanvas.height-axisposy-sz.width-2,axisposx+tickfont2Height/2+(i+0.5)*axiscanvas.width/legendx.length)
             }
+
+            units=yunit[0]
+            dovertical=1
+            numberpos=1
+            labelpos=1
+            dotickpos=1
+            dotickneg=0
+            doprefix=1
+            timelabel=''
+            roundScreen=0
+
+            if (RG_fig[ifig].showylabel!='on') ylabel=''
+            if (RG_fig[ifig].showyticklabel!='on') doticklabel=0; else doticklabel=1
+            drawMetricLinearAtPt(figcontext, yviewmin[0], yviewmax[0], yspan, -(axisposy+axiscanvas.height),axisposx, units, ylabel, dovertical, numberpos, labelpos, roundScreen, doticklabel, dotickmajor, dotickminor, dotickpos, dotickneg, doprefix,timelabel)
             figcontext.restore();
         }
         figcontext.strokeRect(axisposx, axisposy, axiscanvas.width, axiscanvas.height);
     }
     RG_fig[ifig].xmin_eval=hviewmin;
     RG_fig[ifig].xmax_eval=hviewmax;
-    RG_fig[ifig].ymin_eval=vviewmin;
-    RG_fig[ifig].ymax_eval=vviewmax;
+    RG_fig[ifig].ymin_eval=yviewmin[0];
+    RG_fig[ifig].ymax_eval=yviewmax[0];
 }
 
 function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,clabel)
@@ -2251,7 +2270,7 @@ function redrawfigure(ifig)
                 else drawFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].color,[],[],[],[],[],RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);
             }else
             {
-                drawCountFigure(ifig,RG_fig[ifig].flagdata,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel)
+                drawCountFigure(ifig,RG_fig[ifig].flagdata,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel,RG_fig[ifig].yunit,RG_fig[ifig].ylabel,RG_fig[ifig].ymin,RG_fig[ifig].ymax)
             }
         }else
         {
