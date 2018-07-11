@@ -979,8 +979,13 @@ class SpeadSDReceiver(threading.Thread):
 
     Parameters
     ----------
+    multicast_group : str
+        The multicast group carrying the data, or ``None`` for unicast.
     port : integer
         The port on which to listen for SPEAD udp packets.
+    interface_address : str
+        If given, will be passed to :meth:`spead2.recv.Stream.add_udp_reader` to bind this
+        interface.
     storage : SignalDispayStore
         The object in which to store the received signal display data. If none specified then only the current frame
         of data will be available at any given time.
@@ -988,14 +993,19 @@ class SpeadSDReceiver(threading.Thread):
     direct : boolean
         If true then receive and parse a direct correlator emitted SPEAD stream as opposed to the sanitised signal display version...
     """
-    def __init__(self, port, storage, notifyqueue=None, direct=False, cbf_channels=None):
+    def __init__(self, multicast_group, port, interface_address, storage, notifyqueue=None, direct=False, cbf_channels=None):
         self._port = port
         self.storage = storage
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
         self.rx = spead2.recv.Stream(spead2.ThreadPool())
         self.rx.stop_on_stop_item = False
-        self.rx.add_udp_reader(self._port)
+        if interface_address is None:
+            interface_address = ''
+        if multicast_group is not None:
+            self.rx.add_udp_reader(multicast_group, self._port, interface_address=interface_address)
+        else:
+            self.rx.add_udp_reader(self._port, bind_hostname=interface_address)
         self.ig = spead2.ItemGroup()
         self.heap_count = 0
         self.bls_ordering = None
@@ -3171,13 +3181,18 @@ class KATData(object):
     def register_dbe(self, dbe):
         self.dbe = dbe
 
-    def start_spead_receiver(self, port=7149, capacity=0.2, max_custom_signals=None, cbf_channels=None, notifyqueue=None, store2=False):
+    def start_spead_receiver(self, multicast_group=None, port=7149, interface_address=None, capacity=0.2, max_custom_signals=None, cbf_channels=None, notifyqueue=None, store2=False):
         """Starts a SPEAD based signal display data receiver on the specified port.
         
         Parameters
         ----------
+        multicast_group : str
+            The multicast group carrying the data, or ``None`` for unicast.
         port : integer
             default: 7149
+        interface_address : str
+            If given, will be passed to :meth:`spead2.recv.Stream.add_udp_reader` to bind this
+            interface.
         capacity : float
             The fraction of total physical memory to use for data storage on this machine.
             default: 0.2
@@ -3191,18 +3206,24 @@ class KATData(object):
             print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
 
         st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
-        r = SpeadSDReceiver(port,st,notifyqueue,cbf_channels=cbf_channels)
+        r = SpeadSDReceiver(multicast_group,port,interface_address,st,notifyqueue,cbf_channels=cbf_channels)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(self.dbe, receiver=r, store=st)
 
-    def start_direct_spead_receiver(self, port=7148, capacity=0.2, max_custom_signals=None, store2=False):
+    def start_direct_spead_receiver(self, multicast_group=None, port=7148, interface_address=None, capacity=0.2, max_custom_signals=None, store2=False):
         """Starts a SPEAD signal display receiver to handle data directly from the correlator.
 
         Parameters
         ----------
+        interface_address : str
+            If given, will be passed to :meth:`spead2.recv.Stream.add_udp_reader` to bind this
+            interface.
         port : integer
-            default: 7149
+            default: 7148
+        interface_address : str
+            If given, will be passed to :meth:`spead2.recv.Stream.add_udp_reader` to bind this
+            interface.
         capacity : float
             The fraction of total physical memory to use for data storage on this machine.
             default: 0.2
@@ -3211,7 +3232,7 @@ class KATData(object):
 
         """
         st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals) if store2 else SignalDisplayStore(capacity=capacity)
-        r = SpeadSDReceiver(port, st, direct=True)
+        r = SpeadSDReceiver(multicast_group, port, interface_address, st, direct=True)
         r.setDaemon(True)
         r.start()
         self.sd = DataHandler(dbe=None, receiver=r, store=st)
