@@ -2052,8 +2052,8 @@ def handle_websock_event(handlerkey,*args):
                 if ('cal_product_K' in telstate):
                     newproducts=telstate.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
                     telstate_cal_product_K.extend(newproducts)
-                if ('obs_activity' in telstate):
-                    data_activity=telstate.get_range('obs_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
+                if (len(telstate_antenna_mask)>0 and telstate_antenna_mask[0]+'_activity' in telstate):
+                    data_activity=telstate.get_range(telstate_antenna_mask[0]+'_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
                     for thisdata_activity in data_activity:
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
                 notification=ringbuffernotifyqueue.get(False)
