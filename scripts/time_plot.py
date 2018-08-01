@@ -2066,7 +2066,7 @@ def handle_websock_event(handlerkey,*args):
                     cbid=str(telstate['sdp_capture_block_id'])
                     telstate_cb=telstate.view(cbid)
                     if telstate_cb and 'obs_params' in telstate_cb:
-                        obs_params=telstate_cb.get(obs_params_key, {})
+                        obs_params=telstate_cb.get('obs_params', {})
                         telstate_script_name=os.path.basename(obs_params['script_name'])                        
                     else:
                         telstate_script_name='undisclosed script'
