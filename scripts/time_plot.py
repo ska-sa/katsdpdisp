@@ -2034,43 +2034,43 @@ def handle_websock_event(handlerkey,*args):
                 send_websock_cmd('logconsole("'+theusername+' not found in '+SETTINGS_PATH+'/usersettings.json'+'",true,true,true)',handlerkey)
                 logusers(handlerkey)
         if ((handlerkey in websockrequest_time) and (websockrequest_time[handlerkey]>poll_telstate_lasttime+1.0)):#don't check more than once a second
-            poll_telstate_lasttime=websockrequest_time[handlerkey]
+            poll_telstate_lasttime = websockrequest_time[handlerkey]
             try:
-                if ('cbf_target' in telstate):
-                    cbf_target=telstate.get_range('cbf_target',st=0 if (len(telstate_cbf_target)==0) else telstate_cbf_target[-1][1]+0.01)
-                    for thiscbf_target in cbf_target:
-                        telstate_cbf_target.append((thiscbf_target[0].split(',')[0].split(' |')[0].split('|')[0],thiscbf_target[1]))
-                if (len(telstate_cal_antlist)==0 and 'cal_antlist' in telstate):
-                    telstate_cal_antlist=telstate.get('cal_antlist')
-                if ('cal_product_B' in telstate):
-                    newproducts=telstate.get_range('cal_product_B',st=0 if (len(telstate_cal_product_B)==0) else telstate_cal_product_B[-1][1]+0.01)
-                    if (len(newproducts)):
-                        telstate_cal_product_B=[newproducts[-1]]#overwrite with latest values, do not make history available
-                if ('cal_product_G' in telstate):
-                    newproducts=telstate.get_range('cal_product_G',st=0 if (len(telstate_cal_product_G)==0) else telstate_cal_product_G[-1][1]+0.01)
-                    telstate_cal_product_G.extend(newproducts)
-                if ('cal_product_K' in telstate):
-                    newproducts=telstate.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
-                    telstate_cal_product_K.extend(newproducts)
-                if (len(telstate_antenna_mask)>0 and telstate_antenna_mask[0]+'_activity' in telstate):
-                    data_activity=telstate.get_range(telstate_antenna_mask[0]+'_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
-                    for thisdata_activity in data_activity:
-                        telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
-                notification=ringbuffernotifyqueue.get(False)
-                if (notification=='end of stream'):
-                    scriptnametext='completed '+telstate_script_name
+                if telstate_cb:
+                    if 'cbf_target' in telstate_cb:
+                        cbf_target = telstate_cb.get_range('cbf_target',st=0 if (len(telstate_cbf_target)==0) else telstate_cbf_target[-1][1]+0.01)
+                        for thiscbf_target in cbf_target:
+                            telstate_cbf_target.append((thiscbf_target[0].split(',')[0].split(' |')[0].split('|')[0],thiscbf_target[1]))
+                    if len(telstate_cal_antlist) == 0 and 'cal_antlist' in telstate_cb:
+                        telstate_cal_antlist = telstate_cb.get('cal_antlist')
+                    if 'cal_product_B' in telstate_cb:
+                        newproducts = telstate_cb.get_range('cal_product_B',st=0 if (len(telstate_cal_product_B)==0) else telstate_cal_product_B[-1][1]+0.01)
+                        if len(newproducts):
+                            telstate_cal_product_B=[newproducts[-1]]#overwrite with latest values, do not make history available
+                    if 'cal_product_G' in telstate_cb:
+                        newproducts = telstate_cb.get_range('cal_product_G',st=0 if (len(telstate_cal_product_G)==0) else telstate_cal_product_G[-1][1]+0.01)
+                        telstate_cal_product_G.extend(newproducts)
+                    if 'cal_product_K' in telstate_cb:
+                        newproducts = telstate_cb.get_range('cal_product_K',st=0 if (len(telstate_cal_product_K)==0) else telstate_cal_product_K[-1][1]+0.01)
+                        telstate_cal_product_K.extend(newproducts)
+                    if 'obs_activity' in telstate_cb:
+                        data_activity = telstate_cb.get_range('obs_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
+                        for thisdata_activity in data_activity:
+                            telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
+                notification = ringbuffernotifyqueue.get(False)
+                if (notification == 'end of stream'):
+                    scriptnametext = 'completed '+telstate_script_name
                     for thishandler in websockrequest_username.keys():
                         send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
-                elif (notification=='start of stream'):
-                    try:
-                        cbid=str(telstate['sdp_capture_block_id'])
-                        obs_params_key=telstate.SEPARATOR.join((cbid, 'obs_params'))
-                        obs_params=telstate.get(obs_params_key, {})
-                        telstate_script_name=os.path.basename(obs_params['script_name'])
-                    except Exception, e:
-                        logger.warning("User event exception when determining script name %s" % str(e), exc_info=True)
-                        telstate_script_name='undisclosed script'
-                    scriptnametext=telstate_script_name
+                elif (notification == 'start of stream'):
+                    cbid=str(telstate['sdp_capture_block_id'])
+                    telstate_cb=telstate.view(cbid)
+                    telstate_script_name='undisclosed script'
+                    if 'obs_params' in telstate_cb:
+                        obs_params = telstate_cb['obs_params']
+                        if 'script_name' in obs_params:
+                            telstate_script_name=os.path.basename(obs_params['script_name'])
+                    scriptnametext = telstate_script_name
                     for thishandler in websockrequest_username.keys():
                         send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 else:
@@ -3366,6 +3366,7 @@ except:
     pass
 
 telstate=opts.telstate
+telstate_cb=None
 if (telstate is None):
     logger.warning('Telescope state is None. Proceeding in limited capacity, assuming for testing purposes only.')
     telstate_l0 = None
