@@ -639,10 +639,16 @@ class SignalDisplayStore2(object):
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
             else:
                 [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
-            if (ndata is not None and ndata.shape[0]==data.shape[0]):
-                ndata[:,channel_offset:channel_offset+frame_nchans]=data
-            if (nflags is not None and nflags.shape[0]==flags.shape[0]):
-                nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+            if (ndata is not None):
+                if (ndata.shape[0]==data.shape[0]):
+                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                else:
+                    logger.warning('Data shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',data.shape[0],ndata.shape[0],key,len(data_index))
+            if (nflags is not None):
+                if (nflags.shape[0]==flags.shape[0]):
+                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                else:
+                    logger.warning('Flag shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',flags.shape[0],nflags.shape[0],key,len(data_index))
             npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
             npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
             nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
