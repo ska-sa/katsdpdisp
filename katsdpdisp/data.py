@@ -652,7 +652,7 @@ class SignalDisplayStore2(object):
                     else:
                         logger.warning('Flag shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',flags.shape[0],nflags.shape[0],key,len(data_index))
             else:
-                logger.info('data_index mismatch amongst ingest processes %s != %s',str(ndata_index),str(data_index))
+                logger.info('data_index mismatch amongst ingest processes %s != %s',ndata_index,data_index)
                 
             npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
             npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
