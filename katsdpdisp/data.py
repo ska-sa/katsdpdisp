@@ -639,9 +639,9 @@ class SignalDisplayStore2(object):
                 self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
             else:
                 [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
-            if (ndata is not None):
+            if (ndata is not None and ndata.shape[0]==data.shape[0]):
                 ndata[:,channel_offset:channel_offset+frame_nchans]=data
-            if (nflags is not None):
+            if (nflags is not None and nflags.shape[0]==flags.shape[0]):
                 nflags[:,channel_offset:channel_offset+frame_nchans]=flags
             npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
             npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
