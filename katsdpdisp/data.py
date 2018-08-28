@@ -636,7 +636,7 @@ class SignalDisplayStore2(object):
                 ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
                 ntimeseriesvar=None if timeseriesvar is None else np.zeros(np.shape(timeseries),dtype=np.float32)
                 nflagfraction=np.zeros([blmxdata.shape[0],8],dtype=np.float32)
-                ndata_index=np.array(data_index)
+                ndata_index=data_index
                 self.framecollector[timestamp_ms]=[ndata, nflags, ndata_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
             else:
                 [ndata, nflags, ndata_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
