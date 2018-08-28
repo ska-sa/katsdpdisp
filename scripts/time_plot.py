@@ -4,6 +4,7 @@
 import optparse
 import katsdpservices
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
+from Queue import Empty
 import tornado.ioloop
 import tornado.httpserver
 import tornado.web
@@ -2059,7 +2060,7 @@ def handle_websock_event(handlerkey,*args):
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
             try:
                 notification = ringbuffernotifyqueue.get(False)
-            except Queue.Empty: #expect Queue.Empty exception if queue is empty
+            except Empty: #expect Empty exception if queue is empty
                 pass
             else:
                 if (notification == 'end of stream'):
