@@ -636,19 +636,24 @@ class SignalDisplayStore2(object):
                 ntimeseriesabs=np.zeros(np.shape(timeseries),dtype=np.float32)
                 ntimeseriesvar=None if timeseriesvar is None else np.zeros(np.shape(timeseries),dtype=np.float32)
                 nflagfraction=np.zeros([blmxdata.shape[0],8],dtype=np.float32)
-                self.framecollector[timestamp_ms]=[ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
+                ndata_index=np.array(data_index)
+                self.framecollector[timestamp_ms]=[ndata, nflags, ndata_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, 0]
             else:
-                [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
-            if (ndata is not None):
-                if (ndata.shape[0]==data.shape[0]):
-                    ndata[:,channel_offset:channel_offset+frame_nchans]=data
-                else:
-                    logger.warning('Data shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',data.shape[0],ndata.shape[0],key,len(data_index))
-            if (nflags is not None):
-                if (nflags.shape[0]==flags.shape[0]):
-                    nflags[:,channel_offset:channel_offset+frame_nchans]=flags
-                else:
-                    logger.warning('Flag shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',flags.shape[0],nflags.shape[0],key,len(data_index))
+                [ndata, nflags, ndata_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[timestamp_ms]
+            if (np.array_equal(data_index,ndata_index)):                
+                if (ndata is not None):
+                    if (ndata.shape[0]==data.shape[0]):
+                        ndata[:,channel_offset:channel_offset+frame_nchans]=data
+                    else:
+                        logger.warning('Data shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',data.shape[0],ndata.shape[0],key,len(data_index))
+                if (nflags is not None):
+                    if (nflags.shape[0]==flags.shape[0]):
+                        nflags[:,channel_offset:channel_offset+frame_nchans]=flags
+                    else:
+                        logger.warning('Flag shape mismatch %d (!=%d) for timestamp %f. len(data_index)=%d',flags.shape[0],nflags.shape[0],key,len(data_index))
+            else:
+                logger.warning('data_index mismatch amongst ingest processes %s != %s',str(ndata_index),str(data_index))
+                
             npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
             npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
             nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
