@@ -2060,23 +2060,24 @@ def handle_websock_event(handlerkey,*args):
                 notification = ringbuffernotifyqueue.get(False)
             except Queue.Empty: #expect Queue.Empty exception if queue is empty
                 pass
-            elif (notification == 'end of stream'):
-                scriptnametext = 'completed '+telstate_script_name
-                for thishandler in websockrequest_username.keys():
-                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
-            elif (notification == 'start of stream'):
-                cbid=str(telstate['sdp_capture_block_id'])
-                telstate_cb=telstate.view(cbid)
-                telstate_script_name='undisclosed script'
-                if 'obs_params' in telstate_cb:
-                    obs_params = telstate_cb['obs_params']
-                    if 'script_name' in obs_params:
-                        telstate_script_name=os.path.basename(obs_params['script_name'])
-                scriptnametext = telstate_script_name
-                for thishandler in websockrequest_username.keys():
-                    send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
             else:
-                logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
+                if (notification == 'end of stream'):
+                    scriptnametext = 'completed '+telstate_script_name
+                    for thishandler in websockrequest_username.keys():
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
+                elif (notification == 'start of stream'):
+                    cbid=str(telstate['sdp_capture_block_id'])
+                    telstate_cb=telstate.view(cbid)
+                    telstate_script_name='undisclosed script'
+                    if 'obs_params' in telstate_cb:
+                        obs_params = telstate_cb['obs_params']
+                        if 'script_name' in obs_params:
+                            telstate_script_name=os.path.basename(obs_params['script_name'])
+                    scriptnametext = telstate_script_name
+                    for thishandler in websockrequest_username.keys():
+                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
+                else:
+                    logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
 
     except Exception, e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
