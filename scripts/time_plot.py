@@ -1246,6 +1246,7 @@ def handle_websock_event(handlerkey,*args):
     global telstate_activity
     global telstate_script_name
     global scriptnametext
+    global telstate_cb
     try:
         username=websockrequest_username[handlerkey]
         if (args[0]=='setusername' and username!=args[1]):
