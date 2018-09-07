@@ -1049,7 +1049,7 @@ class SpeadSDReceiver(threading.Thread):
         logger.info("Attempting to update center frequencies...")
         try:
             with freqlock:# update_center_freqs can be called from ringbuffer main process thread or from spead stream thread
-                self.channels = self.ig['n_chans'].value
+                self.channels = int(self.ig['n_chans'].value)
                 self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
                 self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
                 cbf_channels = self.channels if (self.cbf_channels is None) else self.cbf_channels
