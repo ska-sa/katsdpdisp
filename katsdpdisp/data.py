@@ -1162,7 +1162,7 @@ class SpeadSDReceiver(threading.Thread):
                                                         self.ig['sd_percspectrum'].value.astype(np.float32) if ('sd_percspectrum' in igkeys) else np.zeros([40,data.shape[1]],dtype=np.float32), \
                                                         self.ig['sd_percspectrumflags'].value.astype(np.uint8) if ('sd_percspectrumflags' in igkeys) else np.zeros([40,data.shape[1]],dtype=np.uint8), \
                                                         self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if ('sd_blmxdata' in igkeys) else np.zeros([1,256],dtype=np.complex64), \
-                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1) if ('sd_blmxdataflags' in igkeys) else np.zeros([1,256],dtype=np.uint8]), \
+                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1) if ('sd_blmxdataflags' in igkeys) else np.zeros([1,256],dtype=np.uint8), \
                                                         self.ig['sd_flag_fraction'].value.astype(np.float32) if ('sd_flag_fraction' in igkeys) else None, \
                                                         self.ig['frequency'].value if ('frequency' in self.ig) else 0)
                         elif (hasdata):
