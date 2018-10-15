@@ -3209,6 +3209,8 @@ def pack_binarydata_msg(varname,val,dtype):
         wval=np.array(val,dtype=npconv[dtype])
         buff+=struct.pack('<%d'%(len(wval))+structconv[dtype],*wval.tolist())
     elif (dtype=='m' or dtype=='M'):
+        if len(val)==0:
+            val=[0,1]
         wval=np.array([val[0],val[-1]],dtype=npconv[dtype])
         buff+=struct.pack('<%d'%(len(wval))+structconv[dtype],*wval.tolist())
 
