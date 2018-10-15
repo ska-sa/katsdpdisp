@@ -1114,13 +1114,14 @@ class SpeadSDReceiver(threading.Thread):
                 self.ig.update(heap)
                 self.heap_count += 1
                 try:
+                    igkeys=self.ig.keys()
                     if self.ig['n_chans'].value is not None:
                         if self.ig['n_chans'].value != self.channels:
                             logger.info("Signal display store data purged due to changed n_chans from "+str(self.channels)+" to "+str(self.ig['n_chans'].value))
                             self.update_center_freqs()
                             if isinstance(self.storage, SignalDisplayStore): self.storage.init_storage()
                             else:
-                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmx_n_chans'].value, n_bls = len(self.cpref.bls_ordering))
+                                self.storage.init_storage(n_chans = self.ig['n_chans'].value, blmxn_chans = self.ig['sd_blmx_n_chans'].value if 'sd_blmx_n_chans' in igkeys else 256, n_bls = len(self.cpref.bls_ordering))
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                     with freqlock:#reentrant lock is ok to nest
@@ -1142,23 +1143,27 @@ class SpeadSDReceiver(threading.Thread):
                                 self.storage.collectionproducts,self.storage.percrunavg=set_bls(self.cpref.bls_ordering)
                                 self.storage.timeseriesmaskind,weightedmask,self.storage.spectrum_flag0,self.storage.spectrum_flag1=parse_timeseries_mask(self.storage.timeseriesmaskstr,self.storage.n_chans)
                         bls_ordering_version = self.ig['bls_ordering'].version
-                    hasdata = (self.ig['sd_data'].value is not None)
+                    if (self.ig['sd_data'].value is not None):
+                        hasdata = True
+                        data = self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0]
+                    else:
+                        data = None
                     if (hasdata) or (self.ig['sd_percspectrum'].value is not None):
                         ts = int(self.ig['sd_timestamp'].value * 10)
                          # timestamp is in centiseconds since epoch (40 bit spead limitation)
                         if isinstance(self.storage, SignalDisplayStore2):
-                            self.storage.add_data2(ts,  self.ig['sd_data'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if hasdata else None, \
-                                                        self.ig['sd_flags'].value.swapaxes(0,1) if hasdata and ('sd_flags' in self.ig.keys()) else None , \
-                                                        self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None, \
-                                                        self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0], \
-                                                        self.ig['sd_timeseriesabs'].value.astype(np.float32), \
+                            self.storage.add_data2(ts,  data, \
+                                                        self.ig['sd_flags'].value.swapaxes(0,1) if hasdata and ('sd_flags' in igkeys) else None , \
+                                                        (self.ig['sd_data_index'].value.astype(np.uint32) if hasdata else None) if ('sd_data_index' in igkeys) else [0], \
+                                                        self.ig['sd_timeseries'].value.astype(np.float32).view(np.complex64)[:,0] if ('sd_timeseries' in igkeys) else np.zeros([1],dtype=np.complex64), \
+                                                        self.ig['sd_timeseriesabs'].value.astype(np.float32) if ('sd_timeseriesabs' in igkeys) else np.zeros([1],dtype=np.float32), \
                                                         # (self.ig['sd_timeseriesstd'].value.astype(np.float32))**2, \
                                                         None, \
-                                                        self.ig['sd_percspectrum'].value.astype(np.float32), \
-                                                        self.ig['sd_percspectrumflags'].value.astype(np.uint8), \
-                                                        self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0], \
-                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1), \
-                                                        self.ig['sd_flag_fraction'].value.astype(np.float32), \
+                                                        self.ig['sd_percspectrum'].value.astype(np.float32) if ('sd_percspectrum' in igkeys) else np.zeros([40,data.shape[1]],dtype=np.float32), \
+                                                        self.ig['sd_percspectrumflags'].value.astype(np.uint8) if ('sd_percspectrumflags' in igkeys) else np.zeros([40,data.shape[1]],dtype=np.uint8), \
+                                                        self.ig['sd_blmxdata'].value.astype(np.float32).view(np.complex64).swapaxes(0,1)[:,:,0] if ('sd_blmxdata' in igkeys) else np.zeros([1,256],dtype=np.complex64), \
+                                                        self.ig['sd_blmxflags'].value.astype(np.uint8).swapaxes(0,1) if ('sd_blmxdataflags' in igkeys) else np.zeros([1,256],dtype=np.uint8), \
+                                                        self.ig['sd_flag_fraction'].value.astype(np.float32) if ('sd_flag_fraction' in igkeys) else None, \
                                                         self.ig['frequency'].value if ('frequency' in self.ig) else 0)
                         elif (hasdata):
                             data = self.ig['sd_data'].value.swapaxes(0,1)
