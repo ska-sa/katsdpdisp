@@ -1584,9 +1584,13 @@ def handle_websock_event(handlerkey,*args):
             standardcollections=['auto','autohh','autovv','autohv','cross','crosshh','crossvv','crosshv','envelopeauto','envelopeautohh','envelopeautovv','envelopeautohv','envelopecross','envelopecrosshh','envelopecrossvv','envelopecrosshv']
             for theviewsettings in html_viewsettings[username]:
                 theviewsettings['version']+=1
-            for sig in args[1:]:
-                sig=str(sig)
-                if (re.match(r'^[^*]*[hv]\*[hv]$',sig)):#wildcard signal eg 32h*h, or h*h for auto products if (sig.count('*') == 1 and len(sig)>=3 and '*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
+            for osig in args[1:]:
+                osig=str(osig)
+                sig=osig.replace('clear ','')#note only replace if postfixed with space
+                if (sig=='clear'):
+                    html_customsignals[username]=[]
+                    html_collectionsignals[username]=[]
+                elif (re.match(r'^[^*]*[hv]\*[hv]$',sig)):#wildcard signal eg 32h*h, or h*h for auto products if (sig.count('*') == 1 and len(sig)>=3 and '*'==sig[-2] and (sig[-1]=='h' or sig[-1]=='v') and (sig[-3]=='h' or sig[-3]=='v') ):#wildcard signal eg 32h*h, or h*h for auto products
                     decodedsignal=decodecustomsignal(sig.replace('*','99999'))
                     if (len(decodedsignal) != 2):
                         send_websock_cmd('logconsole("Custom signal instruction not recognised",true,true,true)',handlerkey)
@@ -1609,19 +1613,27 @@ def handle_websock_event(handlerkey,*args):
                                     continue
                                 else:
                                     ndecodedsignal=(decodedsignal[0],ant+decodedsignal[1][-1])
-                                if (ndecodedsignal not in html_customsignals[username]):
-                                    html_customsignals[username].append(ndecodedsignal)
+                                if (osig.startswith('clear ')):
+                                    if (ndecodedsignal in html_customsignals[username]):
+                                        html_customsignals[username].remove(ndecodedsignal)
+                                else:
+                                    if (ndecodedsignal not in html_customsignals[username]):
+                                        html_customsignals[username].append(ndecodedsignal)
                 else:
                     decodedsignal=decodecustomsignal(sig)
                     logger.info('signal'+sig+' ==> decodedsignal '+repr(decodedsignal))
-                    if (sig in standardcollections and sig not in html_collectionsignals[username]):
-                        html_collectionsignals[username].append(sig)
-                    elif (sig=='clear'):
-                        html_customsignals[username]=[]
-                        html_collectionsignals[username]=[]
-                    elif (len(decodedsignal)):
-                        if (decodedsignal not in html_customsignals[username]):
-                            html_customsignals[username].append(decodedsignal)
+                    if (osig.startswith('clear ')):
+                        if (sig in standardcollections and sig in html_collectionsignals[username]):
+                            html_collectionsignals[username].remove(sig)
+                        elif (len(decodedsignal)):
+                            if (decodedsignal in html_customsignals[username]):
+                                html_customsignals[username].remove(decodedsignal)
+                    else:
+                        if (sig in standardcollections and sig not in html_collectionsignals[username]):
+                            html_collectionsignals[username].append(sig)
+                        elif (len(decodedsignal)):
+                            if (decodedsignal not in html_customsignals[username]):
+                                html_customsignals[username].append(decodedsignal)
         elif (args[0]=='saveflags'):
             logger.info(repr(args))
             if (len(args)==1):

@@ -101,6 +101,10 @@ blmx
 [clear]
 Removes percentile collection plots from figures.
 
+clear        - removes all plots from figures
+clear 1h1h   - removes signal 1h1h specifically from figures
+clear h*h    - removes all h autocorrelations from figures
+
 [autohh]
 Adds a percentile collection plot to timeseries and spectrum figures for the collection of signals that includes hh auto correlation products.
 
