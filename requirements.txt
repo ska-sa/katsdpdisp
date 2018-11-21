@@ -13,6 +13,7 @@ linecache2
 manhole
 matplotlib
 mock
+msgpack
 netifaces
 nose
 numpy
