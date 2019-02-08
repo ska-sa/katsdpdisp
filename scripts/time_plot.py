@@ -2125,7 +2125,12 @@ def decodecustomsignal(signalstr):
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
 def printablesignal(product):
-    return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]
+    a0=''.join(re.findall('[0-9]',product[0]))
+    a1=''.join(re.findall('[0-9]',product[1]))
+    if len(a0) and len(a1):
+        return str(int(a0))+product[0][-1]+str(int(a1))+product[1][-1]
+    else:#some error occurred; faulty signal
+        return product
 
 def getsensordata(sensorname, start_time=0, end_time=-120):
     if telstate is None or sensorname not in telstate:
