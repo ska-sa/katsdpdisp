@@ -1922,7 +1922,7 @@ def handle_websock_event(handlerkey,*args):
             else:
                 send_websock_cmd('logconsole("Exit ring buffer process",true,true,true)',handlerkey)
                 global rb_process
-                rb_process.wait()
+                rb_process.join()
                 rb_process = Process(target=RingBufferProcess,args=(opts.spead, opts.spead_port, opts.spead_interface, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
                 rb_process.start()
                 logger.info('RESTART performed, using port=%d memusage=%f datafilename=%s'%(opts.spead_port,opts.memusage,opts.datafilename))
@@ -2125,7 +2125,12 @@ def decodecustomsignal(signalstr):
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
 def printablesignal(product):
-    return str(int(''.join(re.findall('[0-9]',product[0]))))+product[0][-1]+str(int(''.join(re.findall('[0-9]',product[1]))))+product[1][-1]
+    a0=''.join(re.findall('[0-9]',product[0]))
+    a1=''.join(re.findall('[0-9]',product[1]))
+    if a0 and a1:
+        return str(int(a0))+product[0][-1]+str(int(a1))+product[1][-1]
+    else:#some error occurred; faulty signal
+        return product
 
 def getsensordata(sensorname, start_time=0, end_time=-120):
     if telstate is None or sensorname not in telstate:
