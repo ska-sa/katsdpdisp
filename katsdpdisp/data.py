@@ -472,7 +472,7 @@ class SignalDisplayStore2(object):
         self.timeseriesflagfractiondata = np.zeros((self.timeseriesslots, self.n_bls, 8),dtype=np.float32)
         self.timeseriests = np.zeros(self.timeseriesslots, dtype=np.uint64)
         self.timeseriesroll_point = 0
-        self.blmxslots = 120
+        self.blmxslots = 128
         self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)/n_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxflags = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.uint8)#low resolution baseline matrix data
