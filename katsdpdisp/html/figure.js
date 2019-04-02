@@ -1793,7 +1793,9 @@ function saveFigure(ifig){
     context.drawImage(axiscanvas,axiscanvas.offsetLeft,axiscanvas.offsetTop)
     context.strokeStyle = "#000000";
     context.strokeRect(axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
-    downloadCanvas(canvas,'MeerKATfigure.png')
+    filename=prompt("Please enter filename:",'MeerKATfigure.png')
+    if (filename!=null)
+        downloadCanvas(canvas,filename)
     context.clearRect (axiscanvas.offsetLeft,axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
 }
 
@@ -1821,7 +1823,9 @@ function savePage(){
         context.strokeStyle = "#000000";
         context.strokeRect(fig.offsetLeft-limitxmin+canvas.offsetLeft+axiscanvas.offsetLeft,fig.offsetTop-limitymin+canvas.offsetTop+axiscanvas.offsetTop, axiscanvas.width, axiscanvas.height)
     }
-    downloadCanvas(newcanvas,'MeerKATpage.png')
+    filename=prompt("Please enter filename:",'MeerKATpage.png');
+    if (filename!=null)
+        downloadCanvas(newcanvas,filename)
 }
 
 //FIGURE MOUSE EVENTS ===================================================================
