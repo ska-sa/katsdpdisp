@@ -720,9 +720,9 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             flags=np.logical_or(flags,rvcdata[2])
                         else:
                             product=decodecustomsignal(productstr)
-                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
-                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
                                 thech=ch[start_chan:stop_chan:reduction]
                                 newchanincr=chanincr/reduction
                                 if (newchanincr<1):
@@ -761,9 +761,9 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         else:
                             product=decodecustomsignal(productstr)
-                            if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
-                                reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
                                 thech=ch[start_chan:stop_chan:reduction]
                                 newchanincr=chanincr/reduction
                                 if (newchanincr<1):
@@ -852,9 +852,9 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                     else:
                         product=decodecustomsignal(productstr)
-                        if (chanincr>15 and list(product) in datasd.cpref.bls_ordering):#test
+                        reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                        if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                             usingblmxdata=True
-                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
                             thech=ch[start_chan:stop_chan:reduction]
                             newchanincr=chanincr/reduction
                             if (newchanincr<1):
