@@ -3191,7 +3191,7 @@ def pack_binarydata_msg(varname,val,dtype):
     if (dtype=='s'):#encodes a list of strings
         for sval in val:
             if (isinstance(sval,unicode)):
-                buff+=sval.encode()+'\x00'
+                buff+=sval.encode('utf-8')+'\x00'
             else:
                 buff+=sval+'\x00'
     elif (dtype=='B' or dtype=='H' or dtype=='I'):
