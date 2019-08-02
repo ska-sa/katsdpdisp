@@ -3315,8 +3315,8 @@ parser.add_argument("-m", "--memusage", dest="memusage", default=10.0, type=floa
                   help="Percentage memory usage. Percentage of available memory to be allocated for buffer. If negative then number of megabytes. (default=%(default)s)")
 parser.add_argument("--html_port", dest="html_port", default=8080, type=int,
                   help="Port number used to serve html pages for signal displays (default=%(default)s)")
-parser.add_argument("--data_port", dest="data_port", default=8081, type=int,
-                  help="DEPRECATED Port number used to serve data for signal displays (default=%(default)s)")
+parser.add_argument("--html_host", dest="html_host", default="", type=str,
+                  help="Hostname/IP address to bind for HTTP server (default=all)")
 parser.add_argument('--spead', type=str,
                   help="Multicast group for SPEAD stream (default=unicast)")
 parser.add_argument("--spead_port", dest="spead_port", default=7149, type=int,
@@ -3472,8 +3472,8 @@ application = tornado.web.Application([
 
 try:
     httpserver = tornado.httpserver.HTTPServer(application)
-    httpserver.listen(opts.html_port)
-    logger.info('Started httpserver on port '+str(opts.html_port))
+    httpserver.listen(opts.html_port, opts.html_host)
+    logger.info('Started httpserver on %s:%s', opts.html_host, opts.html_port)
     # allow remote debug connections and expose httpserver, websockserver and opts
     manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
     tornado.ioloop.IOLoop.current().start()
