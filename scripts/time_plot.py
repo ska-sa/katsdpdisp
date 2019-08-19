@@ -2072,6 +2072,13 @@ def handle_websock_event(handlerkey,*args):
                     data_activity = telstate_cb.get_range('obs_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
                     for thisdata_activity in data_activity:
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
+                if telstate_script_name=='undisclosed script' and 'obs_params' in telstate_cb:
+                    obs_params = telstate_cb['obs_params']
+                    if 'script_name' in obs_params:
+                        telstate_script_name=os.path.basename(obs_params['script_name'])
+                        scriptnametext = telstate_script_name
+                        for thishandler in websockrequest_username.keys():
+                            send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
             try:
                 notification = ringbuffernotifyqueue.get(False)
             except Empty: #expect Empty exception if queue is empty
@@ -2085,13 +2092,6 @@ def handle_websock_event(handlerkey,*args):
                     cbid=str(telstate['sdp_capture_block_id'])
                     telstate_cb=telstate.view(cbid)
                     telstate_script_name='undisclosed script'
-                    if 'obs_params' in telstate_cb:
-                        obs_params = telstate_cb['obs_params']
-                        if 'script_name' in obs_params:
-                            telstate_script_name=os.path.basename(obs_params['script_name'])
-                    scriptnametext = telstate_script_name
-                    for thishandler in websockrequest_username.keys():
-                        send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
                 else:
                     logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
 
