@@ -1,5 +1,6 @@
-FROM sdp-docker-registry.kat.ac.za:5000/docker-base-build as build
-MAINTAINER Mattieu de Villiers "mattieu@ska.ac.za"
+ARG KATSDPDOCKERBASE_REGISTRY=quay.io/ska-sa
+
+FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-build as build
 
 # Enable Python 2 ve
 ENV PATH="$PATH_PYTHON2" VIRTUAL_ENV="$VIRTUAL_ENV_PYTHON2"
@@ -17,8 +18,8 @@ RUN pip check
 
 #######################################################################
 
-FROM sdp-docker-registry.kat.ac.za:5000/docker-base-runtime
-MAINTAINER Mattieu de Villiers "mattieu@ska.ac.za"
+FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-runtime
+LABEL maintainer="sdpdev+katsdpdisp@ska.ac.za"
 
 COPY --from=build --chown=kat:kat /home/kat/ve /home/kat/ve
 ENV PATH="$PATH_PYTHON2" VIRTUAL_ENV="$VIRTUAL_ENV_PYTHON2"
