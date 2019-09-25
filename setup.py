@@ -4,7 +4,8 @@ from setuptools import setup, find_packages
 setup (
     name = "katsdpdisp",
     description = "Karoo Array Telescope Online Signal Displays",
-    author = "Mattieu de Villiers",
+    author = "MeerKAT SDP team",
+    author_email = "sdpdev+katsdpdisp@ska.ac.za",
     packages = find_packages(),
     package_data={'': ['html/*']},
     include_package_data = True,
