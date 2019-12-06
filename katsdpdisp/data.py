@@ -1053,7 +1053,7 @@ class SpeadSDReceiver(threading.Thread):
                 self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
                 self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
                 cbf_channels = self.channels if (self.cbf_channels is None) else self.cbf_channels
-                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels/2/, cbf_channels//2)]
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels//2, cbf_channels//2)]
                 #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
                  # channels mapped in reverse order
         except ValueError:
