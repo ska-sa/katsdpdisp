@@ -3186,10 +3186,7 @@ def pack_binarydata_msg(varname,val,dtype):
         buff+=struct.pack('<H',idim)
     if (dtype=='s'):#encodes a list of strings
         for sval in val:
-            if (isinstance(sval,str)):
-                buff+=sval.encode('utf-8')+b'\x00'
-            else:
-                buff+=sval.encode('utf-8')+b'\x00'
+            buff+=sval.encode('utf-8')+b'\x00'
     elif (dtype=='B' or dtype=='H' or dtype=='I'):
         origval=val;
         val=np.array(val,dtype='float')
