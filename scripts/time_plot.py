@@ -713,14 +713,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             flags=np.logical_or(flags,rvcdata[2])
                         else:
                             product=decodecustomsignal(productstr)
-                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                             if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
                                 thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
+                                newchanincr=chanincr//reduction
                                 if (newchanincr<1):
                                     newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                                 limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 flags=np.logical_or(flags,rvcdata[2])
                             elif (list(product) in datasd.cpref.bls_ordering):
@@ -754,14 +754,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         else:
                             product=decodecustomsignal(productstr)
-                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                             if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
                                 thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
+                                newchanincr=chanincr//reduction
                                 if (newchanincr<1):
                                     newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                                 limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -845,14 +845,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                     else:
                         product=decodecustomsignal(productstr)
-                        reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                        reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                         if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                             usingblmxdata=True
                             thech=ch[start_chan:stop_chan:reduction]
-                            newchanincr=chanincr/reduction
+                            newchanincr=chanincr//reduction
                             if (newchanincr<1):
                                 newchanincr=1
-                            rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                             limitedts=datasd.select_data_blmxdata(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         elif (list(product) in datasd.cpref.bls_ordering):
                             rvcdata = datasd.select_data(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -872,7 +872,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         else:
                             cdata=np.exp(1j*cdata)
                         cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
-                        start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                        start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)//2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                         cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
