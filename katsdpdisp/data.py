@@ -473,7 +473,7 @@ class SignalDisplayStore2(object):
         self.timeseriests = np.zeros(self.timeseriesslots, dtype=np.uint64)
         self.timeseriesroll_point = 0
         self.blmxslots = 128
-        self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)/n_chans
+        self.blmxn_chans = blmxn_chans if (self.cbf_channels is None) else (blmxn_chans*self.cbf_channels)//n_chans
         self.blmxdata = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.complex64)#low resolution baseline matrix data
         self.blmxflags = np.zeros((self.blmxslots, self.n_bls, self.blmxn_chans),dtype=np.uint8)#low resolution baseline matrix data
         self.blmxts = np.zeros(self.blmxslots, dtype=np.uint64)
@@ -585,7 +585,7 @@ class SignalDisplayStore2(object):
                 self.timeseriessnrdata[self.timeseriesroll_point,:]=np.tile(np.nan,blmxdata.shape[0])
                 if timeseriesvar is None:
                     try:
-                        edgewidth=blmxdata.shape[1]/10
+                        edgewidth=blmxdata.shape[1]//10
                         for iprod in range(blmxdata.shape[0]):
                             valid=np.nonzero(blmxflags[iprod,edgewidth:-edgewidth].reshape(-1)==0)[0]
                             if (len(valid)):
@@ -613,8 +613,8 @@ class SignalDisplayStore2(object):
     def add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagfraction=None, channel_offset=0):
         #catch frames until complete set acquired before pushing it into the data store
         frame_nchans=percspectrum.shape[0] #data may be None if ingest sends no full signals, so use percspectrum to get shape
-        reduction=frame_nchans/blmxdata.shape[1]
-        ningestnodes=self.n_chans/frame_nchans
+        reduction=frame_nchans//blmxdata.shape[1]
+        ningestnodes=self.n_chans//frame_nchans
         if (self.n_chans>frame_nchans):
             if (timestamp_ms<=self._last_ts):
                 logger.warning('Discarding late partial data at timestamp %f, because data at timestamp %f already complete.',timestamp_ms,self._last_ts)
@@ -656,8 +656,8 @@ class SignalDisplayStore2(object):
                 
             npercspectrum[channel_offset:channel_offset+frame_nchans,:]=percspectrum
             npercspectrumflags[channel_offset:channel_offset+frame_nchans,:]=percspectrumflags
-            nblmxdata[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxdata
-            nblmxflags[:,channel_offset/reduction:(channel_offset+frame_nchans)/reduction]=blmxflags
+            nblmxdata[:,channel_offset//reduction:(channel_offset+frame_nchans)//reduction]=blmxdata
+            nblmxflags[:,channel_offset//reduction:(channel_offset+frame_nchans)//reduction]=blmxflags
             ntimeseries+=timeseries
             ntimeseriesabs+=timeseriesabs
             if flagfraction is not None:
@@ -876,7 +876,7 @@ class SignalDisplayStore(object):
             nc = cc.get('n_chans') and cc['n_chans'][0] or cc.attrs['n_chans']
             self.n_chans = nc
             cf = d['/MetaData/Sensors/RFE/center-frequency-hz'][0][1]
-            self.center_freqs_mhz = [(cf + (bw/nc*1.0)*c + 0.5*(bw/nc*1.0))/1000000 for c in range(-nc/2, nc/2)]
+            self.center_freqs_mhz = [(cf + (bw/nc*1.0)*c + 0.5*(bw/nc*1.0))/1000000 for c in range(-nc//2, nc//2)]
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except KeyError:
@@ -926,7 +926,7 @@ class SignalDisplayStore(object):
                 bw = d['Correlator'].attrs['channel_bandwidth_hz']
                 nc = int(d['Correlator'].attrs['num_freq_channels'])
                 self.n_chans = nc
-                self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc/2, nc/2)]
+                self.center_freqs_mhz = [(cf + bw*c + 0.5*bw)/1000000 for c in range(-nc//2, nc//2)]
                 self.center_freqs_mhz.reverse()
                  # channels mapped in reverse order
             except KeyError:
@@ -1053,7 +1053,7 @@ class SpeadSDReceiver(threading.Thread):
                 self.center_freq = self.override_center_freq if (self.override_center_freq is not None) else (self.ig['center_freq'].value or 1284.0e6) #temporary hack because center_freq not available in AR1
                 self.channel_bandwidth = self.override_bandwidth/self.channels if (self.override_bandwidth is not None) else (self.ig['bandwidth'].value / self.channels)
                 cbf_channels = self.channels if (self.cbf_channels is None) else self.cbf_channels
-                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels/2, cbf_channels/2)]
+                self.center_freqs_mhz = [(self.center_freq + self.channel_bandwidth*c + 0.5*self.channel_bandwidth)/1000000 for c in range(-cbf_channels/2/, cbf_channels//2)]
                 #self.center_freqs_mhz.reverse() #temporary hack because center_freq not available in AR1
                  # channels mapped in reverse order
         except ValueError:
@@ -1274,11 +1274,11 @@ class SignalDisplayReceiver(threading.Thread):
                 d_start = 0
              # block for incoming data
             (corr_prod_id, offset, length, timestamp_ms) = self.check_header(data[:16])
-            length = length / 4
-            data_offset = offset / 4
+            length = length // 4
+            data_offset = offset // 4
              # length and offset are in bytes
             if (len(data[16:]) % 4 == 0):
-                packet_data = unpack('<' + str(len(data[16:]) / 4) + 'f', data[16:])
+                packet_data = unpack('<' + str(len(data[16:]) // 4) + 'f', data[16:])
             else:
                 logger.error("Data payload is not composed of an integer number of 32bit floats")
                 continue
@@ -2712,7 +2712,7 @@ class DataHandler(object):
         for cpair in np.column_stack((mag,phase)):
             c.append(np.sqrt(cpair[0])*np.e**(1j*cpair[1]))
         ch = len(c)
-        x = np.arange(-ch + (ch/2),ch - (ch/2))
+        x = np.arange(-ch + (ch//2),ch - (ch//2))
         d = np.fft.fftshift(abs(np.fft.fft(c)))
         return [x,d]
 
@@ -2725,7 +2725,7 @@ class DataHandler(object):
         c1 = mag * np.exp(1j*phase)
         c = np.hstack([c1, [0], np.flipud(c1).conjugate()[:-1]])
         ch = len(c)
-        x = np.arange(-ch + (ch/2),ch - (ch/2))
+        x = np.arange(-ch + (ch//2),ch - (ch//2))
         d = np.fft.fftshift(np.fft.fft(c))
         return [x,abs(d.real)]
 
@@ -2742,7 +2742,7 @@ class DataHandler(object):
          # move the phase slope so that channel 0 as zero phase (i.e. DC)
         c = np.hstack([c1, [0] * 512, [0], np.flipud(c1).conjugate()[:-1]])
         ch = len(c)
-        x = np.arange(-ch + (ch/2),ch - (ch/2))
+        x = np.arange(-ch + (ch//2),ch - (ch//2))
         d = np.fft.fftshift(np.fft.fft(c))
         return [x,abs(d.real)]
 
