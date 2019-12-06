@@ -362,11 +362,11 @@ function setsignals(){
     }else if (signaltext=='server top')
     {
         document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'top -bn 1 | head -20');
+        handle_data_user_event('server,'+'top');
     }else if (signaltext=='server ps')
     {
         document.getElementById("consoletext").style.display = 'block'
-        handle_data_user_event('server,'+'ps aux | grep time_plot.py');
+        handle_data_user_event('server,'+'ps');
     }else if (signaltext.slice(0,4)=='save')
     {
         if (signaltext.length>4)

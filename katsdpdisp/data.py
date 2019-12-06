@@ -101,7 +101,7 @@ class DataArchive(object):
         self.files = {}
 
     def add_archive(self, archive_name, archive):
-        if self._archive_ips.has_key(archive_name):
+        if archive_name in self._archive_ips:
             logger.warn("Archive name " + str(archive_name) + " already exists. Replacing with newly specified archive")
         self.archives[archive_name] = archive
 
@@ -109,8 +109,8 @@ class DataArchive(object):
         self.files = {}
         a = self.archives[archive_name]
         ret = a.node.rexec_block('cd ' + str(a.data_directory) + '; /usr/local/bin/archive_ls.sh','ffuser')
-        print "Index".ljust(5), "Filename".ljust(65), "Size (GB)".ljust(9),"Samples".ljust(8), "Date Created".ljust(25), "Last Modified".ljust(25), "Date Augmented".ljust(25), "Target".ljust(60)
-        print "".center(5,"="),"".center(65,"="), "".center(9,"="), "".center(8,"="), "".center(25,"="), "".center(25,"="), "".center(25,"="), "".center(60,"=")
+        print("Index".ljust(5), "Filename".ljust(65), "Size (GB)".ljust(9),"Samples".ljust(8), "Date Created".ljust(25), "Last Modified".ljust(25), "Date Augmented".ljust(25), "Target".ljust(60))
+        print("".center(5,"="),"".center(65,"="), "".center(9,"="), "".center(8,"="), "".center(25,"="), "".center(25,"="), "".center(25,"="), "".center(60,"="))
         index = 1
         for line in ret[0].split("\n"):
             if line.startswith("File"):
@@ -122,7 +122,7 @@ class DataArchive(object):
                     # no create timestamp encoded in filename. Will use stat time
                     created = "*" + time.ctime(int(f[4]))
                 modified = time.ctime(int(f[5]))
-                print str(index).ljust(5),f[1].ljust(65),sz.ljust(9),f[6].ljust(8),created.ljust(25),modified.ljust(25),
+                print(str(index).ljust(5),f[1].ljust(65),sz.ljust(9),f[6].ljust(8),created.ljust(25),modified.ljust(25),)
                 df = DataFile(a, f[1].split("/")[-1], str(a.data_directory) + f[1], int(f[2]), int(f[6]), int(f[4]), int(f[5]))
             if line.startswith("Augmented: Augment"):
                 aug_date = " ".join(line.split(" ")[4:])
@@ -134,7 +134,7 @@ class DataArchive(object):
                     tgt = line[19:]
                 if tgt.rfind("Data:") > 0:
                     tgt = "None specified"
-                print aug_date.ljust(25),tgt.ljust(60)
+                print(aug_date.ljust(25),tgt.ljust(60))
                 # marks the end of a file entry
                 df.target = tgt
                 df.date_augmented = aug_date
@@ -226,7 +226,7 @@ class CorrProdRef(object):
 
     def id_to_real_str(self, id, short=False):
         id = self.user_to_id(id)
-        if self._id_to_real.has_key(id):
+        if id in self._id_to_real:
             return (short and self._id_to_real[id] or self._id_to_real_long[id])
         else:
             return "Unknown id (%i)" % id
@@ -526,7 +526,7 @@ class SignalDisplayStore2(object):
     def percsort(self,data,percrunavg):
         nsignals=data.shape[0]
         isort=np.argsort(np.abs(data),axis=0)
-        ilev=(nsignals*25)/100;
+        ilev=(nsignals*25)//100;
         #define outlier threshold percentile level eg 90%
         #define outlier halflife eg 20s
         #if signal falls outside threshold, within its collection, for outlier period or longer (in past from now backwards), then outlier
@@ -544,7 +544,7 @@ class SignalDisplayStore2(object):
             data.reshape(-1)[isort[-1]],
             data.reshape(-1)[isort[ilev]],
             data.reshape(-1)[isort[-1-ilev]],
-            data.reshape(-1)[isort[nsignals/2]]],percrunavg]
+            data.reshape(-1)[isort[nsignals//2]]],percrunavg]
         
         
     def _add_data2(self, timestamp_ms, data, flags=None, data_index=None, timeseries=None, timeseriesabs=None, timeseriesvar=None, percspectrum=None, percspectrumflags=None, blmxdata=None, blmxflags=None, flagfraction=None):
@@ -690,7 +690,7 @@ class SignalDisplayStore2(object):
         try:
             h5 = katdal.open(filename)
         except OSError:
-            print "Specified file (%s) could not be found." % filename
+            print("Specified file (%s) could not be found." % filename)
             return
 
         bls_ordering = h5.corr_products.tolist()
@@ -704,7 +704,7 @@ class SignalDisplayStore2(object):
         self.h5_ndumps=len(h5.timestamps)
 
         tss = h5.timestamps[startrow:startrow+rows]
-        print "Loading %d of %d integrations..." % (len(tss),len(h5.timestamps))
+        print("Loading %d of %d integrations..." % (len(tss),len(h5.timestamps)))
         blmx = np.zeros([len(bls_ordering),256],dtype=np.complex)
         blmxfl = np.zeros([len(bls_ordering),256],dtype=np.uint8)
         timeseries = np.zeros(len(bls_ordering),dtype=np.complex64)
@@ -712,12 +712,12 @@ class SignalDisplayStore2(object):
         timeseriesvar = np.zeros(len(bls_ordering),dtype=np.float32)
         flagfraction = np.zeros([len(bls_ordering),8],dtype=np.float32)
         for i,t in enumerate(tss):
-            print ".",
+            print(".",)
             d = h5.vis[i+startrow,:,:].swapaxes(0,1)
             # now in baseline, freq, complex order
             for prod in range(len(bls_ordering)):
                 #calculate reduced blmx version of data
-                blmx[prod,:] = subsample(d[prod,:], self.n_chans/256)
+                blmx[prod,:] = subsample(d[prod,:], self.n_chans//256)
                 #calculate timeseries
                 timeseries[prod] = np.mean(d[prod,self.timeseriesmaskind])
                 timeseriesabs[prod] = np.mean(np.abs(d[prod,self.timeseriesmaskind]))
@@ -743,11 +743,11 @@ class SignalDisplayStore2(object):
 
             self.add_data2(t*1000, d, np.zeros(d.shape,dtype=np.uint8) , np.arange(len(bls_ordering)), timeseries, timeseriesabs, timeseriesvar, perc, percfl, blmx, blmxfl, flagfraction, 0)
             sys.stdout.flush()
-        print "\nLoad complete..."
+        print("\nLoad complete...")
 
 def subsample(data, sample_size):
     samples = list(zip(*[iter(data)]*sample_size))   # use 3 for triplets, etc.
-    return map(lambda x:sum(x)/float(len(x)), samples)
+    return np.array(list(map(lambda x:sum(x)/float(len(x)), samples)),dtype=np.complex)
     
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
@@ -770,7 +770,7 @@ class SignalDisplayStore(object):
             except ImportError:
                 self.mem_cap = 1024*1024*128
                  # default to 128 megabytes if we cannot determine system memory
-        print "Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0))
+        print("Store will use %.2f MBytes of system memory." % (self.mem_cap / (1024.0*1024.0)))
         self.n_ants = n_ants
         self.center_freqs_mhz = []
          # currently this only gets populated on loading historical data
@@ -782,11 +782,11 @@ class SignalDisplayStore(object):
 
     def get_capacity(self):
         """Print out the current store capacity..."""
-        print "Used %.2f/%.2f MB." % (self.bytes_used / (1024.0*1024), self.mem_cap / (1024.0*1024))
+        print("Used %.2f/%.2f MB." % (self.bytes_used / (1024.0*1024), self.mem_cap / (1024.0*1024)))
         if self._frame_size_bytes is not None:
-            print "In total %is of data can be stored." % (self.mem_cap / (self._frame_size_bytes * len(self.cur_frames)))
+            print("In total %is of data can be stored." % (self.mem_cap / (self._frame_size_bytes * len(self.cur_frames))))
         else:
-            print "Unable to estimate number of integrations to be stored until capture has started."
+            print("Unable to estimate number of integrations to be stored until capture has started.")
 
     def init_storage(self):
         """Clear all data storage structures in the store."""
@@ -821,12 +821,12 @@ class SignalDisplayStore(object):
         A numpy array of complex frequency channels for the specified correlation product.
     """
     def add_data(self, timestamp_ms, corr_prod_id, offset, length, data):
-        if not self.time_frames.has_key(timestamp_ms):
+        if not timestamp_mx in self.time_frames:
             self.time_frames[timestamp_ms] = {}
-        if not self.corr_prod_frames.has_key(corr_prod_id):
+        if not corr_prod_id in self.corr_prod_frames:
             self.corr_prod_frames[corr_prod_id] = {}
 
-        if not self.time_frames[timestamp_ms].has_key(corr_prod_id):
+        if not corr_prod_id in self.time_frames[timestamp_ms]:
             frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length)
             self.frame_count += 1
             self.time_frames[timestamp_ms][corr_prod_id] = frame
@@ -865,7 +865,7 @@ class SignalDisplayStore(object):
             os.stat(filename)
             d = h5py.File(filename)
         except OSError:
-            print "Specified file (%s) could not be found." % filename
+            print("Specified file (%s) could not be found." % filename)
             return
         bls_ordering = None
 
@@ -880,17 +880,17 @@ class SignalDisplayStore(object):
             self.center_freqs_mhz.reverse()
              # channels mapped in reverse order
         except KeyError:
-            print "Did not find the required attributes bandwidth and n_chans. Frequency information not populated\n"
+            print("Did not find the required attributes bandwidth and n_chans. Frequency information not populated\n")
             pass
         self.cpref = CorrProdRef(bls_ordering=bls_ordering)
 
         frame_len = nc * 2
         if (startrow!=None):
             tss = d['/Data/timestamps'][startrow:startrow+rows]
-            print "Loading %i integrations..." % tss.shape[0]
+            print("Loading %i integrations..." % tss.shape[0])
             data = d['/Data/correlator_data']
             for i,t in enumerate(tss):
-                print ".",
+                print(".",)
                 d = data[i+startrow].swapaxes(0,1)
                 # now in baseline, freq, complex order
                 for id in range(d.shape[0]):
@@ -898,16 +898,16 @@ class SignalDisplayStore(object):
                 sys.stdout.flush()
         else:
             tss = d['/Data/timestamps'][:rows]
-            print "Loading %i integrations..." % tss.shape[0]
+            print("Loading %i integrations..." % tss.shape[0])
             data = d['/Data/correlator_data']
             for i,t in enumerate(tss):
-                print ".",
+                print(".",)
                 d = data[i].swapaxes(0,1)
                 # now in baseline, freq, complex order
                 for id in range(d.shape[0]):
                     self.add_data(t*1000, id, 0, frame_len, d[id].flatten())
                 sys.stdout.flush()
-        print "\nLoad complete..."
+        print("\nLoad complete...")
 
     def load(self, filename, cscan=None, scan=None, start=None, end=None):
         """Load signal display data from a previously captured HDF5 file.
@@ -948,7 +948,7 @@ class SignalDisplayStore(object):
 
             for cscan in (cscan in d['Scans'].keys() and [cscan] or d['Scans'].keys()):
                 for s in (scan in d['Scans'][cscan].keys() and [d['Scans'][cscan][scan]] or [d['Scans'][cscan][s] for s in d['Scans'][cscan].keys()]):
-                    print "Adding data from %s" % s.name
+                    print("Adding data from %s" % s.name)
                     data = s['data'].value[start:end]
                     ts = s['timestamps'].value[start:end]
                     for i,t in enumerate(ts):
@@ -957,7 +957,7 @@ class SignalDisplayStore(object):
                             d_float = np.ravel(np.array([np.real(dt[str(id)]),np.imag(dt[str(id)])]), order='F')
                             self.add_data(t, id, 0, len(d_float), d_float)
         except OSError:
-            print "Specified file (%s) could not be found." % filename
+            print("Specified file (%s) could not be found." % filename)
 
     def __getitem__(self, name):
         try:
@@ -967,11 +967,11 @@ class SignalDisplayStore(object):
 
     def stats(self):
         """Print out the current state of the data store."""
-        print "Data ID".center(7),"Frames".center(6),"Earliest Stored Data".center(26),"Latest Stored Data".center(26)
-        print "".center(7,"="), "".center(6,"="), "".center(26,"="), "".center(26,"=")
+        print("Data ID".center(7),"Frames".center(6),"Earliest Stored Data".center(26),"Latest Stored Data".center(26))
+        print("".center(7,"="), "".center(6,"="), "".center(26,"="), "".center(26,"="))
         for id in self.corr_prod_frames.keys():
             times = self.corr_prod_frames[id].keys()
-            print str(id).center(7),str(len(times)).center(6),time.ctime(min(times)/1000).center(26), time.ctime(max(times)/1000).center(26)
+            print(str(id).center(7),str(len(times)).center(6),time.ctime(min(times)/1000).center(26), time.ctime(max(times)/1000).center(26))
 
 class NullReceiver(object):
     """Null class used when loading historical data into signal displays...
@@ -1165,7 +1165,7 @@ class SpeadSDReceiver(threading.Thread):
                             for id in range(data.shape[0]):
                                 fdata = data[id].flatten()
                                 self.storage.add_data(ts, id, 0, len(fdata), fdata)
-                except Exception, e:
+                except Exception as e:
                     logger.warning("Failed to add signal display frame. (" + str(e) + ")", exc_info=True)
         self.rx.stop()
 
@@ -1229,17 +1229,17 @@ class SignalDisplayReceiver(threading.Thread):
             timestamp_ms = unpack('Q',header[8:16])[0]
             return (corr_prod_id, offset, length, timestamp_ms)
         else:
-            print "Invalid magic (" + str(magic) + "). Not a signal display packet"
+            print("Invalid magic (" + str(magic) + "). Not a signal display packet")
             return (0, 0, 0, 0)
 
     def stats(self):
         """Print out a listing of the current data handler statistics. This includes packet arrival and processing times, as well as the number of frames
         in storage."""
-        print "Data rate (over last 10 packets):",self.data_rate
-        print "Packet process time (us - avg for last 10 packets):",self.process_time
-        print "Last packet from IP:",self.last_ip
-        print "Number of received packets:",self.packet_count
-        print "Number of timestamps in storage:",(self.storage is None and "N/A" or len(self.storage.time_frames))
+        print("Data rate (over last 10 packets):",self.data_rate)
+        print("Packet process time (us - avg for last 10 packets):",self.process_time)
+        print("Last packet from IP:",self.last_ip)
+        print("Number of received packets:",self.packet_count)
+        print("Number of timestamps in storage:",(self.storage is None and "N/A" or len(self.storage.time_frames)))
 
     def one_shot(self, data_id=0):
         self._one_shot = data_id
@@ -1251,7 +1251,7 @@ class SignalDisplayReceiver(threading.Thread):
         udpIn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             udpIn.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, self.recv_buffer)
-        except Exception, err:
+        except Exception as err:
             logger.error("Failed to set requested receive buffer size of " + str(self.recv_buffer) + " bytes")
         udpIn.bind(('', self.port))
         udpIn.setblocking(True)
@@ -1286,7 +1286,7 @@ class SignalDisplayReceiver(threading.Thread):
             self.storage.add_data(timestamp_ms, corr_prod_id, data_offset, length, packet_data)
             self.last_timestamp = timestamp_ms
             self.packet_count += 1
-        print "Receiver loop terminated..."
+        print("Receiver loop terminated...")
 
 class AnimatablePlot(object):
     """A plot container that contains sufficient meta information for the plot to be animated by another thread.
@@ -1359,14 +1359,14 @@ class AnimatablePlot(object):
         self.ymax = ymax
         if self._yautoscale:
             self._yautoscale = False
-            print "Turning off y autoscaling. To re-enable use set_y_autoscale(True)"
+            print("Turning off y autoscaling. To re-enable use set_y_autoscale(True)")
         self.update()
 
     def set_y_scale(self, scale_type):
         if scale_type in ('linear','log'):
             self.ax.set_yscale(scale_type)
         else:
-            print "Please choose either linear or log for the y scale."
+            print("Please choose either linear or log for the y scale.")
         self.redraw()
 
     def add_sensor(self, sensor, **update_args):
@@ -1425,13 +1425,13 @@ class AnimatablePlot(object):
             A number of keyword arguments that can be used to override the default
             keyword argument provided to the update function that gets called on each animation cycle.
         """
-        print "Animating plot. Press Ctrl-C to halt..."
+        print("Animating plot. Press Ctrl-C to halt...")
         while not self._stopEvent.isSet():
             try:
                 self.update(**override_args)
                 time.sleep(interval)
             except KeyboardInterrupt:
-                print "Animation halted."
+                print("Animation halted.")
                 break
 
     def update(self, **override_args):
@@ -1453,7 +1453,7 @@ class AnimatablePlot(object):
                  # any user specified overrides will be passed down to update function
             new_data = self.update_functions[slot](**self.update_arguments[slot])
             if len(new_data) == 0:
-                print "Failed to retrieve new plot data. Not updating."
+                print("Failed to retrieve new plot data. Not updating.")
                 continue
             try:
                 if len(self.ax.lines) > 0:
@@ -1475,7 +1475,6 @@ class AnimatablePlot(object):
                         ymax = max(ymax,max(new_data[1]))
                         self.ax.lines[slot].set_xdata(new_data[0] - offset)
                         self.ax.lines[slot].set_ydata(new_data[1])
-                        #print new_data[1][0:10]
                         if slot == max(self.update_functions.keys()):
                             if not self.fixed_x: self.ax.set_xlim(xmin,xmax)
                             if self._yautoscale:
@@ -1505,7 +1504,7 @@ class AnimatablePlot(object):
                     vertices[2::5,1] = new_data[0]
                     self.ax.set_ylim(0,max(new_data[0]))
                 else:
-                    print "Figure does not appear to have lines or images in it. Unsure how to update."
+                    print("Figure does not appear to have lines or images in it. Unsure how to update.")
                 self.redraw()
             except KeyboardInterrupt:
                 raise KeyboardInterrupt
@@ -1629,14 +1628,14 @@ class AnimatableSensorPlot(object):
             The number of second to wait between each update to the plot.
             default: 1
         """
-        print "Animating plot. Press Ctrl-C to halt..."
+        print("Animating plot. Press Ctrl-C to halt...")
         try:
             self.show()
             while not self._stopEvent.isSet():
                 time.sleep(interval)
                 self.update()
         except KeyboardInterrupt:
-            print "Animation halted."
+            print("Animation halted.")
 
     def _fetch_data(self, sensor):
         """Retrieve data for updating a sensor plot."""
@@ -1793,7 +1792,7 @@ class PlotAnimator(object):
     def update_all(self):
         """Do a single refresh of the all the plots in this object."""
         for plot_name in self.plots.keys():
-            print plot_name," ",
+            print(plot_name," ",)
             self.plots[plot_name].update()
             time.sleep(self.interval)
 
@@ -1808,7 +1807,7 @@ class PlotAnimator(object):
                 sys.stdout.flush()
                 update_count += 1
         except KeyboardInterrupt:
-            print "\n\nAnimation halted. (" + str(update_count) + " cycles)"
+            print("\n\nAnimation halted. (" + str(update_count) + " cycles)")
 
 class DataHandler(object):
     """A class that provides high level wrapping of the SignalDisplayReceiver and SignalDisplayData
@@ -1840,9 +1839,9 @@ class DataHandler(object):
         if dbe is not None:
             self._local_ip = ip if ip is not None else external_ip()
             if self._local_ip is None:
-                print "DataHandler failed to determine external IP address."
+                print("DataHandler failed to determine external IP address.")
             else:
-                print "Adding IP",self._local_ip,"to list of signal display destination addresses."
+                print("Adding IP",self._local_ip,"to list of signal display destination addresses.")
                 self.dbe.req.k7w_add_sdisp_ip(self._local_ip)
 
         self.storage = store
@@ -1874,24 +1873,24 @@ class DataHandler(object):
         self._plots[ap.figure.number] = ap
 
     def get_plot(self, number):
-        if self._plots.has_key(number):
+        if number in self._plots:
             return self._plots[number]
         else:
-            print "Figure %i is not in the active figures list." % number
+            print("Figure %i is not in the active figures list." % number)
 
     def close_plot(self, number):
-        if self._plots.has_key(number):
+        if number in self._plots:
             ap = self._plots.pop(number)
             ap.figure.close()
             del ap
         else:
-            print "Figure %i is not in the active figures list." % number
+            print("Figure %i is not in the active figures list." % number)
 
     def list_plots(self):
-        print "Figure".center(8),"Calling Function".center(20),"Animating".center(12), "Last Update".center(40)
-        print "".center(8,"="), "".center(20,"="), "".center(12,"="), "".center(40,"=")
+        print("Figure".center(8),"Calling Function".center(20),"Animating".center(12), "Last Update".center(40))
+        print("".center(8,"="), "".center(20,"="), "".center(12,"="), "".center(40,"="))
         for fnumber, ap in self._plots.iteritems():
-            print str(fnumber).ljust(8), ap._fname.ljust(20), (ap._thread is None and "No" or "Yes").ljust(12), time.ctime(ap._last_update).ljust(40)
+            print(str(fnumber).ljust(8), ap._fname.ljust(20), (ap._thread is None and "No" or "Yes").ljust(12), time.ctime(ap._last_update).ljust(40))
 
     @property
     def spectrum(self):
@@ -1933,7 +1932,7 @@ class DataHandler(object):
         """
         self.receiver.stop()
         if self.dbe is not None and self._local_ip is not None:
-            print "Removing local IP from K7W listeners..."
+            print("Removing local IP from K7W listeners...")
             self.dbe.req.k7w_remove_sdisp_ip(self._local_ip)
 
     def plot_fringe_dashboard(self, product=None, dumps=360, dtype='phase', channels=512):
@@ -1984,7 +1983,7 @@ class DataHandler(object):
         #sk.reverse()
         wfall_data = self.select_data(dtype=dtype, product=product, end_time=-dumps, stop_channel=channels, include_ts=True)
         if len(wfall_data[1]) < dumps:
-            print "User asked for",dumps,"dumps. Only",len(wfall_data[1]),"are available. Truncating further calls to this length."
+            print("User asked for",dumps,"dumps. Only",len(wfall_data[1]),"are available. Truncating further calls to this length.")
             dumps = len(wfall_data[1])
         tstamps = wfall_data[0]
         #wfall_data.reverse()
@@ -2043,7 +2042,6 @@ class DataHandler(object):
             t = time.time()
             ax_mag_t.plot(fringe_data[1], range(0,len(fringe_data[1]))) #, fringe_data[0][::-1])
             ax_phase_t.plot(phase_t_data[1], range(0, len(phase_t_data[1]))) #, phase_t_data[0][::-1])
-            #print "Plotting both mag and phase took %f s" % (time.time() - t)
             ax_wfall.set_ylim((dumps,0))
              # spectral plots
             t = time.time()
@@ -2056,7 +2054,6 @@ class DataHandler(object):
             ax_mag_f.plot(power_f)
             ax_mag_f.set_yscale("log")
             ax_phase_f.plot(phase_f)
-            #print "Plotting both mag and phase took %f s" % (time.time() - t)
             t = time.time()
             ax_wfall.set_xlim((0,channels))
              # re vs im
@@ -2065,7 +2062,6 @@ class DataHandler(object):
 
          # define event handler for clicking...
         def onpress(event):
-            #print "Dash click event at",time.ctime()
             if event.inaxes != ax_wfall: return
             if event.button == 1: clear_plots()
             x1,y1 = event.xdata, event.ydata
@@ -2074,7 +2070,6 @@ class DataHandler(object):
             f_ref = int(x1)
             ts = time.time()
             populate(t_ref, f_ref)
-            #print "Populate took %f s" % (time.time() - ts)
             ax_mag_t.set_ylabel("Xcorr mag vs time for channel " + str(f_ref))
             ax_phase_t.set_ylabel("Xcorr phase vs time for channel " + str(f_ref))
             ax_mag_f.set_title("Xcorr mag spectrum for " + t)
@@ -2082,9 +2077,7 @@ class DataHandler(object):
             ax_reim.set_title("Re vs Im for channel " + str(f_ref))
             ts = time.time()
             f.canvas.draw()
-            #print "Draw took %f s" % (time.time() - ts)
             #pl.draw()
-            #print "Finished click event at",time.ctime()
         f.canvas.mpl_connect('button_release_event', onpress)
         f.show()
         pl.draw()
@@ -2133,11 +2126,11 @@ class DataHandler(object):
         orig_product = product
         product = self.cpref.user_to_id(product)
         if self._debug:
-            print "Select data called with product: %i, start_time: %i , end_time: %i, start_channel: %i, end_channel: %i" % (product, start_time, end_time, start_channel, stop_channel)
+            print("Select data called with product: %i, start_time: %i , end_time: %i, start_channel: %i, end_channel: %i" % (product, start_time, end_time, start_channel, stop_channel))
         try:
             fkeys = self.storage.corr_prod_frames[product].keys()
-        except KeyError, exc:
-            raise InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product),)), None, None
+        except KeyError as exc:
+            raise(InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product),)), None, None)
         fkeys.sort()
         ts = []
         if end_time >= 0:
@@ -2589,7 +2582,7 @@ class DataHandler(object):
             self._add_plot(sys._getframe().f_code.co_name, ap)
             return ap
         else:
-            print "No stored data available..."
+            print("No stored data available...")
 
 
     def plot_waterfall(self, dtype='phase', product=None, start_time=0, end_time=-120, start_channel=1, stop_channel=-1, include_flags=False):
@@ -2674,7 +2667,7 @@ class DataHandler(object):
                 fig_flag.show()
             return ap
         else:
-            print "No stored data available..."
+            print("No stored data available...")
 
     def plot_lfr(self, product=None, dumps=120):
         """Show a Lag - Fringe Rate plot.
@@ -2742,7 +2735,7 @@ class DataHandler(object):
         """
         if product is None: product = self.default_product
         if start_channel < 0 or start_channel > 255:
-            print "Please choose a starting channel between 0 and 255..."
+            print("Please choose a starting channel between 0 and 255...")
             return
         c1 = self.select_data(dtype='complex', product=product, end_time=end_time, start_channel=start_channel, stop_channel=start_channel+256, avg_axis=1)
         c2 = c1 * np.exp(-1j * np.angle(c1[0]))
@@ -3163,11 +3156,11 @@ class KATData(object):
         dbe : string
             The name of the dbe proxy to find. Typically dbe / dbe7
         """
-        print "Checking local environment for active dbe proxy named %s" % dbe
+        print("Checking local environment for active dbe proxy named %s" % dbe)
         try:
             import IPython
         except ImportError:
-            print "Proxy detection only works for IPython sessions."
+            print("Proxy detection only works for IPython sessions.")
             return
 
         # Set IPython shell reference
@@ -3185,9 +3178,9 @@ class KATData(object):
                 try:
                     self.dbe = getattr(k,dbe)
                 except AttributeError:
-                    print "Active katuilib seesion found, but no dbe proxy available."
+                    print("Active katuilib seesion found, but no dbe proxy available.")
         except (KeyError, AttributeError):
-            print "No active katuilib session found."
+            print("No active katuilib session found.")
 
     def register_dbe(self, dbe):
         self.dbe = dbe
@@ -3214,7 +3207,7 @@ class KATData(object):
             self.find_dbe("dbe7")
 
         if self.dbe is None:
-            print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
+            print("No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy.")
 
         st = SignalDisplayStore2(capacity=capacity,max_custom_signals=max_custom_signals,cbf_channels=cbf_channels) if store2 else SignalDisplayStore(capacity=capacity)
         r = SpeadSDReceiver(multicast_group,port,interface_address,st,notifyqueue,cbf_channels=cbf_channels)
@@ -3264,7 +3257,7 @@ class KATData(object):
         r.channels = st.n_chans
         r.channel_bandwidth = st.channel_bandwidth
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
-        print "Signal display data available as .sd_hist"
+        print("Signal display data available as .sd_hist")
 
     def load_k7_data(self, filename, rows=None, startrow=None):
         """Load k7 data (HDF5 v2) from the specified file and use this to populate a signal display storage object.
@@ -3281,7 +3274,7 @@ class KATData(object):
         r.cpref = st.cpref
         r.channels = st.n_chans
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
-        print "Signal display data available as .sd_hist"
+        print("Signal display data available as .sd_hist")
 
     def load_ff_data(self, filename, cscan=None, scan=None, start=None, end=None):
         """Load the data from the specified file(s) and use this to populate a signal display storage object.
@@ -3300,7 +3293,7 @@ class KATData(object):
         r.cpref = st.cpref
         r.channels = st.n_chans
         self.sd_hist = DataHandler(dbe=None, receiver=r, store=st)
-        print "Historical signal display data available as .sd_hist"
+        print("Historical signal display data available as .sd_hist")
 
     def start_ff_receiver(self, port=7006, capacity=0.2):
         """Connect the data handler object to the signal display data stream and create a new DataHandler service
@@ -3337,7 +3330,7 @@ class KATData(object):
             self.find_dbe("dbe")
 
         if self.dbe is None:
-            print "No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy."
+            print("No dbe proxy available. Make sure that signal display data is manually directed to this host using the add_sdisp_ip command on an active dbe proxy.")
 
         st = SignalDisplayStore(capacity=capacity)
         r = SignalDisplayReceiver(port, st)
@@ -3635,7 +3628,7 @@ def parse_timeseries_mask(maskstr,spectrum_width):
                     spectrum_flag0.append(chan0)
                     spectrum_flag1.append(chan1)
                     spectrum_flagmask[chan0:(chan1+1)]=0
-        except Exception, e:#clears flags if exception occurred during parsing
+        except Exception as e:#clears flags if exception occurred during parsing
             spectrum_flagmask=np.ones([spectrum_width],dtype=np.float32)
             spectrum_flag0=[]
             spectrum_flag1=[]

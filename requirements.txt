@@ -5,7 +5,6 @@ funcsigs
 functools32
 future
 futures                 # required by trollius
-guppy==0.1.10
 h5py
 ipaddress
 katversion
