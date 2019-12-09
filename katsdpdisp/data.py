@@ -2130,7 +2130,7 @@ class DataHandler(object):
         try:
             fkeys = self.storage.corr_prod_frames[product].keys()
         except KeyError as exc:
-            raise(InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product))))
+            raise InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product)))
         fkeys.sort()
         ts = []
         if end_time >= 0:
