@@ -122,7 +122,7 @@ class DataArchive(object):
                     # no create timestamp encoded in filename. Will use stat time
                     created = "*" + time.ctime(int(f[4]))
                 modified = time.ctime(int(f[5]))
-                print(str(index).ljust(5),f[1].ljust(65),sz.ljust(9),f[6].ljust(8),created.ljust(25),modified.ljust(25),)
+                print(str(index).ljust(5),f[1].ljust(65),sz.ljust(9),f[6].ljust(8),created.ljust(25),modified.ljust(25),end=' ')
                 df = DataFile(a, f[1].split("/")[-1], str(a.data_directory) + f[1], int(f[2]), int(f[6]), int(f[4]), int(f[5]))
             if line.startswith("Augmented: Augment"):
                 aug_date = " ".join(line.split(" ")[4:])
@@ -747,7 +747,7 @@ class SignalDisplayStore2(object):
 
 def subsample(data, sample_size):
     samples = list(zip(*[iter(data)]*sample_size))   # use 3 for triplets, etc.
-    return np.array(list(map(lambda x:sum(x)/float(len(x)), samples)),dtype=np.complex)
+    return np.array([sum(x) / float(len(x)) for x in samples], dtype=np.complex)
     
 class SignalDisplayStore(object):
     """A class to store signal display data and provide a variety of views onto the data
@@ -821,12 +821,12 @@ class SignalDisplayStore(object):
         A numpy array of complex frequency channels for the specified correlation product.
     """
     def add_data(self, timestamp_ms, corr_prod_id, offset, length, data):
-        if not timestamp_mx in self.time_frames:
+        if timestamp_mx not in self.time_frames:
             self.time_frames[timestamp_ms] = {}
-        if not corr_prod_id in self.corr_prod_frames:
+        if corr_prod_id not in self.corr_prod_frames:
             self.corr_prod_frames[corr_prod_id] = {}
 
-        if not corr_prod_id in self.time_frames[timestamp_ms]:
+        if corr_prod_id not in self.time_frames[timestamp_ms]:
             frame = SignalDisplayFrame(timestamp_ms, corr_prod_id, length)
             self.frame_count += 1
             self.time_frames[timestamp_ms][corr_prod_id] = frame
@@ -2130,7 +2130,7 @@ class DataHandler(object):
         try:
             fkeys = self.storage.corr_prod_frames[product].keys()
         except KeyError as exc:
-            raise(InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product),)), None, None)
+            raise(InvalidBaseline("No data for the specified product (%s) was found. Antenna notation (ant_idx, ant_idx, pol) is only available if the DBE inputs have been labelled correctly, otherwise use (label, label) notation. If you are using a valid product then it may be that the system is not configured to send signal display data to your IP address." % (str(orig_product))))
         fkeys.sort()
         ts = []
         if end_time >= 0:

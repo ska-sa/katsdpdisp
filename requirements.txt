@@ -2,11 +2,8 @@ ansicolors
 cycler
 fakeredis
 funcsigs
-functools32
 future
-futures                 # required by trollius
 h5py
-ipaddress
 katversion
 linecache2
 manhole
@@ -26,9 +23,7 @@ pytz
 redis
 six
 spead2
-subprocess32
 traceback2
-trollius                # required by spead2
 singledispatch
 certifi
 backports-abc
