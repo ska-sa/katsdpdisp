@@ -712,7 +712,7 @@ class SignalDisplayStore2(object):
         timeseriesvar = np.zeros(len(bls_ordering),dtype=np.float32)
         flagfraction = np.zeros([len(bls_ordering),8],dtype=np.float32)
         for i,t in enumerate(tss):
-            print(".",)
+            print(".",end=' ')
             d = h5.vis[i+startrow,:,:].swapaxes(0,1)
             # now in baseline, freq, complex order
             for prod in range(len(bls_ordering)):
@@ -890,7 +890,7 @@ class SignalDisplayStore(object):
             print("Loading %i integrations..." % tss.shape[0])
             data = d['/Data/correlator_data']
             for i,t in enumerate(tss):
-                print(".",)
+                print(".",end=' ')
                 d = data[i+startrow].swapaxes(0,1)
                 # now in baseline, freq, complex order
                 for id in range(d.shape[0]):
@@ -901,7 +901,7 @@ class SignalDisplayStore(object):
             print("Loading %i integrations..." % tss.shape[0])
             data = d['/Data/correlator_data']
             for i,t in enumerate(tss):
-                print(".",)
+                print(".",end=' ')
                 d = data[i].swapaxes(0,1)
                 # now in baseline, freq, complex order
                 for id in range(d.shape[0]):
@@ -1792,7 +1792,7 @@ class PlotAnimator(object):
     def update_all(self):
         """Do a single refresh of the all the plots in this object."""
         for plot_name in self.plots.keys():
-            print(plot_name," ",)
+            print(plot_name," ",end=' ')
             self.plots[plot_name].update()
             time.sleep(self.interval)
 
