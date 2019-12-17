@@ -21,5 +21,5 @@ RUN pip check
 FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-runtime
 LABEL maintainer="sdpdev+katsdpdisp@ska.ac.za"
 
-COPY --from=build --chown=kat:kat /home/kat/ve /home/kat/ve
+COPY --from=build --chown=kat:kat /home/kat/ve3 /home/kat/ve3
 ENV PATH="$PATH_PYTHON3" VIRTUAL_ENV="$VIRTUAL_ENV_PYTHON3"
