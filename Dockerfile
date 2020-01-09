@@ -1,6 +1,6 @@
 ARG KATSDPDOCKERBASE_REGISTRY=quay.io/ska-sa
 
-FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-build as build
+FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-build:python2 as build
 
 # Enable Python 2 ve
 ENV PATH="$PATH_PYTHON2" VIRTUAL_ENV="$VIRTUAL_ENV_PYTHON2"
@@ -18,7 +18,7 @@ RUN pip check
 
 #######################################################################
 
-FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-runtime
+FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-runtime:python2
 LABEL maintainer="sdpdev+katsdpdisp@ska.ac.za"
 
 COPY --from=build --chown=kat:kat /home/kat/ve /home/kat/ve
