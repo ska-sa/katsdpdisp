@@ -668,7 +668,7 @@ class SignalDisplayStore2(object):
 
             if (self.framecollector[timestamp_ms][-1]==self.n_chans):
                 #flush all framecollector entries up to timestamp_ms, even if they are not complete
-                for key in np.sort(self.framecollector.keys()):
+                for key in sorted(self.framecollector.keys()):
                     [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[key]
                     if (key<timestamp_ms): #remove old incomplete set of heaps, while allowing some overlap in receiving heaps with different timestamps
                         logger.warning('Partial data for timestamp %f. Only %d of %d channels is received by time that data for timestamp %f is complete.',key,self.framecollector[key][-1],self.n_chans,timestamp_ms)
@@ -677,7 +677,7 @@ class SignalDisplayStore2(object):
                     self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction)
                     del self.framecollector[key]
             if (len(self.framecollector.keys())>3):#flush old data even if just one ingest working, results will be lagging by 3 timestamps if not all ingest nodes are working
-                for key in np.sort(self.framecollector.keys())[:-3]:
+                for key in sorted(self.framecollector.keys())[:-3]:
                     [ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction, nchans_sofar]=self.framecollector[key]
                     self._add_data2(key, ndata, nflags, data_index, ntimeseries, ntimeseriesabs, ntimeseriesvar, npercspectrum, npercspectrumflags, nblmxdata, nblmxflags, nflagfraction)
                     del self.framecollector[key]
