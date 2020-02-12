@@ -2096,9 +2096,7 @@ def handle_websock_event(handlerkey,*args):
 
 def convertunicode(input):
     if isinstance(input, dict):
-        return dict((convertunicode(key), convertunicode(value)) for key, value in input.iteritems())
-    # elif isinstance(input,tuple):#JSON HAS NO TUPLES!!!
-    #     return tuple(convertunicode(element) for element in input)
+        return {convertunicode(key):convertunicode(input[key]) for key in input}
     elif isinstance(input, list):
         return list(convertunicode(element) for element in input)
     elif isinstance(input, str):
