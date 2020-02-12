@@ -2,14 +2,9 @@ ansicolors
 cycler
 fakeredis
 funcsigs
-functools32
 future
-futures                 # required by trollius
-guppy==0.1.10
 h5py
-ipaddress
 katversion
-linecache2
 manhole
 matplotlib
 mock
@@ -27,14 +22,7 @@ pytz
 redis
 six
 spead2
-subprocess32
-traceback2
-trollius                # required by spead2
-singledispatch
 certifi
-backports-abc
-backports.ssl-match-hostname
 tornado
-unittest2
 katsdpservices @ git+https://github.com/ska-sa/katsdpservices
 katsdptelstate @ git+https://github.com/ska-sa/katsdptelstate

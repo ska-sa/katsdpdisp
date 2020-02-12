@@ -4,7 +4,7 @@
 import optparse
 import katsdpservices
 from multiprocessing import Process, Queue, Pipe, Manager, current_process
-from Queue import Empty
+import queue
 import tornado.ioloop
 import tornado.httpserver
 import tornado.web
@@ -13,11 +13,10 @@ import tornado.template
 from pkg_resources import resource_filename
 import os
 import traceback
-import commands
+import subprocess
 import time
-import SocketServer
 import socket
-import thread,threading
+import threading
 import struct
 import sys
 import logging
@@ -32,7 +31,6 @@ import gc
 import manhole
 import signal
 import numbers
-from guppy import hpy
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
@@ -194,8 +192,6 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
     thefileoffset=0
     typelookup={'arg':'phase','phase':'phase','pow':'mag','abs':'mag','mag':'mag'}
     fig={'title':'','xdata':np.arange(100),'ydata':[[np.nan*np.zeros(100)]],'color':np.array([[0,255,0,0]]),'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':'s','yunit':['dB'],'span':[],'spancolor':[]}
-    hp = hpy()
-    hpbefore = hp.heap()
     dh=katsdpdisp.KATData()
     if (datafilename=='stream'):
         interface_address = katsdpservices.get_interface_address(spead_interface)
@@ -207,15 +203,15 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
     else:
         try:
             dh.load_ar1_data(datafilename, rows=300, startrow=thefileoffset, capacity=memusage/100.0, max_custom_signals=max_custom_signals, store2=True)
-        except Exception,e:
+        except Exception as e:
             logger.warning(" Failed to load file using ar1 loader (%s)" % e, exc_info=True)
             try:
                 dh.load_k7_data(datafilename,rows=300,startrow=thefileoffset)
-            except Exception,e:
+            except Exception as e:
                 logger.warning(" Failed to load file using k7 loader (%s)" % e, exc_info=True)
                 try:
                     dh.load_ff_data(datafilename)
-                except Exception,e:
+                except Exception as e:
                     logger.warning(" Failed to load file using ff loader (%s)" % e, exc_info=True)
                     pass
                 pass
@@ -287,18 +283,15 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                          +'\ntimeseries slots: %d\nspectrum slots: %d\nwmx slots: %d'%(datasd.storage.timeseriesslots,datasd.storage.slots,datasd.storage.blmxslots)\
                          +'\nnbaselines: '+str(len(datasd.cpref.bls_ordering))+'\ncbf_channels: '+str(datasd.receiver.cbf_channels)+'\nnchannels: '+str(datasd.receiver.channels)\
                          +'\nblmx nchannels: '+str(datasd.storage.blmxn_chans)+'\ncenter freq: '+str(datasd.receiver.center_freq)+'\nchannel bandwidth: '+str(datasd.receiver.channel_bandwidth)}
-                except Exception,e:
+                except Exception as e:
                     logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     fig={}
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='memoryleak'):
                 gc.collect()
-                hpafter = hp.heap()
-                hpleftover=hpafter-hpbefore
                 logger.info('Memory usage %s (kb)'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss))
-                logger.info(hpleftover)
-                fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)+' leftover objects= '+str(hpleftover)}
+                fig={'logconsole':'Memory usage %s (kb)\n'%(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)}
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='fileoffset'):
@@ -333,7 +326,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         theindex=datasd.cpref.bls_ordering.index(list(thesignals[0]))
                     else:
                         signal='signal not in bls_ordering'
-                except Exception, e:
+                except Exception as e:
                     logger.warning('Exception in sendfiguredata: '+str(e), exc_info=True)
                     signal='error'
                     pass
@@ -720,14 +713,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             flags=np.logical_or(flags,rvcdata[2])
                         else:
                             product=decodecustomsignal(productstr)
-                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                             if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
                                 thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
+                                newchanincr=chanincr//reduction
                                 if (newchanincr<1):
                                     newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=True,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                                 limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                                 flags=np.logical_or(flags,rvcdata[2])
                             elif (list(product) in datasd.cpref.bls_ordering):
@@ -761,14 +754,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                             limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         else:
                             product=decodecustomsignal(productstr)
-                            reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                            reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                             if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                                 usingblmxdata=True
                                 thech=ch[start_chan:stop_chan:reduction]
-                                newchanincr=chanincr/reduction
+                                newchanincr=chanincr//reduction
                                 if (newchanincr<1):
                                     newchanincr=1
-                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                                rvcdata = datasd.select_blmxdata(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                                 limitedts=datasd.select_blmxdata(dtype=thetype, product=tuple(product), end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                             elif (list(product) in datasd.cpref.bls_ordering):
                                 rvcdata = datasd.select_data(dtype=thetype, product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -852,14 +845,14 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         limitedts=datasd.select_data_collection(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                     else:
                         product=decodecustomsignal(productstr)
-                        reduction=datasd.storage.n_chans/datasd.storage.blmxn_chans
+                        reduction=datasd.storage.n_chans//datasd.storage.blmxn_chans
                         if (chanincr>=reduction and list(product) in datasd.cpref.bls_ordering):#test
                             usingblmxdata=True
                             thech=ch[start_chan:stop_chan:reduction]
-                            newchanincr=chanincr/reduction
+                            newchanincr=chanincr//reduction
                             if (newchanincr<1):
                                 newchanincr=1
-                            rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan/reduction,stop_channel=stop_chan/reduction,incr_channel=newchanincr)
+                            rvcdata = datasd.select_blmxdata(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan//reduction,stop_channel=stop_chan//reduction,incr_channel=newchanincr)
                             limitedts=datasd.select_data_blmxdata(dtype=thetype, product=product, end_time=-120, start_channel=0, stop_channel=0, include_ts=True)[0]#gets all timestamps only
                         elif (list(product) in datasd.cpref.bls_ordering):
                             rvcdata = datasd.select_data(dtype='phase', product=tuple(product), start_time=start_time, end_time=end_time, include_ts=True,include_flags=False,start_channel=start_chan,stop_channel=stop_chan,incr_channel=chanincr)
@@ -879,7 +872,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         else:
                             cdata=np.exp(1j*cdata)
                         cdata=np.fft.fftshift(np.fft.fft2(cdata,axes=[1]),axes=1)
-                        start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)/2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
+                        start_lag,stop_lag,lagincr,thelag=getstartstopchannels((np.arange(len(ch))-len(ch)//2)/bw,'mhz',theviewsettings['xmin'],theviewsettings['xmax'],view_npixels)
                         cdata=cdata[:,start_lag:stop_lag:lagincr]
                     if (theviewsettings['type']=='pow'):
                         cdata=10.0*np.log10(np.abs(cdata))
@@ -1048,7 +1041,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     fig['customproducts']=[]
                 else:
                     fig={}
-            except Exception, e:
+            except Exception as e:
                 logger.warning('Exception in RingBufferProcess: '+str(e), exc_info=True)
                 fig={}
                 pass
@@ -1148,7 +1141,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             logger.debug('telstate set custom signals result: '+repr(result))
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Set custom signals to '+','.join([str(sig) for sig in thecustomsignals])+'",true,false,true)',handlerkey)
-        except Exception, e:
+        except Exception as e:
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
@@ -1746,7 +1739,7 @@ def handle_websock_event(handlerkey,*args):
                     result=telstate_l0.add('sdisp_timeseries_mask',weightedmask)
                     logger.info('telstate setflags result: '+repr(result))
                     send_websock_cmd('logconsole("Set timeseries mask to '+','.join(newflagstrlist)+'",true,false,true)',handlerkey)
-                except Exception, e:
+                except Exception as e:
                     logger.warning("Exception while telstate setflags: (" + str(e) + ")", exc_info=True)
                     send_websock_cmd('logconsole("Failed to set timeseries mask to '+','.join(newflagstrlist)+'",true,false,true)',handlerkey)
                     weightedmask={}
@@ -1928,9 +1921,12 @@ def handle_websock_event(handlerkey,*args):
                 logger.info('RESTART performed, using port=%d memusage=%f datafilename=%s'%(opts.spead_port,opts.memusage,opts.datafilename))
                 send_websock_cmd('logconsole("RESTART performed.",true,true,true)',handlerkey)
         elif (args[0]=='server'):
-            cmd=','.join(args[1:])
-            logger.info(args[0]+':'+cmd)
-            ret=commands.getoutput(cmd).split('\n')
+            if args[1]=='top':
+                ret=subprocess.getstatusoutput('top -bn 1')[1].split('\n')[:20]
+            elif args[1]=='ps':
+                ret=subprocess.getstatusoutput('ps aux')[1].split('\n')
+                ret=[ln for ln in ret if 'time_plot.py' in ln]
+            logger.info(args[0]+':'+args[1])
             for thisret in ret:
                 send_websock_cmd('logconsole("'+thisret+'",true,true,true)',handlerkey)
         elif (args[0]=='help'):
@@ -2081,7 +2077,7 @@ def handle_websock_event(handlerkey,*args):
                             send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
             try:
                 notification = ringbuffernotifyqueue.get(False)
-            except Empty: #expect Empty exception if queue is empty
+            except queue.Empty:#expects queue.Empty exception if queue is empty
                 pass
             else:
                 if (notification == 'end of stream'):
@@ -2095,7 +2091,7 @@ def handle_websock_event(handlerkey,*args):
                 else:
                     logger.warning("Unexpected notification received from ringbufferprocess: %s" % str(notification))
 
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
 
 def convertunicode(input):
@@ -2105,7 +2101,7 @@ def convertunicode(input):
     #     return tuple(convertunicode(element) for element in input)
     elif isinstance(input, list):
         return list(convertunicode(element) for element in input)
-    elif isinstance(input, unicode):
+    elif isinstance(input, str):
         return input.encode('utf-8')
     else:
         return input
@@ -2184,7 +2180,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 sensorts,sensorsignal = getsensordata(sensorname=theviewsettings['sensor'], start_time=timeseries_fig['xdata'][0], end_time=timeseries_fig['xdata'][-1])
                 sensorname=' '#currently requires length>0
                 timeseries_fig['title']=theviewsettings['sensor'].replace('_',' ')
-            except Exception, e:
+            except Exception as e:
                 sensorsignal=[]
                 sensorts=[]
                 sensorname=''
@@ -2312,7 +2308,7 @@ def send_timeseries(handlerkey,thelayoutsettings,theviewsettings,thesignals,last
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return timeseries_fig['customproducts'],timeseries_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -2379,7 +2375,7 @@ def send_periodogram(handlerkey,thelayoutsettings,theviewsettings,thesignals,las
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return periodogram_fig['customproducts'],periodogram_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -2486,7 +2482,7 @@ def send_bandpass(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
         else:#nothing new
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime#customproducts,outlierproducts,processtime
 
@@ -2627,7 +2623,7 @@ def send_gain(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime#customproducts,outlierproducts,processtime
 
@@ -2768,7 +2764,7 @@ def send_gainwaterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,l
             else:#nothing new; note it is misleading, that min max sent here, because a change in min max will result in version increment; however note also that we want to minimize unnecessary redraws on html side
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],time.time()-startproctime#customproducts,outlierproducts,processtime
 
@@ -2834,7 +2830,7 @@ def send_spectrum(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return spectrum_fig['customproducts'],spectrum_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -2925,7 +2921,7 @@ def send_waterfall(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return waterfall_fig['customproducts'],waterfall_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -3015,7 +3011,7 @@ def send_lag(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,last
                 send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
                 send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return lag_fig['customproducts'],lag_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -3077,7 +3073,7 @@ def send_flagcount(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastt
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return flagcount_fig['customproducts'],flagcount_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -3140,7 +3136,7 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             send_websock_data(pack_binarydata_msg('fig[%d].action'%(ifigure),'none','s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].totcount'%(ifigure),count+1,'i'),handlerkey);count+=1;
         return blmx_fig['customproducts'],blmx_fig['outlierproducts'],processtime
-    except Exception, e:
+    except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
     return [],[],processtime#customproducts,outlierproducts,processtime
 
@@ -3185,15 +3181,12 @@ def pack_binarydata_msg(varname,val,dtype):
         val=[val]
         shp=[]
         ndim=0
-    buff=varname+'\x00'+dtype+struct.pack('<B',ndim)
+    buff=varname.encode('utf-8')+b'\x00'+dtype.encode('utf-8')+struct.pack('<B',ndim)
     for idim in shp:
         buff+=struct.pack('<H',idim)
     if (dtype=='s'):#encodes a list of strings
         for sval in val:
-            if (isinstance(sval,unicode)):
-                buff+=sval.encode('utf-8')+'\x00'
-            else:
-                buff+=sval+'\x00'
+            buff+=sval.encode('utf-8')+b'\x00'
     elif (dtype=='B' or dtype=='H' or dtype=='I'):
         origval=val;
         val=np.array(val,dtype='float')
@@ -3259,7 +3252,7 @@ def send_websock_data(binarydata, handlerkey):
     except WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
-    except Exception, e:
+    except Exception as e:
         logger.warning("Failed to send message (%s)", str(e), exc_info=True)
         logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
@@ -3271,7 +3264,7 @@ def send_websock_cmd(cmd, handlerkey):
     except WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
-    except Exception, e:
+    except Exception as e:
         logger.warning("Failed to send message (%s)", str(e), exc_info=True)
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
