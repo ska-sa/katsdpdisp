@@ -1157,7 +1157,7 @@ def logusers(handlerkey):
         startupdictstr=''
         pass
     if (len(startupdictstr)>0):
-        startupdict=convertunicode(json.loads(startupdictstr))
+        startupdict=json.loads(startupdictstr)
         send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,false)',handlerkey)
     else:
         startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
@@ -1399,7 +1399,7 @@ def handle_websock_event(handlerkey,*args):
                 flagdictstr=''
                 pass
             if (len(flagdictstr)>0):
-                flagdict=convertunicode(json.loads(flagdictstr))
+                flagdict=json.loads(flagdictstr)
                 send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved:",true,true,true)',handlerkey)
                 for key in flagdict.keys():
                     send_websock_cmd('logconsole("'+key+'='+flagdict[key]+'",true,true,true)',handlerkey)
@@ -1648,7 +1648,7 @@ def handle_websock_event(handlerkey,*args):
                         flagdictstr=''
                         pass
                     if (len(flagdictstr)>0):
-                        flagdict=convertunicode(json.loads(flagdictstr))
+                        flagdict=json.loads(flagdictstr)
                     else:
                         flagdict={}
                     flagdict[flagname]=theflagstr
@@ -1665,7 +1665,7 @@ def handle_websock_event(handlerkey,*args):
                     flagdictstr=''
                     pass
                 if (len(flagdictstr)>0):
-                    flagdict=convertunicode(json.loads(flagdictstr))
+                    flagdict=json.loads(flagdictstr)
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
@@ -1683,7 +1683,7 @@ def handle_websock_event(handlerkey,*args):
                     flagdictstr=''
                     pass
                 if (len(flagdictstr)>0):
-                    flagdict=convertunicode(json.loads(flagdictstr))
+                    flagdict=json.loads(flagdictstr)
                 else:
                     flagdict={}
                 if (flagname in flagdict):
@@ -1701,7 +1701,7 @@ def handle_websock_event(handlerkey,*args):
                     flagdictstr=''
                     pass
                 if (len(flagdictstr)>0):
-                    flagdict=convertunicode(json.loads(flagdictstr))
+                    flagdict=json.loads(flagdictstr)
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
@@ -1715,7 +1715,7 @@ def handle_websock_event(handlerkey,*args):
                 flagdictstr=''
                 pass
             if (len(flagdictstr)>0):
-                flagdict=convertunicode(json.loads(flagdictstr))
+                flagdict=json.loads(flagdictstr)
             else:
                 flagdict={}
             for theviewsettings in html_viewsettings[username]:
@@ -1729,7 +1729,7 @@ def handle_websock_event(handlerkey,*args):
             if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                 send_websock_cmd('logconsole("Server exception occurred evaluating setflags'+','.join(newflagstrlist)+'",true,true,true)',handlerkey)
                 if (len(flagdictstr)>0):
-                    flagdict=convertunicode(json.loads(flagdictstr))
+                    flagdict=json.loads(flagdictstr)
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
@@ -1749,7 +1749,7 @@ def handle_websock_event(handlerkey,*args):
                     if (isinstance(weightedmask,dict) and weightedmask == {}):#an exception occurred
                         send_websock_cmd('logconsole("Server exception occurred evaluating setflags while clearing flags",true,true,true)',handlerkey)
                     if (len(flagdictstr)>0):
-                        flagdict=convertunicode(json.loads(flagdictstr))
+                        flagdict=json.loads(flagdictstr)
                         send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                     else:
                         send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
@@ -1945,7 +1945,7 @@ def handle_websock_event(handlerkey,*args):
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
-                startupdict=convertunicode(json.loads(startupdictstr))
+                startupdict=json.loads(startupdictstr)
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
             if (theusername in startupdict['html_viewsettings']):
@@ -1983,7 +1983,7 @@ def handle_websock_event(handlerkey,*args):
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
-                startupdict=convertunicode(json.loads(startupdictstr))
+                startupdict=json.loads(startupdictstr)
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
             startupdict['html_viewsettings'][theusername]=html_viewsettings[username]
@@ -2003,7 +2003,7 @@ def handle_websock_event(handlerkey,*args):
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
-                startupdict=convertunicode(json.loads(startupdictstr))
+                startupdict=json.loads(startupdictstr)
                 send_websock_cmd('logconsole("'+str(len(startupdict['html_viewsettings']))+' saved: '+','.join(startupdict['html_viewsettings'].keys())+'",true,false,true)',handlerkey)
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
@@ -2022,7 +2022,7 @@ def handle_websock_event(handlerkey,*args):
                 startupdictstr=''
                 pass
             if (len(startupdictstr)>0):
-                startupdict=convertunicode(json.loads(startupdictstr))
+                startupdict=json.loads(startupdictstr)
             else:
                 startupdict={'html_viewsettings':{},'html_customsignals':{},'html_collectionsignals':{},'html_layoutsettings':{}}
             if (theusername in startupdict['html_viewsettings']):
@@ -2093,16 +2093,6 @@ def handle_websock_event(handlerkey,*args):
 
     except Exception as e:
         logger.warning("User event exception %s" % str(e), exc_info=True)
-
-def convertunicode(input):
-    if isinstance(input, dict):
-        return {convertunicode(key):convertunicode(input[key]) for key in input}
-    elif isinstance(input, list):
-        return list(convertunicode(element) for element in input)
-    elif isinstance(input, str):
-        return input.encode('utf-8')
-    else:
-        return input
 
 #decodes abreviated signals of form 1h3h to ('ant1h','ant3h')
 #else decodes, eg d0001hd0003v into ('d0001h','d0003v')
@@ -3356,7 +3346,7 @@ try:
     startupfile=open(SETTINGS_PATH+'/usersettings.json','r')
     startupdictstr=startupfile.read()
     startupfile.close()
-    startupdict=convertunicode(json.loads(startupdictstr))
+    startupdict=json.loads(startupdictstr)
     usernames=[]
     logger.info('Importing saved user settings from '+SETTINGS_PATH+'/usersettings.json')
     for username in startupdict['html_viewsettings']:
