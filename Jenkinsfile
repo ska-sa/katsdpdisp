@@ -2,7 +2,8 @@
 
 @Library('katsdpjenkins') _
 katsdp.killOldJobs()
-katsdp.setDependencies(['ska-sa/katsdpdockerbase/master'])
+katsdp.setDependencies(['ska-sa/katsdpdockerbase/master',
+                        'ska-sa/katsdpservices/master'])
 katsdp.standardBuild(
     python3: true,
     python2: false,
