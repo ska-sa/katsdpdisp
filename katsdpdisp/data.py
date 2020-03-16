@@ -847,7 +847,7 @@ class SignalDisplayStore(object):
             ts = min(self.time_frames.keys())
             x = self.time_frames.pop(ts)
              # pop out the oldest time element
-            for prod_id in x.iterkeys():
+            for prod_id in x.keys():
                 self.corr_prod_frames[prod_id].pop(ts)
                 self.frame_count -= 1
              # remove the stale timestamps from individual ids
@@ -1889,7 +1889,7 @@ class DataHandler(object):
     def list_plots(self):
         print("Figure".center(8),"Calling Function".center(20),"Animating".center(12), "Last Update".center(40))
         print("".center(8,"="), "".center(20,"="), "".center(12,"="), "".center(40,"="))
-        for fnumber, ap in self._plots.iteritems():
+        for fnumber, ap in self._plots.items():
             print(str(fnumber).ljust(8), ap._fname.ljust(20), (ap._thread is None and "No" or "Yes").ljust(12), time.ctime(ap._last_update).ljust(40))
 
     @property
@@ -3172,7 +3172,7 @@ class KATData(object):
             ip_shell = __builtins__.get('__IPYTHON__')
         
         try:
-            active_hosts = dict([(k, v) for k, v in ip_shell.user_ns['katuilib'].utility._hosts.iteritems() if not v._disconnect])
+            active_hosts = dict([(k, v) for k, v in ip_shell.user_ns['katuilib'].utility._hosts.items() if not v._disconnect])
             if len(active_hosts) > 0:
                 k = active_hosts[max(active_hosts)]
                 try:
