@@ -2072,7 +2072,7 @@ def handle_websock_event(handlerkey,*args):
                     obs_params = telstate_cb['obs_params']
                     script_name = obs_params.get('script_name', obs_params.get(b'script_name', ''))
                     if script_name:
-                        telstate_script_name=os.path.basename(script_name)
+                        telstate_script_name=str(os.path.basename(script_name))
                         scriptnametext = telstate_script_name
                         for thishandler in websockrequest_username.keys():
                             send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
