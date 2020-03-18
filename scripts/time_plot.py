@@ -31,6 +31,7 @@ import gc
 import manhole
 import signal
 import numbers
+import six
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
@@ -2072,7 +2073,7 @@ def handle_websock_event(handlerkey,*args):
                     obs_params = telstate_cb['obs_params']
                     script_name = obs_params.get('script_name', obs_params.get(b'script_name', ''))
                     if script_name:
-                        telstate_script_name=os.path.basename(script_name if isinstance(script_name,str) else script_name.decode())
+                        telstate_script_name=os.path.basename(six.ensure_text(script_name))
                         scriptnametext = telstate_script_name
                         for thishandler in websockrequest_username.keys():
                             send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
