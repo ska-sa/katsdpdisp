@@ -2070,13 +2070,9 @@ def handle_websock_event(handlerkey,*args):
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
                 if telstate_script_name=='undisclosed script' and 'obs_params' in telstate_cb:
                     obs_params = telstate_cb['obs_params']
-                    if b'script_name' in obs_params:
-                        telstate_script_name=os.path.basename(obs_params[b'script_name'])
-                        scriptnametext = telstate_script_name
-                        for thishandler in websockrequest_username.keys():
-                            send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
-                    if 'script_name' in obs_params:
-                        telstate_script_name=os.path.basename(obs_params['script_name'])
+                    script_name = obs_params.get('script_name', obs_params.get(b'script_name', ''))
+                    if script_name:
+                        telstate_script_name=os.path.basename(script_name)
                         scriptnametext = telstate_script_name
                         for thishandler in websockrequest_username.keys():
                             send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
