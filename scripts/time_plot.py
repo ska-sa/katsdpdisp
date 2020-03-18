@@ -1255,7 +1255,7 @@ def handle_websock_event(handlerkey,*args):
             if (args[1] not in html_layoutsettings):
                 html_layoutsettings[args[1]]=copy.deepcopy(html_layoutsettings['default'])
             send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[args[1]]])+'"]'+','+str(html_layoutsettings[args[1]]['ncols'])+')',handlerkey)
-            send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+str(scriptnametext)+'";',handlerkey)
+            send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',handlerkey)
         elif (username not in html_viewsettings):
             logger.info('Warning: unrecognised username:'+username)
         elif (args[0]=='sendfiguredata'):
