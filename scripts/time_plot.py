@@ -31,6 +31,7 @@ import gc
 import manhole
 import signal
 import numbers
+import six
 
 SERVE_PATH=resource_filename('katsdpdisp', 'html')
 
@@ -1840,18 +1841,18 @@ def handle_websock_event(handlerkey,*args):
                         obs_params_key=telstate.join(cbid, 'obs_params')
                         obs_params=telstate.get(obs_params_key, {})
                         for obskey,obsvalue in obs_params.items():
-                            send_websock_cmd('logconsole("'+obskey+': '+repr(obsvalue)+'",true,true,true)',handlerkey)
+                            send_websock_cmd('logconsole("'+repr(obskey)+': '+repr(obsvalue)+'",true,true,true)',handlerkey)
                     elif (thekey in telstate):
                         if telstate.is_immutable(thekey):
-                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
+                            send_websock_cmd('logconsole("'+repr(thekey)+': '+repr(telstate[thekey])+' (immutable, not plottable)",true,true,true)',handlerkey)
                         elif(not isinstance(telstate[thekey],numbers.Real)):
-                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
+                            send_websock_cmd('logconsole("'+repr(thekey)+': '+repr(telstate[thekey])+' (not real valued, not plottable)",true,true,true)',handlerkey)
                         else:
                             html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':thekey})
                             for thishandler in websockrequest_username.keys():
                                 if (websockrequest_username[thishandler]==username):
                                     send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-                            send_websock_cmd('logconsole("'+thekey+': '+repr(telstate[thekey])+'",true,true,true)',handlerkey)
+                            send_websock_cmd('logconsole("'+repr(thekey)+': '+repr(telstate[thekey])+'",true,true,true)',handlerkey)
                     else:
                         splitkeys=thekey.split(' ')
                         foundkeys=[]
@@ -1866,7 +1867,7 @@ def handle_websock_event(handlerkey,*args):
                         if (len(foundkeys)==1):
                             send_websock_cmd('var txtinput=document.getElementById("signaltext");txtinput.value="telstate '+str(foundkeys[0])+'";txtinput.setSelectionRange(9,'+str(9+len(foundkeys[0]))+');txtinput.focus();',handlerkey)
                         else:
-                            send_websock_cmd('logconsole("'+thekey+' not in telstate. Suggestions: '+repr(foundkeys)+'",true,true,true)',handlerkey)
+                            send_websock_cmd('logconsole("'+repr(thekey)+' not in telstate. Suggestions: '+repr(foundkeys)+'",true,true,true)',handlerkey)
                 else:
                     immut=[]
                     unreal=[]
@@ -2070,8 +2071,9 @@ def handle_websock_event(handlerkey,*args):
                         telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
                 if telstate_script_name=='undisclosed script' and 'obs_params' in telstate_cb:
                     obs_params = telstate_cb['obs_params']
-                    if 'script_name' in obs_params:
-                        telstate_script_name=os.path.basename(obs_params['script_name'])
+                    script_name = obs_params.get('script_name', obs_params.get(b'script_name', ''))
+                    if script_name:
+                        telstate_script_name=os.path.basename(six.ensure_text(script_name))
                         scriptnametext = telstate_script_name
                         for thishandler in websockrequest_username.keys():
                             send_websock_cmd('document.getElementById("scriptnametext").innerHTML="'+scriptnametext+'";',thishandler)
