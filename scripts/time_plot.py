@@ -2068,7 +2068,7 @@ def handle_websock_event(handlerkey,*args):
                 if 'obs_activity' in telstate_cb:
                     data_activity = telstate_cb.get_range('obs_activity',st=0 if (len(telstate_activity)==0) else telstate_activity[-1][1]+0.01)
                     for thisdata_activity in data_activity:
-                        telstate_activity.append((thisdata_activity[0],thisdata_activity[1]))
+                        telstate_activity.append((six.ensure_text(thisdata_activity[0]),thisdata_activity[1]))
                 if telstate_script_name=='undisclosed script' and 'obs_params' in telstate_cb:
                     obs_params = telstate_cb['obs_params']
                     script_name = obs_params.get('script_name', obs_params.get(b'script_name', ''))
