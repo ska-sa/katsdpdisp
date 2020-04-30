@@ -1818,7 +1818,7 @@ def handle_websock_event(handlerkey,*args):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
             #also print ingest signals
-            send_websock_cmd('logconsole("Number of ingest_signals: %d maximum: %d'%(len(ingest_signals),opts.max_custom_signals)+','.join(antennas)+'",true,true,true)',handlerkey)
+            send_websock_cmd('logconsole("Number of ingest_signals: %d maximum: %d'%(len(ingest_signals),opts.max_custom_signals)+'",true,true,true)',handlerkey)
         elif (args[0]=='kick'):
             logger.info(repr(args))
             if (len(args)==1):
