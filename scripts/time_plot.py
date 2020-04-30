@@ -1113,29 +1113,29 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     #remove stale items
     timenow=time.time()
     changed=False
-    revert_ingest_signals=copy.deepcopy(ingest_signals)
+    new_ingest_signals={}
     for sig in ingest_signals.keys():
         if (timenow-ingest_signals[sig])>60.0 and (sig not in customproducts) and (sig not in outlierproducts):
-            del ingest_signals[sig]
             changed=True
+        else:
+            new_ingest_signals[sig]=ingest_signals[sig]
     for sig in customproducts:
-        if sig not in ingest_signals.keys():
+        if sig not in new_ingest_signals.keys():
             changed=True
-        ingest_signals[sig]=time.time()
+        new_ingest_signals[sig]=time.time()
     for sig in outlierproducts:
-        if sig not in ingest_signals.keys():
+        if sig not in new_ingest_signals.keys():
             changed=True
-        ingest_signals[sig]=time.time()
-    if (len(ingest_signals)>opts.max_custom_signals):
-        logger.debug('Number of customsignals %d exceeds %d:'%(len(ingest_signals),opts.max_custom_signals))
-        sigs=ingest_signals.keys()
-        times=[ingest_signals[sig] for sig in sigs]
+        new_ingest_signals[sig]=time.time()
+    if (len(new_ingest_signals)>opts.max_custom_signals):
+        logger.debug('Number of customsignals %d exceeds %d:'%(len(new_ingest_signals),opts.max_custom_signals))
+        sigs=new_ingest_signals.keys()
+        times=[new_ingest_signals[sig] for sig in sigs]
         sind=np.argsort(times)
-        for ind in sind[opts.max_custom_signals:]:
-            del ingest_signals[sigs[ind]]
+        new_ingest_signals={sigs[ind]:new_ingest_signals[sigs[ind]] for ind in sind[:opts.max_custom_signals]}
     if (changed):
         ####set custom signals on ingest
-        thecustomsignals = np.array(sorted(ingest_signals.keys()), dtype=np.uint32)
+        thecustomsignals = np.array(sorted(new_ingest_signals.keys()), dtype=np.uint32)
         logger.debug('Trying to set customsignals to:'+repr(thecustomsignals))
         try:
             result=telstate_l0.add('sdisp_custom_signals',thecustomsignals)
@@ -1146,8 +1146,9 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             logger.warning("Exception while telstate set custom signals: (" + str(e) + ")", exc_info=True)
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
-            ingest_signals=revert_ingest_signals
             failed_update_ingest_signals_lastts=lastts
+            new_ingest_signals=ingest_signals#revert due to failure to update ingest
+    ingest_signals=new_ingest_signals
 
 def logusers(handlerkey):
     try:
@@ -1817,6 +1818,8 @@ def handle_websock_event(handlerkey,*args):
             elif ('logconsole' in fig):
                 for printline in ((fig['logconsole']).split('\n')):
                     send_websock_cmd('logconsole("'+printline+'",true,true,true)',handlerkey)
+            #also print ingest signals
+            send_websock_cmd('logconsole("Number of ingest_signals: %d maximum: %d'%(len(ingest_signals),opts.max_custom_signals)+'",true,true,true)',handlerkey)
         elif (args[0]=='kick'):
             logger.info(repr(args))
             if (len(args)==1):
@@ -3242,7 +3245,7 @@ def parse_websock_cmd(s, request):
 def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.write_message(binarydata,binary=True)
-    except WebSocketClosedError: # connection has gone
+    except tornado.websocket.WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception as e:
@@ -3254,7 +3257,7 @@ def send_websock_cmd(cmd, handlerkey):
     try:
         frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
         handlerkey.write_message(frame)
-    except WebSocketClosedError: # connection has gone
+    except tornado.websocket.WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception as e:
