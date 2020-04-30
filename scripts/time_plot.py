@@ -1147,7 +1147,8 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
             if (handlerkey is not None):
                 send_websock_cmd('logconsole("Server exception occurred evaluating set custom signals",true,false,true)',handlerkey)
             failed_update_ingest_signals_lastts=lastts
-        ingest_signals=new_ingest_signals
+            new_ingest_signals=ingest_signals
+    ingest_signals=new_ingest_signals
 
 def logusers(handlerkey):
     try:
