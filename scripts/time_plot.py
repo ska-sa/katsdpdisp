@@ -1129,7 +1129,7 @@ def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
         new_ingest_signals[sig]=time.time()
     if (len(new_ingest_signals)>opts.max_custom_signals):
         logger.debug('Number of customsignals %d exceeds %d:'%(len(new_ingest_signals),opts.max_custom_signals))
-        sigs=new_ingest_signals.keys()
+        sigs=list(new_ingest_signals.keys())
         times=[new_ingest_signals[sig] for sig in sigs]
         sind=np.argsort(times)
         new_ingest_signals={sigs[ind]:new_ingest_signals[sigs[ind]] for ind in sind[:opts.max_custom_signals]}
