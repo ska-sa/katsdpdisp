@@ -3247,11 +3247,11 @@ def send_websock_data(binarydata, handlerkey):
     try:
         handlerkey.write_message(binarydata,binary=True)
     except tornado.websocket.WebSocketClosedError: # connection has gone
-        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception as e:
         logger.warning("Failed to send message (%s)", str(e), exc_info=True)
-        logger.warning("Connection to %s@%s has gone. Closing..." % websockrequest_username[handlerkey], handlerkey.request.remote_ip)
+        logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
 
 def send_websock_cmd(cmd, handlerkey):
