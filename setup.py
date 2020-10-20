@@ -15,6 +15,6 @@ setup (
     zip_safe = False,
     setup_requires=["katversion"],
     python_requires=">=3.5",
-    install_requires=["spead2>=1.5.0", "katsdpservices[argparse]", "six"],
+    install_requires=["spead2>=1.5.0,<3", "katsdpservices[argparse]", "six"],
     use_katversion=True
 )
