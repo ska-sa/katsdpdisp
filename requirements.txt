@@ -16,7 +16,7 @@ python-dateutil
 pytz
 redis
 six
-spead2
+spead2==3.0.0
 tornado
 katsdpservices @ git+https://github.com/ska-sa/katsdpservices
 katsdptelstate @ git+https://github.com/ska-sa/katsdptelstate

@@ -1009,8 +1009,9 @@ class SpeadSDReceiver(threading.Thread):
         self.storage = storage
         self.cpref = CorrProdRef()
          # this will start off with a default mapping that will get updated when bls_ordering received via SPEAD
-        self.rx = spead2.recv.Stream(spead2.ThreadPool())
-        self.rx.stop_on_stop_item = False
+        self.rx = spead2.recv.Stream(
+            spead2.ThreadPool(),
+            spead2.recv.StreamConfig(stop_on_stop_item=False))
         if interface_address is None:
             interface_address = ''
         if multicast_group is not None:
