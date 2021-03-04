@@ -1,20 +1,11 @@
-certifi
-cycler
-future
+-c https://raw.githubusercontent.com/ska-sa/katsdpdockerbase/master/docker-base-build/base-requirements.txt
+
 h5py
-katversion
-kiwisolver
 manhole
 matplotlib
-msgpack
 netifaces
 numpy
 psutil==5.7.0
-pygelf
-pyparsing
-python-dateutil
-pytz
-redis
 six
 spead2
 tornado
