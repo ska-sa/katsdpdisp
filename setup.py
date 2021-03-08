@@ -13,8 +13,17 @@ setup (
         "scripts/time_plot.py",
         ],
     zip_safe = False,
-    setup_requires=["katversion"],
     python_requires=">=3.5",
-    install_requires=["spead2>=3.0.0", "katsdpservices[argparse]", "six"],
+    install_requires=[
+        "h5py",
+        "manhole",
+        "matplotlib",
+        "netifaces",
+        "numpy",
+        "psutil",
+        "six",
+        "spead2>=3.0.0",
+        "katsdpservices[argparse]",
+        "katsdptelstate"],
     use_katversion=True
 )
