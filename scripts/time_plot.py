@@ -1497,6 +1497,69 @@ def handle_websock_event(handlerkey,*args):
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+        elif (args[0].startswith('holo')):#accepts 'holo', 'holo 3' where 3 is m003 as explicit reference antenna, else first track antenna is chosen as reference antenna
+            logger.info(repr(args))
+            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
+            if (len(antnumbers)==0):
+                send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
+            else:
+                cbid=str(telstate['sdp_capture_block_id'])
+                obs_params_key=telstate.join(cbid, 'obs_params')
+                obs_params=telstate.get(obs_params_key, {})
+                scan_ants=[]
+                track_ants=[]
+                if 'scan_ants' in obs_params:
+                    scan_ants=obs_params['scan_ants'].split(',')
+                if 'track_ants' in obs_params:
+                    track_ants=obs_params['track_ants'].split(',')
+                if 'scan_ants_always' in obs_params:
+                    scan_ants_always=obs_params['scan_ants_always'].split(',')
+                    newtrackants=[]
+                    for ant in track_ants:
+                        if ant in scan_ants_always:
+                            scan_ants.append(ant)
+                        else:
+                            newtrackants.append(ant)
+                    track_ants=newtrackants
+                    scan_ants=sorted(scan_ants)
+                if (len(args)==1 or args[1]==''):
+                    if len(track_ants):
+                        refantnumber=int(track_ants[0][1:])
+                    else:
+                        refantnumber=antnumbers[0]
+                else:#use supplied refant
+                    refantnumberlist=parse_antennarange(','.join(args[1:]))
+                    if (len(refantnumberlist)==1):
+                        refantnumber=refantnumberlist[0]
+                    else:
+                        send_websock_cmd('logconsole("Invalid reference antenna specified, using default instead",true,true,true)',handlerkey)
+                        refantnumber=antnumbers[0]
+                send_websock_cmd('logconsole("Building holography view using reference: '+'m%03d'%(refantnumber)+'",true,false,true)',handlerkey)
+                html_customsignals[username]=[]
+                html_collectionsignals[username]=[]
+                html_viewsettings[username]=[]
+                html_layoutsettings[username]={'ncols':2,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
+                if len(scan_ants)==0:
+                    scan_ant_numbers=range(64)
+                else:
+                    scan_ant_numbers=[int(antname[1:]) for antname in scan_ants if antname!=refantnumber]
+
+                for iant in scan_ant_numbers: # keep blank placeholder if antenna not present
+                    if (iant<refantnumber):
+                        ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
+                    else:
+                        ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                    decodedsignal=decodecustomsignal(ijstr)
+                    html_customsignals[username].append(decodedsignal)
+
+                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%refantnumber})
+                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%(scan_ant_numbers[0])})
+                html_viewsettings[username].append({'figtype':'spectrum','type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
+                for thishandler in websockrequest_username.keys():
+                    if (websockrequest_username[thishandler]==username):
+                        send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                send_websock_cmd('logconsole("scan antennas: '+','.join(scan_ants)+'",true,false,true)',handlerkey)
+                send_websock_cmd('logconsole("track antennas: '+','.join(track_ants)+'",true,false,true)',handlerkey)
         elif (args[0].startswith('waterfall')):#creates new waterfall plot
             logger.info(repr(args))
             if (args[0].startswith('waterfallphase')):

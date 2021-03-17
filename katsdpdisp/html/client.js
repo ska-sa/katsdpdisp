@@ -284,6 +284,9 @@ function setsignals(){
     }else if (signaltext=='inputs')
     {
         handle_data_user_event('inputs');
+    }else if (signaltext.slice(0,4)=='holo')
+    {
+        handle_data_user_event('holo'+','+signaltext.slice(4));
     }else if (signaltext=='info')
     {
         handle_data_user_event('info');
