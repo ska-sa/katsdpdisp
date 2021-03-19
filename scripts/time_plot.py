@@ -1497,13 +1497,13 @@ def handle_websock_event(handlerkey,*args):
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
-        elif (args[0].startswith('holo')):#accepts 'holo', 'holo 3' where 3 is m003 as explicit reference antenna, else first track antenna is chosen as reference antenna
+        elif (args[0].startswith('holo')):#accepts 'holohh', 'holovv', 'holohv', 'holovh', 'holo 3' where 3 is m003 as explicit reference antenna, else first track antenna is chosen as reference antenna
             logger.info(repr(args))
             antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
-                cbid=str(telstate['sdp_capture_block_id'])
+                cbid=telstate['sdp_capture_block_id']#this is a string
                 obs_params_key=telstate.join(cbid, 'obs_params')
                 obs_params=telstate.get(obs_params_key, {})
                 scan_ants=[]
@@ -1545,15 +1545,15 @@ def handle_websock_event(handlerkey,*args):
                     scan_ant_numbers=[int(antname[1:]) for antname in scan_ants if antname!=refantnumber]
 
                 for iant in scan_ant_numbers: # keep blank placeholder if antenna not present
-                    if (iant<refantnumber):
-                        ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
+                    if iant<refantnumber:
+                        ijstr=f'{iant}{args[0][-1]}{refantnumber}{args[0][-2]}'#equivalent to str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
-                        ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                        ijstr=f'{refantnumber}{args[0][-2]}{iant}{args[0][-1]}'#equivalent to str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
                     decodedsignal=decodecustomsignal(ijstr)
                     html_customsignals[username].append(decodedsignal)
 
-                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%refantnumber})
-                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s'  ,'xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%(scan_ant_numbers[0])})
+                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%refantnumber})
+                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%(scan_ant_numbers[0])})
                 html_viewsettings[username].append({'figtype':'spectrum','type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
