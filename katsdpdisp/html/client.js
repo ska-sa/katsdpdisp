@@ -284,12 +284,12 @@ function setsignals(){
     }else if (signaltext=='inputs')
     {
         handle_data_user_event('inputs');
+    }else if (signaltext.slice(0,6)=='holohh' || signaltext.slice(0,6)=='holovv' || signaltext.slice(0,6)=='holohv' || signaltext.slice(0,6)=='holovh')
+    {
+        handle_data_user_event(signaltext.slice(0,6)+','+signaltext.slice(6));
     }else if (signaltext.slice(0,4)=='holo')
     {
         handle_data_user_event('holohh,'+signaltext.slice(4));
-    }else if (signaltext.slice(0,6)=='holohh' || signaltext.slice(0,6)=='holovv' || signaltext.slice(0,6)=='holovh' || signaltext.slice(0,6)=='holovh')
-    {
-        handle_data_user_event(signaltext.slice(0,6)+','+signaltext.slice(6));
     }else if (signaltext=='info')
     {
         handle_data_user_event('info');
