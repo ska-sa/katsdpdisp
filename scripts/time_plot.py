@@ -3308,7 +3308,8 @@ def parse_websock_cmd(s, request):
 
 def send_websock_data(binarydata, handlerkey):
     try:
-        handlerkey.write_message(binarydata,binary=True)
+        if request in websockrequest_username:#else skip - connection may have gone midway through a send update
+            handlerkey.write_message(binarydata,binary=True)
     except tornado.websocket.WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
@@ -3319,8 +3320,9 @@ def send_websock_data(binarydata, handlerkey):
 
 def send_websock_cmd(cmd, handlerkey):
     try:
-        frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
-        handlerkey.write_message(frame)
+        if request in websockrequest_username:#else skip - connection may have gone midway through a send update
+            frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
+            handlerkey.write_message(frame)
     except tornado.websocket.WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
