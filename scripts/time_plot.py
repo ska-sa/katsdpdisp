@@ -3292,16 +3292,17 @@ def pack_binarydata_msg(varname,val,dtype):
     return buff
 
 #Caught exception (local variable 'action' referenced before assignment). Removing registered handler
-def parse_websock_cmd(s, request):
+def parse_websock_cmd(s, handlerkey):
     try:
         args = s.split(",")
-        if (request not in websockrequest_username):
+        if (handlerkey not in websockrequest_username):
             if (args[0]=='setusername'):
-                websockrequest_username[request]='no-name'
+                websockrequest_username[handlerkey]='no-name'
             else:
-                raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(request))
-        websockrequest_time[request]=time.time()
-        handle_websock_event(request,*args)
+                logger.warning("Denied request %s from unregistered %s", s, handlerkey.request.remote_ip)
+                raise ValueError('Closing data connection. Unregistered request handler not allowed: '+str(handlerkey))
+        websockrequest_time[handlerkey]=time.time()
+        handle_websock_event(handlerkey,*args)
 
     except AttributeError:
         logger.warning("Cannot find request method %s", s)
