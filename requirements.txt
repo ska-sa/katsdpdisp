@@ -11,3 +11,4 @@ spead2
 tornado
 katsdpservices @ git+https://github.com/ska-sa/katsdpservices
 katsdptelstate @ git+https://github.com/ska-sa/katsdptelstate
+katdal @ git+https://github.com/ska-sa/katdal

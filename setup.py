@@ -24,6 +24,7 @@ setup (
         "six",
         "spead2>=3.0.0",
         "katsdpservices[argparse]",
-        "katsdptelstate"],
+        "katsdptelstate",
+        "katdal"],
     use_katversion=True
 )

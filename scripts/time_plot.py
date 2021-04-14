@@ -24,6 +24,7 @@ import numpy as np
 import copy
 import katsdpdisp
 import katsdpdisp.data as sdispdata
+from katdal.sensordata import to_str
 import re
 import json
 import resource
@@ -1508,12 +1509,12 @@ def handle_websock_event(handlerkey,*args):
                 obs_params=telstate.get(obs_params_key, {})
                 scan_ants=[]
                 track_ants=[]
-                if 'scan_ants' in obs_params:
-                    scan_ants=obs_params['scan_ants'].split(',')
-                if 'track_ants' in obs_params:
-                    track_ants=obs_params['track_ants'].split(',')
-                if 'scan_ants_always' in obs_params:
-                    scan_ants_always=obs_params['scan_ants_always'].split(',')
+                if b'scan_ants' in obs_params:
+                    scan_ants=to_str(obs_params[b'scan_ants']).split(',')
+                if b'track_ants' in obs_params:
+                    track_ants=to_str(obs_params[b'track_ants']).split(',')
+                if b'scan_ants_always' in obs_params:
+                    scan_ants_always=to_str(obs_params[b'scan_ants_always']).split(',')
                     newtrackants=[]
                     for ant in track_ants:
                         if ant in scan_ants_always:
@@ -1540,9 +1541,9 @@ def handle_websock_event(handlerkey,*args):
                 html_viewsettings[username]=[]
                 html_layoutsettings[username]={'ncols':2,'showonlineflags':'off','showflags':'on','outlierthreshold':100.0}
                 if len(scan_ants)==0:
-                    scan_ant_numbers=range(64)
+                    scan_ant_numbers=[antnumber for antnumber in antnumbers if antnumber!=refantnumber]
                 else:
-                    scan_ant_numbers=[int(antname[1:]) for antname in scan_ants if antname!=refantnumber]
+                    scan_ant_numbers=[int(antname[1:]) for antname in scan_ants if int(antname[1:])!=refantnumber]
 
                 for iant in scan_ant_numbers: # keep blank placeholder if antenna not present
                     if iant<refantnumber:
