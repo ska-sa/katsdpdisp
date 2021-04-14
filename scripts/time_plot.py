@@ -1550,6 +1550,8 @@ def handle_websock_event(handlerkey,*args):
                         ijstr=f'{iant}{args[0][-1]}{refantnumber}{args[0][-2]}'#equivalent to str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     elif iant>refantnumber:#avoid auto
                         ijstr=f'{refantnumber}{args[0][-2]}{iant}{args[0][-1]}'#equivalent to str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                    else:
+                        continue
                     decodedsignal=decodecustomsignal(ijstr)
                     html_customsignals[username].append(decodedsignal)
 
