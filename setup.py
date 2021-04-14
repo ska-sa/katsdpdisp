@@ -25,6 +25,7 @@ setup (
         "spead2>=3.0.0",
         "katsdpservices[argparse]",
         "katsdptelstate",
-        "katdal"],
+        "katdal",
+        "katpoint"],
     use_katversion=True
 )
