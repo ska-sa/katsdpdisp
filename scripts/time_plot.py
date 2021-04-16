@@ -1500,7 +1500,7 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0].startswith('holo')):#accepts 'holohh', 'holovv', 'holohv', 'holovh', 'holohh 3' where 3 is m003 as explicit reference antenna, else first track antenna is chosen as reference antenna
             logger.info(repr(args))
-            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
+            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available antennas
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
