@@ -232,8 +232,8 @@ A spectrum plot is also produced.
 You may additionally want to issue a command such as 'flags=..500,520..'
 
 For example:
-'holo' regenerates a view using the first tracking antenna as reference of cross correlation product (h pol)
-'holo 4' regenerates a view using m004 as reference of cross correlation product
+'holo' regenerates a view using the first tracking antenna as reference of cross correlation product (h pol implied)
+'holo 4' regenerates a view using m004 as reference of cross correlation product (h pol implied)
 'holovv' regenerates a view using the first tracking antenna as reference of cross correlation product (v pol)
 
 [lag]
