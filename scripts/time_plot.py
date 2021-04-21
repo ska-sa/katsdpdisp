@@ -1561,6 +1561,7 @@ def handle_websock_event(handlerkey,*args):
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
+                send_websock_cmd('logconsole("scan antennas always: '+','.join(scan_ants_always)+'",true,false,true)',handlerkey)
                 send_websock_cmd('logconsole("scan antennas: '+','.join(scan_ants)+'",true,false,true)',handlerkey)
                 send_websock_cmd('logconsole("track antennas: '+','.join(track_ants)+'",true,false,true)',handlerkey)
         elif (args[0].startswith('waterfall')):#creates new waterfall plot
