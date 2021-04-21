@@ -1507,6 +1507,7 @@ def handle_websock_event(handlerkey,*args):
                 cbid=telstate['sdp_capture_block_id']#this is a string
                 obs_params_key=telstate.join(cbid, 'obs_params')
                 obs_params=telstate.get(obs_params_key, {})
+                scan_ants_always=[]
                 scan_ants=[]
                 track_ants=[]
                 if b'scan_ants' in obs_params:
