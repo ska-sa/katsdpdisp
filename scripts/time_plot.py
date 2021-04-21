@@ -1524,7 +1524,7 @@ def handle_websock_event(handlerkey,*args):
                             newtrackants.append(ant)
                     track_ants=newtrackants
                     scan_ants=sorted(scan_ants)
-                if (len(args)==1 or args[1]==''):
+                if len(args)==1 or args[1]=='':
                     if len(track_ants):
                         refantnumber=int(track_ants[0][1:])
                     else:
