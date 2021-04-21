@@ -1557,7 +1557,7 @@ def handle_websock_event(handlerkey,*args):
                     html_customsignals[username].append(decodedsignal)
 
                 html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%refantnumber})
-                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%(scan_ant_numbers[0])})
+                html_viewsettings[username].append({'figtype':'timeseries','type':'pow','xtype':'s','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0,'sensor':'m%03d_pos_actual_scan_elev'%(scan_ant_numbers[0] if len(scan_ant_numbers) else refantnumber)})
                 html_viewsettings[username].append({'figtype':'spectrum','type':'pow','xtype':'ch','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'on','showxlabel':'off','showylabel':'off','showxticklabel':'on','showyticklabel':'on','showtitle':'on','processtime':0,'version':0})
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
