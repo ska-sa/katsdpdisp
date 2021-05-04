@@ -1506,16 +1506,16 @@ def handle_websock_event(handlerkey,*args):
             else:
                 cbid=telstate['sdp_capture_block_id']#this is a string
                 obs_params_key=telstate.join(cbid, 'obs_params')
-                obs_params=telstate.get(obs_params_key, {})
+                obs_params=to_str(telstate.get(obs_params_key, {}))
                 scan_ants_always=[]
                 scan_ants=[]
                 track_ants=[]
-                if b'scan_ants' in obs_params:
-                    scan_ants=to_str(obs_params[b'scan_ants']).split(',')
-                if b'track_ants' in obs_params:
-                    track_ants=to_str(obs_params[b'track_ants']).split(',')
-                if b'scan_ants_always' in obs_params:
-                    scan_ants_always=to_str(obs_params[b'scan_ants_always']).split(',')
+                if 'scan_ants' in obs_params:
+                    scan_ants=obs_params['scan_ants'].split(',')
+                if 'track_ants' in obs_params:
+                    track_ants=obs_params['track_ants'].split(',')
+                if 'scan_ants_always' in obs_params:
+                    scan_ants_always=obs_params['scan_ants_always'].split(',')
                     newtrackants=[]
                     for ant in track_ants:
                         if ant in scan_ants_always:
