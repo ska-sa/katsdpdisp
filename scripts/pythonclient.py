@@ -1,4 +1,6 @@
 from websocket import create_connection
+# ws = create_connection("ws://10.98.2.128:31460/ws")
+
 ws = create_connection("ws://10.98.2.111:8000/ws")
 #set username
 ws.send(u'setusername,pythonclient')
@@ -22,7 +24,7 @@ print chan200
 
 #determine sub array number
 ws.send(u'telstate,subarray_product_id,')
-subarrayproduct=ws.recv().split("\"")[1].split("'")[1]
+subarrayproduct=ws.recv().split("\"")[1].split(":")[1].split("'")[1]
 print 'product:',subarrayproduct
 
 ws.close()
@@ -42,7 +44,7 @@ for portoffset in range(0,20):
     result =  ws.recv()#ignore this reply
     result2 =  ws.recv()#ignore this reply
     ws.send(u'telstate,subarray_product_id,')
-    subarrayproduct=ws.recv().split("\"")[1].split("'")[1]
+    subarrayproduct=ws.recv().split("\"")[1].split(":")[1].split("'")[1]
     print 'port:%d '%(baseport+portoffset)+'product:'+subarrayproduct
     active_timeplots[baseport+portoffset]=subarrayproduct
     ws.close()

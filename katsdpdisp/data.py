@@ -2188,7 +2188,7 @@ class DataHandler(object):
                 if abs(end_time) > self.storage.slots: end_time = -self.storage.slots
                  # ensure we do not ask for more data than is available
                 split_end = self.storage.frame_count #rolled_ts.argmax() + roll_point
-                split_start = max(split_end + end_time,0)
+                split_start = max(split_end + int(end_time),0)
             split_end = split_start + self.storage.slots if split_end - split_start > self.storage.slots else split_end
 
             arraylen=self.storage.data.shape[0];
