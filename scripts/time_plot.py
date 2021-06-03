@@ -2127,8 +2127,8 @@ def handle_websock_event(handlerkey,*args):
                         telstate_cbf_target.append((thiscbf_target[0].split(',')[0].split(' |')[0].split('|')[0],thiscbf_target[1]))
                 if len(telstate_cal_antlist) == 0 and 'cal_antlist' in telstate_cb:
                     telstate_cal_antlist = telstate_cb.get('cal_antlist')
-                if 'cal_product_B' in telstate_cb:
-                    newproducts = telstate_cb.get_range('cal_product_B',st=0 if (len(telstate_cal_product_B)==0) else telstate_cal_product_B[-1][1]+0.01)
+                if 'cal_product_B0' in telstate_cb:# note 'cal_product_B_parts' is either 1 or 4, if 4 then should compose from cal_product_B0-cal_product_B3
+                    newproducts = telstate_cb.get_range('cal_product_B0',st=0 if (len(telstate_cal_product_B)==0) else telstate_cal_product_B[-1][1]+0.01)
                     if len(newproducts):
                         telstate_cal_product_B=[newproducts[-1]]#overwrite with latest values, do not make history available
                 if 'cal_product_G' in telstate_cb:
