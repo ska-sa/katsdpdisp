@@ -1003,7 +1003,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriessnrdata')
                     else:
                         fig['title']='Baseline matrix mean H\\V'
-                        mxdata=datasd.select_timeseriesdata(products=products, dtype='mag', end_time=-1, include_ts=False, source='timeseriesdata')
+                        mxdata=datasd.select_timeseriesdata(products=products, dtype=thetype, end_time=-1, include_ts=False, source='timeseriesdata')
                     mxdatahh=mxdata[::2]
                     mxdatavv=mxdata[1::2]
                     if (theviewsettings['type']=='pow'):
