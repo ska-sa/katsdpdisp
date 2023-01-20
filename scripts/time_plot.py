@@ -297,7 +297,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='fileoffset'):
-                if (datafilename is 'stream'):
+                if (datafilename == 'stream'):
                     fig={'logconsole':'This is a stream'}
                 elif (theviewsettings is None):
                     fig={'logconsole':'The fileoffset for %s is %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
@@ -1107,7 +1107,7 @@ failed_update_ingest_signals_lastts=0
 def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     global failed_update_ingest_signals_lastts
     global ingest_signals
-    if (opts.datafilename is not 'stream'):
+    if (opts.datafilename != 'stream'):
         return
     if (failed_update_ingest_signals_lastts==lastts):
         return
@@ -1803,7 +1803,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
-            elif (opts.datafilename is 'stream'):
+            elif (opts.datafilename == 'stream'):
                 ####set timeseries mask on ingest
                 try:
                     result=telstate_l0.add('sdisp_timeseries_mask',weightedmask)
@@ -1825,7 +1825,7 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='fileoffset'):
             logger.info(repr(args))
-            if (opts.datafilename is 'stream'):
+            if (opts.datafilename == 'stream'):
                 send_websock_cmd('logconsole("Ignoring fileoffset command because data source is a stream and not a file",true,true,true)',handlerkey)
             else:
                 with RingBufferLock:
@@ -3461,6 +3461,7 @@ if (telstate is None):
 else:
     telstate_l0 = telstate.view(opts.l0_name)
 
+rb_process=None
 poll_telstate_lasttime=0
 telstate_cal_antlist=[]
 telstate_cal_product_G=[]
@@ -3479,65 +3480,67 @@ ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
-rb_process = Process(target=RingBufferProcess,args=(opts.spead, opts.spead_port, opts.spead_interface, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
-rb_process.start()
 
-if (opts.datafilename is not 'stream'):
-    telstate_script_name=opts.datafilename
-    scriptnametext=opts.datafilename
-    with RingBufferLock:
-        ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
-        fig=ringbufferresultqueue.get()
-    if (fig=={}):#an exception occurred
-        logger.warning('Server exception evaluating inputs')
-    elif ('logconsole' in fig):
-        inputs=fig['logconsole'].split(',')
-        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+if __name__ == '__main__':
+    rb_process = Process(target=RingBufferProcess,args=(opts.spead, opts.spead_port, opts.spead_interface, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
+    rb_process.start()
+
+    if (opts.datafilename != 'stream'):
+        telstate_script_name=opts.datafilename
+        scriptnametext=opts.datafilename
+        with RingBufferLock:
+            ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+        if (fig=={}):#an exception occurred
+            logger.warning('Server exception evaluating inputs')
+        elif ('logconsole' in fig):
+            inputs=fig['logconsole'].split(',')
+            telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+        else:
+            logger.warning('Error evaluating inputs')
     else:
-        logger.warning('Error evaluating inputs')
-else:
-    if ('bls_ordering' in telstate_l0):
-        telstate_bls_ordering=telstate_l0['bls_ordering']
-        inputs=[]
-        for bls in telstate_bls_ordering:
-            if bls[0] == bls[1]:
-                inputs.append(bls[0])
-        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
-    else:
-        logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
-    if ('subarray_product_id' in telstate):
-        telstate_array_id=telstate['subarray_product_id']
-    else:
-        logger.warning("Unexpected subarray_product_id not in telstate")
+        if ('bls_ordering' in telstate_l0):
+            telstate_bls_ordering=telstate_l0['bls_ordering']
+            inputs=[]
+            for bls in telstate_bls_ordering:
+                if bls[0] == bls[1]:
+                    inputs.append(bls[0])
+            telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+        else:
+            logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
+        if ('subarray_product_id' in telstate):
+            telstate_array_id=telstate['subarray_product_id']
+        else:
+            logger.warning("Unexpected subarray_product_id not in telstate")
 
 
-def graceful_exit(_signo=None, _stack_frame=None):
-    logger.info("Exiting time_plot on SIGTERM")
-    rb_process.terminate()
-     # SIGINT gets swallowed by the HTTP server
-     # so we explicitly terminate the Ring Buffer
-    os.kill(os.getpid(), signal.SIGINT)
-     # rely on the interrupt handler around the HTTP server
-     # to peform graceful shutdown. this preserves the command
-     # line Ctrl-C shutdown.
+    def graceful_exit(_signo=None, _stack_frame=None):
+        logger.info("Exiting time_plot on SIGTERM")
+        rb_process.terminate()
+         # SIGINT gets swallowed by the HTTP server
+         # so we explicitly terminate the Ring Buffer
+        os.kill(os.getpid(), signal.SIGINT)
+         # rely on the interrupt handler around the HTTP server
+         # to peform graceful shutdown. this preserves the command
+         # line Ctrl-C shutdown.
 
-signal.signal(signal.SIGTERM, graceful_exit)
- # mostly needed for Docker use since this process runs as PID 1
- # and does not get passed sigterm unless it has a custom listener
+    signal.signal(signal.SIGTERM, graceful_exit)
+     # mostly needed for Docker use since this process runs as PID 1
+     # and does not get passed sigterm unless it has a custom listener
 
-application = tornado.web.Application([
-    (r'/ws', WSHandler),
-    (r'/', MainHandler),
-    (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
-])
+    application = tornado.web.Application([
+        (r'/ws', WSHandler),
+        (r'/', MainHandler),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
+    ])
 
-try:
-    httpserver = tornado.httpserver.HTTPServer(application)
-    httpserver.listen(opts.html_port, opts.html_host)
-    logger.info('Started httpserver on %s:%s', opts.html_host, opts.html_port)
-    # allow remote debug connections and expose httpserver, websockserver and opts
-    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
-    tornado.ioloop.IOLoop.current().start()
-except KeyboardInterrupt:
-    logger.warning('^C received, shutting down the web server')
-    tornado.ioloop.IOLoop.current().stop()
+    try:
+        httpserver = tornado.httpserver.HTTPServer(application)
+        httpserver.listen(opts.html_port, opts.html_host)
+        logger.info('Started httpserver on %s:%s', opts.html_host, opts.html_port)
+        # allow remote debug connections and expose httpserver, websockserver and opts
+        manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
+        tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        logger.warning('^C received, shutting down the web server')
+        tornado.ioloop.IOLoop.current().stop()
