@@ -1480,7 +1480,8 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv')):
             logger.info(repr(args))
-            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
+            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask if antnumberstr[0]=='m']#determine all meerkat inputs
+            skaants=[antname for antname in telstate_antenna_mask if antname[0]=='s']
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
@@ -1493,7 +1494,7 @@ def handle_websock_event(handlerkey,*args):
                     else:
                         send_websock_cmd('logconsole("Invalid reference antenna specified, using default instead",true,true,true)',handlerkey)
                         refantnumber=antnumbers[0]
-                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
+                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(np.r_[['m%03d'%antnum for antnum in antnumbers],skaants])+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
                 html_viewsettings[username]=[]
@@ -1503,6 +1504,9 @@ def handle_websock_event(handlerkey,*args):
                         ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
                         ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                    html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
+                for iant in range(len(skaants)): # keep blank placeholder if antenna not present
+                    ijstr=str(refantnumber)+str(args[0][-2])+skaants[iant]+str(args[0][-1])
                     html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
