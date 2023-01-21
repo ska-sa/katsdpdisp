@@ -937,7 +937,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=['res0','static','cam','lost','ingest','predict','cal','res7']
                     fig['lastts']=ts[-1]
@@ -977,7 +980,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=legend
                     fig['lastts']=ts[-1]
@@ -1030,7 +1036,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=legend
                     fig['lastts']=ts[-1]
