@@ -10,6 +10,7 @@ var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
 var legendwidth=100
+var mustdostar=false
 
 var swapaxes=false
 var figureaspect=0.5
@@ -877,7 +878,8 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                         figcontext.closePath();
                         figcontext.strokeStyle = "#000000";
                         dostar=''
-                        for (ix=ixstartdatax+1;ix<ixenddatax;ix++)
+						if (mustdostar)
+							for (ix=ixstartdatax+1;ix<ixenddatax;ix++)
                             if (ilinemin[ix]==iline || ilinemax[ix]==iline)
                             {
                                 dostar='*'
