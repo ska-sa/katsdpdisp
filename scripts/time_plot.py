@@ -3415,7 +3415,7 @@ parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=in
                   help="Override total number of cbf_channels (default=%(default)s). There may be fewer channels received per Ingest node.")
 parser.add_argument("--l0_name", dest="l0_name", default="sdp_l0", type=str,
                   help="Set stream name for telstate keys (default=%(default)s)")
-parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=128, type=int,
+parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=256, type=int,
                   help="Maximum number of custom signals (default=%(default)s).")
 
 (opts, args) = parser.parse_known_args()
