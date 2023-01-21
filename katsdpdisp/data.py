@@ -466,7 +466,7 @@ class SignalDisplayStore2(object):
         self.data = SparseArray(self.slots,self.n_bls,self.n_chans,maxbaselines,dtype=np.complex64)
         self.flags = SparseArray(self.slots,self.n_bls,self.n_chans,maxbaselines,dtype=np.uint8)
         self.ts = np.zeros(self.slots, dtype=np.uint64)
-        self.timeseriesslots=7200 # self.slots
+        self.timeseriesslots=3600 # self.slots
         self.timeseriesdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.complex64)
         self.timeseriessnrdata = np.zeros((self.timeseriesslots, self.n_bls),dtype=np.float32)
         self.timeseriesflagfractiondata = np.zeros((self.timeseriesslots, self.n_bls, 8),dtype=np.float32)
