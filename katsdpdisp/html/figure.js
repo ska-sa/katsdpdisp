@@ -9,6 +9,7 @@ var labelfontHeightspace=labelfontHeight/5
 var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
+var legendwidth=100
 
 var swapaxes=false
 var figureaspect=0.5
@@ -838,7 +839,7 @@ function drawFigure(ifig,datax,dataylist,clrlist,xsensor,ysensor,sensorname,xtex
                 {
                     legendfontHeight=labelfontHeight*0.9
                     figcontext.font=""+legendfontHeight+"px sans-serif";
-                    x=figcanvas.width-75
+                    x=figcanvas.width-(legendwidth-5)
                     for (iline=0,y=axisposv+legendfontHeight;iline<legend.length && y<axisposv+axiscanvas.height-legendfontHeight/5;iline++,y+=legendfontHeight)
                     {
                         if (corrlinepoly[clrlist[iline][3]] || showlegend[iline]==false)
@@ -1506,7 +1507,7 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel,yunit
         {
             legendfontHeight=labelfontHeight*0.9
             figcontext.font=""+legendfontHeight+"px sans-serif";
-            x=figcanvas.width-75
+            x=figcanvas.width-(legendwidth-5)
             y=axisposy+legendfontHeight
             for (i=0;i<legendy.length;i++)
             {
@@ -2205,7 +2206,7 @@ function setaxiscanvasrect(ifig)
         else
             _top=tightspacing2
         if (RG_fig[ifig].showlegend=='on')
-            _width=figcanvas.width-80-_left
+            _width=figcanvas.width-legendwidth-_left
         else
             _width=figcanvas.width-tightspacing2-_left
         if ((RG_fig[ifig].figtype=='timeseries') && (RG_fig[ifig].sensorname.length >0))//twinaxis, extra

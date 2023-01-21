@@ -435,7 +435,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         if (len(signal)<len(ts)):
                             signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
@@ -511,7 +511,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         if (len(signal)<datalength):
                             signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.tile(np.nan,datalength)]
@@ -611,7 +611,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         flags=np.logical_or(flags,theflags.reshape(-1))
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     span=[]
                     spancolor=[]
