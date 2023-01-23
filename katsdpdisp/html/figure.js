@@ -9,7 +9,7 @@ var labelfontHeightspace=labelfontHeight/5
 var tickfontHeightspace=tickfontHeight/5
 var majorticklength=tickfontHeight/3; //4 for 12 pt font
 var minorticklength=tickfontHeight/6; //2 for 12 pt font
-var legendwidth=100
+var legendwidth=110
 var mustdostar=false
 
 var swapaxes=false

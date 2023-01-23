@@ -2211,9 +2211,14 @@ def decodecustomsignal(signalstr):
 
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
+#           ('s000h','s001h') into 's0hs1h'
 def printablesignal(product):
     a0=''.join(re.findall('[0-9]',product[0]))
     a1=''.join(re.findall('[0-9]',product[1]))
+    if a0 and product[0][0]=='s':
+        a0='s'+a0
+    if a1 and product[1][0]=='s':
+        a1='s'+a1
     if a0 and a1:
         return str(int(a0))+product[0][-1]+str(int(a1))+product[1][-1]
     else:#some error occurred; faulty signal
