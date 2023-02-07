@@ -297,7 +297,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                 ringbufferresultqueue.put(fig)
                 continue
             if (thelayoutsettings=='fileoffset'):
-                if (datafilename is 'stream'):
+                if (datafilename == 'stream'):
                     fig={'logconsole':'This is a stream'}
                 elif (theviewsettings is None):
                     fig={'logconsole':'The fileoffset for %s is %d [total %d dumps]'%(datafilename,thefileoffset,datasd.storage.h5_ndumps)}
@@ -435,7 +435,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         if (len(signal)<len(ts)):
                             signal=np.r_[signal,np.tile(np.nan,len(ts)-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.nan*ts]
@@ -511,7 +511,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         if (len(signal)<datalength):
                             signal=np.r_[signal,np.tile(0.0,datalength-len(signal))]
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     if (len(ydata)==0):
                         ydata=[np.tile(np.nan,datalength)]
@@ -611,7 +611,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         flags=np.logical_or(flags,theflags.reshape(-1))
                         signal=np.array(signal).reshape(-1)
                         ydata.append(signal)#should check that correct corresponding values are returned
-                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
+                        legend.append(datasd.cpref.id_to_real_str(id=product,short=True).replace('s000','s').replace('s00','s').replace('s0','s').replace('m00','').replace('m0','').replace('m','').replace('ant','').replace(' * ',''))
                         color.append(np.r_[registeredcolour(legend[-1]),0])
                     span=[]
                     spancolor=[]
@@ -937,7 +937,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=['res0','static','cam','lost','ingest','predict','cal','res7']
                     fig['lastts']=ts[-1]
@@ -977,7 +980,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=legend
                     fig['lastts']=ts[-1]
@@ -1030,7 +1036,10 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                     legend=[]
                     for inp in datasd.cpref.inputs:
                         if (inp[-1]=='h'):
-                            legend.append(str(int(inp[1:-1])))
+                            if inp[0]=='m':
+                                legend.append(str(int(inp[1:-1])))
+                            else:#ska antennaname
+                                legend.append(inp[0]+str(int(inp[1:-1])))
                     fig['legendx']=legend
                     fig['legendy']=legend
                     fig['lastts']=ts[-1]
@@ -1107,7 +1116,7 @@ failed_update_ingest_signals_lastts=0
 def UpdateCustomSignals(handlerkey,customproducts,outlierproducts,lastts):
     global failed_update_ingest_signals_lastts
     global ingest_signals
-    if (opts.datafilename is not 'stream'):
+    if (opts.datafilename != 'stream'):
         return
     if (failed_update_ingest_signals_lastts==lastts):
         return
@@ -1471,7 +1480,8 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('ApplyViewLayout('+'["'+'","'.join([fig['figtype'] for fig in html_viewsettings[username]])+'"]'+','+str(html_layoutsettings[username]['ncols'])+')',thishandler)
         elif (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv')):
             logger.info(repr(args))
-            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask]#determine all available inputs
+            antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask if antnumberstr[0]=='m']#determine all meerkat inputs
+            skaants=[antname for antname in telstate_antenna_mask if antname[0]=='s']
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
             else:
@@ -1484,7 +1494,7 @@ def handle_websock_event(handlerkey,*args):
                     else:
                         send_websock_cmd('logconsole("Invalid reference antenna specified, using default instead",true,true,true)',handlerkey)
                         refantnumber=antnumbers[0]
-                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers])+'",true,false,true)',handlerkey)
+                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers] + skaants)+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
                 html_viewsettings[username]=[]
@@ -1494,6 +1504,9 @@ def handle_websock_event(handlerkey,*args):
                         ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
                         ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                    html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
+                for iant in range(len(skaants)): # keep blank placeholder if antenna not present
+                    ijstr=str(refantnumber)+str(args[0][-2])+skaants[iant]+str(args[0][-1])
                     html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
                 for thishandler in websockrequest_username.keys():
                     if (websockrequest_username[thishandler]==username):
@@ -1803,7 +1816,7 @@ def handle_websock_event(handlerkey,*args):
                     send_websock_cmd('logconsole("'+str(len(flagdict))+' flags saved: '+','.join(flagdict.keys())+'",true,true,true)',handlerkey)
                 else:
                     send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
-            elif (opts.datafilename is 'stream'):
+            elif (opts.datafilename == 'stream'):
                 ####set timeseries mask on ingest
                 try:
                     result=telstate_l0.add('sdisp_timeseries_mask',weightedmask)
@@ -1825,7 +1838,7 @@ def handle_websock_event(handlerkey,*args):
                         send_websock_cmd('logconsole("0 flags saved",true,true,true)',handlerkey)
         elif (args[0]=='fileoffset'):
             logger.info(repr(args))
-            if (opts.datafilename is 'stream'):
+            if (opts.datafilename == 'stream'):
                 send_websock_cmd('logconsole("Ignoring fileoffset command because data source is a stream and not a file",true,true,true)',handlerkey)
             else:
                 with RingBufferLock:
@@ -2172,21 +2185,38 @@ def handle_websock_event(handlerkey,*args):
 #else decodes, eg d0001hd0003v into ('d0001h','d0003v')
 #returns () if otherwise invalid
 #note this is not foolproof
+#ANTNAMEPREFIX='s%04d' #SKA; ANTNAMEPREFIX='m%03d' #meerkat; ANTNAMEPREFIX='ant%d' #kat7
+#decodes 23->m023,m1->m001, s3->s0003
 def decodecustomsignal(signalstr):
     sreg=re.compile('[h|v|H|V|x|y]').split(signalstr)
     if (len(sreg)!=3 or len(sreg[2])!=0):
-        return ();
-    if ((not sreg[0].isdigit()) or (not sreg[1].isdigit())):
-        return (sreg[0]+signalstr[len(sreg[0])],sreg[1]+signalstr[len(sreg[0])+1+len(sreg[1])])
-    return (ANTNAMEPREFIX%(int(sreg[0]))+signalstr[len(sreg[0])].lower(),ANTNAMEPREFIX%(int(sreg[1]))+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
+        return ()
+    if sreg[0].isdigit():
+        rv0='m%03d'%int(sreg[0])
+    elif sreg[0][0].lower()=='m' and sreg[0][1:].isdigit():
+        rv0='m%03d'%int(sreg[0][1:])
+    elif sreg[0][0].lower()=='s' and sreg[0][1:].isdigit():
+        rv0='s%04d'%int(sreg[0][1:])
+    else:
+        rv0=sreg[0]
+    if sreg[1].isdigit():
+        rv1='m%03d'%int(sreg[1])
+    elif sreg[1][0].lower()=='m' and sreg[1][1:].isdigit():
+        rv1='m%03d'%int(sreg[1][1:])
+    elif sreg[1][0].lower()=='s' and sreg[1][1:].isdigit():
+        rv1='s%04d'%int(sreg[1][1:])
+    else:
+        rv1=sreg[1]
+    return (rv0+signalstr[len(sreg[0])],rv1+signalstr[len(sreg[0])+1+len(sreg[1])].lower())
 
 #converts eg ('ant1h','ant2h') into '1h2h'
 #            ('m000h','m001h') into '0h1h'
+#           ('s000h','s001h') into 's0hs1h'
 def printablesignal(product):
     a0=''.join(re.findall('[0-9]',product[0]))
     a1=''.join(re.findall('[0-9]',product[1]))
     if a0 and a1:
-        return str(int(a0))+product[0][-1]+str(int(a1))+product[1][-1]
+        return ('s' if (product[0][0]=='s') else '') + str(int(a0)) + product[0][-1] + ('s' if (product[1][0]=='s') else '') + str(int(a1)) + product[1][-1]
     else:#some error occurred; faulty signal
         return product
 
@@ -3390,7 +3420,7 @@ parser.add_argument("--cbf_channels", dest="cbf_channels", default=None, type=in
                   help="Override total number of cbf_channels (default=%(default)s). There may be fewer channels received per Ingest node.")
 parser.add_argument("--l0_name", dest="l0_name", default="sdp_l0", type=str,
                   help="Set stream name for telstate keys (default=%(default)s)")
-parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=128, type=int,
+parser.add_argument("--max_custom_signals", dest="max_custom_signals", default=256, type=int,
                   help="Maximum number of custom signals (default=%(default)s).")
 
 (opts, args) = parser.parse_known_args()
@@ -3413,8 +3443,6 @@ np.random.seed(0)
 
 if (len(args)==0):
     args=['stream']
-
-ANTNAMEPREFIX='m%03d' #meerkat; ANTNAMEPREFIX='ant%d' #kat7
 
 # loads usersettings
 try:
@@ -3461,6 +3489,7 @@ if (telstate is None):
 else:
     telstate_l0 = telstate.view(opts.l0_name)
 
+rb_process=None
 poll_telstate_lasttime=0
 telstate_cal_antlist=[]
 telstate_cal_product_G=[]
@@ -3479,65 +3508,67 @@ ringbufferrequestqueue=Queue()
 ringbufferresultqueue=Queue()
 ringbuffernotifyqueue=Queue()
 opts.datafilename=args[0]
-rb_process = Process(target=RingBufferProcess,args=(opts.spead, opts.spead_port, opts.spead_interface, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
-rb_process.start()
 
-if (opts.datafilename is not 'stream'):
-    telstate_script_name=opts.datafilename
-    scriptnametext=opts.datafilename
-    with RingBufferLock:
-        ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
-        fig=ringbufferresultqueue.get()
-    if (fig=={}):#an exception occurred
-        logger.warning('Server exception evaluating inputs')
-    elif ('logconsole' in fig):
-        inputs=fig['logconsole'].split(',')
-        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+if __name__ == '__main__':
+    rb_process = Process(target=RingBufferProcess,args=(opts.spead, opts.spead_port, opts.spead_interface, opts.memusage, opts.max_custom_signals, opts.datafilename, opts.cbf_channels, ringbufferrequestqueue, ringbufferresultqueue, ringbuffernotifyqueue))
+    rb_process.start()
+
+    if (opts.datafilename != 'stream'):
+        telstate_script_name=opts.datafilename
+        scriptnametext=opts.datafilename
+        with RingBufferLock:
+            ringbufferrequestqueue.put(['inputs',0,0,0,0,0])
+            fig=ringbufferresultqueue.get()
+        if (fig=={}):#an exception occurred
+            logger.warning('Server exception evaluating inputs')
+        elif ('logconsole' in fig):
+            inputs=fig['logconsole'].split(',')
+            telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+        else:
+            logger.warning('Error evaluating inputs')
     else:
-        logger.warning('Error evaluating inputs')
-else:
-    if ('bls_ordering' in telstate_l0):
-        telstate_bls_ordering=telstate_l0['bls_ordering']
-        inputs=[]
-        for bls in telstate_bls_ordering:
-            if bls[0] == bls[1]:
-                inputs.append(bls[0])
-        telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
-    else:
-        logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
-    if ('subarray_product_id' in telstate):
-        telstate_array_id=telstate['subarray_product_id']
-    else:
-        logger.warning("Unexpected subarray_product_id not in telstate")
+        if ('bls_ordering' in telstate_l0):
+            telstate_bls_ordering=telstate_l0['bls_ordering']
+            inputs=[]
+            for bls in telstate_bls_ordering:
+                if bls[0] == bls[1]:
+                    inputs.append(bls[0])
+            telstate_antenna_mask=np.unique([inputname[:-1] for inputname in inputs]).tolist()
+        else:
+            logger.warning("Unexpected " + telstate_bls_ordering_string + " not in telstate")
+        if ('subarray_product_id' in telstate):
+            telstate_array_id=telstate['subarray_product_id']
+        else:
+            logger.warning("Unexpected subarray_product_id not in telstate")
 
 
-def graceful_exit(_signo=None, _stack_frame=None):
-    logger.info("Exiting time_plot on SIGTERM")
-    rb_process.terminate()
-     # SIGINT gets swallowed by the HTTP server
-     # so we explicitly terminate the Ring Buffer
-    os.kill(os.getpid(), signal.SIGINT)
-     # rely on the interrupt handler around the HTTP server
-     # to peform graceful shutdown. this preserves the command
-     # line Ctrl-C shutdown.
+    def graceful_exit(_signo=None, _stack_frame=None):
+        logger.info("Exiting time_plot on SIGTERM")
+        rb_process.terminate()
+         # SIGINT gets swallowed by the HTTP server
+         # so we explicitly terminate the Ring Buffer
+        os.kill(os.getpid(), signal.SIGINT)
+         # rely on the interrupt handler around the HTTP server
+         # to peform graceful shutdown. this preserves the command
+         # line Ctrl-C shutdown.
 
-signal.signal(signal.SIGTERM, graceful_exit)
- # mostly needed for Docker use since this process runs as PID 1
- # and does not get passed sigterm unless it has a custom listener
+    signal.signal(signal.SIGTERM, graceful_exit)
+     # mostly needed for Docker use since this process runs as PID 1
+     # and does not get passed sigterm unless it has a custom listener
 
-application = tornado.web.Application([
-    (r'/ws', WSHandler),
-    (r'/', MainHandler),
-    (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
-])
+    application = tornado.web.Application([
+        (r'/ws', WSHandler),
+        (r'/', MainHandler),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": SERVE_PATH}),
+    ])
 
-try:
-    httpserver = tornado.httpserver.HTTPServer(application)
-    httpserver.listen(opts.html_port, opts.html_host)
-    logger.info('Started httpserver on %s:%s', opts.html_host, opts.html_port)
-    # allow remote debug connections and expose httpserver, websockserver and opts
-    manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
-    tornado.ioloop.IOLoop.current().start()
-except KeyboardInterrupt:
-    logger.warning('^C received, shutting down the web server')
-    tornado.ioloop.IOLoop.current().stop()
+    try:
+        httpserver = tornado.httpserver.HTTPServer(application)
+        httpserver.listen(opts.html_port, opts.html_host)
+        logger.info('Started httpserver on %s:%s', opts.html_host, opts.html_port)
+        # allow remote debug connections and expose httpserver, websockserver and opts
+        manhole.install(oneshot_on='USR1', locals={'httpserver':httpserver, 'opts':opts})
+        tornado.ioloop.IOLoop.current().start()
+    except KeyboardInterrupt:
+        logger.warning('^C received, shutting down the web server')
+        tornado.ioloop.IOLoop.current().stop()

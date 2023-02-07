@@ -1,5 +1,6 @@
 from websocket import create_connection
 # ws = create_connection("ws://10.98.2.128:31460/ws")
+ws = create_connection("ws://10.98.2.128:31020/ws")
 
 ws = create_connection("ws://10.98.2.111:8000/ws")
 #set username
@@ -11,10 +12,10 @@ inputs=ws.recv().split("\"")[1]
 print 'Available inputs:',inputs
 
 #get whole spectrum
-ws.send(u'sendfiguredata,-1,-1,-1,complex,14h15h')
+ws.send(u'sendfiguredata,-1,-1,-1,complex,17h17h')
 result2=ws.recv()
 spectrum =  eval(result2)
-plot(angle(spectrum))
+plot(abs(spectrum))
 
 
 #query channel 200 only
