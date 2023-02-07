@@ -1494,7 +1494,7 @@ def handle_websock_event(handlerkey,*args):
                     else:
                         send_websock_cmd('logconsole("Invalid reference antenna specified, using default instead",true,true,true)',handlerkey)
                         refantnumber=antnumbers[0]
-                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(np.r_[['m%03d'%antnum for antnum in antnumbers],skaants])+'",true,false,true)',handlerkey)
+                send_websock_cmd('logconsole("Building waterfall table for: '+','.join(['m%03d'%antnum for antnum in antnumbers] + skaants)+'",true,false,true)',handlerkey)
                 html_customsignals[username]=[]
                 html_collectionsignals[username]=[]
                 html_viewsettings[username]=[]
