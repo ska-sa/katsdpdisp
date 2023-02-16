@@ -3363,10 +3363,7 @@ def send_websock_cmd(cmd, handlerkey):
                 deregister_websockrequest_handler(handlerkey)
             else:
                 handlerkey.write_message(frame)
-    except tornado.iostream.StreamClosedError:
-        logger.warning("Stream closed for %s@%s", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
-        deregister_websockrequest_handler(handlerkey)
-    except tornado.websocket.WebSocketClosedError: # connection has gone
+    except (tornado.websocket.WebSocketClosedError,tornado.iostream.StreamClosedError):
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception as e:
