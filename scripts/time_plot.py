@@ -3358,8 +3358,12 @@ def send_websock_cmd(cmd, handlerkey):
     try:
         if handlerkey in websockrequest_username:#else skip - connection may have gone midway through a send update
             frame=u"/*exec_user_cmd*/ function callme(){%s; return;};callme();" % cmd;#ensures that vectors of data is not sent back to server!
-            handlerkey.write_message(frame)
-    except tornado.websocket.WebSocketClosedError: # connection has gone
+            if handlerkey.ws_connection is None or handlerkey.ws_connection.is_closing():
+                logger.warning("Stream closing for %s@%s", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
+                deregister_websockrequest_handler(handlerkey)
+            else:
+                handlerkey.write_message(frame)
+    except (tornado.websocket.WebSocketClosedError,tornado.iostream.StreamClosedError):
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
     except Exception as e:
@@ -3368,10 +3372,10 @@ def send_websock_cmd(cmd, handlerkey):
         deregister_websockrequest_handler(handlerkey)
 
 def deregister_websockrequest_handler(handlerkey):
-    if (handlerkey in websockrequest_time):
-        del websockrequest_time[handlerkey]
     if (handlerkey in websockrequest_username):
         del websockrequest_username[handlerkey]
+    if (handlerkey in websockrequest_time):
+        del websockrequest_time[handlerkey]
 
 class MainHandler(tornado.web.RequestHandler):
     def set_default_headers(self):

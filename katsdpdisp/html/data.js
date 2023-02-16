@@ -139,7 +139,10 @@ function restore_data()
         }
         timerid=setInterval(updateFigure,1000)
         logconsole('Connection restored',true,false,true)
-    }else
+    }else if (document.hidden)//sleep when page in hidden tab instead of reloading page
+	{
+        timerid=setTimeout(restore_data,1000)
+	}else
     {
         start_data();
         timerid=setTimeout(restore_data,5000)
