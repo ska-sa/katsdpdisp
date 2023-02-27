@@ -3345,7 +3345,11 @@ def parse_websock_cmd(s, handlerkey):
 def send_websock_data(binarydata, handlerkey):
     try:
         if handlerkey in websockrequest_username:#else skip - connection may have gone midway through a send update
-            handlerkey.write_message(binarydata,binary=True)
+            if handlerkey.ws_connection is None or handlerkey.ws_connection.is_closing():
+                logger.warning("Stream closing for %s@%s", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
+                deregister_websockrequest_handler(handlerkey)
+            else:
+                handlerkey.write_message(binarydata,binary=True)
     except tornado.websocket.WebSocketClosedError: # connection has gone
         logger.warning("Connection to %s@%s has gone. Closing...", websockrequest_username[handlerkey], handlerkey.request.remote_ip)
         deregister_websockrequest_handler(handlerkey)
