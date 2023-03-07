@@ -238,6 +238,33 @@ function setsignals(){
                 handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
             }
     }
+    else if (signaltext.slice(0,9)=='phasemin=' || signaltext.slice(0,9)=='phasemax=')
+    {
+        for (ifig=0;ifig<nfigures;ifig++)
+            if (RG_fig[ifig].type=='phase' || RG_fig[ifig].type=='arg')
+            {
+                if (RG_fig[ifig].figtype=='timeseries' || RG_fig[ifig].figtype.slice(0,8)=='spectrum')
+                {
+                    if (signaltext.slice(0,9)=='phasemin=')
+                        RG_fig[ifig].ymin=parseFloat(signaltext.slice(9))
+                    if (signaltext.slice(0,9)=='phasemax=')
+                        RG_fig[ifig].ymax=parseFloat(signaltext.slice(9))
+                }else
+                {
+                    if (signaltext.slice(0,9)=='phasemin=')
+                    {
+                        RG_fig[ifig].cmin=parseFloat(signaltext.slice(9))
+                    }
+                    else
+                    {
+                        RG_fig[ifig].cmax=parseFloat(signaltext.slice(9))
+                    }
+                }
+                RG_fig[ifig].overridelimit=1;
+                redrawfigure(ifig)
+                handle_data_user_event('setzoom,'+ifig+','+RG_fig[ifig].xmin+','+RG_fig[ifig].xmax+','+RG_fig[ifig].ymin+','+RG_fig[ifig].ymax+','+RG_fig[ifig].cmin+','+RG_fig[ifig].cmax)
+            }
+    }
     else if (signaltext.slice(0,5)=='pmin=' || signaltext.slice(0,5)=='pmax=')
     {
         for (ifig=0;ifig<nfigures;ifig++)

@@ -1022,7 +1022,7 @@ def RingBufferProcess(multicast_group, spead_port, spead_interface, memusage, ma
                         fig['cunit']='counts'
                     else:
                         fig['clabel']='Phase'
-                        fig['cunit']='deg'
+                        fig['cunit']='rad'
                     fig['ylabel']='Time since '+time.asctime(time.localtime(ts[-1]))
                     fig['yunit']='s'
                     fig['mxdatavv']=mxdatavv
@@ -1105,8 +1105,6 @@ html_viewsettings={'default':[  {'figtype':'timeseries','type':'pow','xtype':'s'
 help_dict={}
 websockrequest_time = {}
 websockrequest_username = {}
-new_fig={'title':[],'xdata':[],'ydata':[],'color':[],'legend':[],'xmin':[],'xmax':[],'ymin':[],'ymax':[],'xlabel':[],'ylabel':[],'xunit':[],'yunit':[],'span':[],'spancolor':[]}
-
 
 ingest_signals={}
 failed_update_ingest_signals_lastts=0
@@ -3214,6 +3212,8 @@ def send_blmx(handlerkey,thelayoutsettings,theviewsettings,thesignals,lastts,las
             send_websock_data(pack_binarydata_msg('fig[%d].xmax'%(ifigure),theviewsettings['xmax'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymin'%(ifigure),theviewsettings['ymin'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].ymax'%(ifigure),theviewsettings['ymax'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cmin'%(ifigure),theviewsettings['cmin'],'f'),handlerkey);count+=1;
+            send_websock_data(pack_binarydata_msg('fig[%d].cmax'%(ifigure),theviewsettings['cmax'],'f'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].showtitle'%(ifigure),theviewsettings['showtitle'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].showlegend'%(ifigure),theviewsettings['showlegend'],'s'),handlerkey);count+=1;
             send_websock_data(pack_binarydata_msg('fig[%d].showxlabel'%(ifigure),theviewsettings['showxlabel'],'s'),handlerkey);count+=1;

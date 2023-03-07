@@ -1557,10 +1557,8 @@ function drawCountFigure(ifig,flagcount,legendx,legendy,title,cunit,clabel,yunit
     RG_fig[ifig].ymax_eval=yviewmax[0];
 }
 
-function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,clabel)
+function drawMatrixFigure(ifig,mxdatahh,mxdatavv,legendx,legendy,title,cunit,clabel,cmin,cmax)
 {
-    var cmin=NaN,cmax=NaN,pmin=NaN,pmax=NaN;
-
             if (document.getElementById('myfigurediv'+ifig).style.display=='none' || typeof mxdatahh=="undefined")
             {
                 blankFigure(ifig);
@@ -2281,7 +2279,7 @@ function redrawfigure(ifig)
             }
         }else
         {
-            drawMatrixFigure(ifig,RG_fig[ifig].mxdatahh,RG_fig[ifig].mxdatavv,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel)
+            drawMatrixFigure(ifig,RG_fig[ifig].mxdatahh,RG_fig[ifig].mxdatavv,RG_fig[ifig].legendx,RG_fig[ifig].legendy,RG_fig[ifig].title,RG_fig[ifig].cunit,RG_fig[ifig].clabel,RG_fig[ifig].cmin,RG_fig[ifig].cmax)
         }
     }else
         drawImageFigure(ifig,RG_fig[ifig].xdata,RG_fig[ifig].ydata,RG_fig[ifig].cdata,RG_fig[ifig].color,RG_fig[ifig].xmin,RG_fig[ifig].xmax,RG_fig[ifig].ymin,RG_fig[ifig].ymax,RG_fig[ifig].cmin,RG_fig[ifig].cmax,RG_fig[ifig].title,RG_fig[ifig].xlabel,RG_fig[ifig].ylabel,RG_fig[ifig].clabel,RG_fig[ifig].xunit,RG_fig[ifig].yunit,RG_fig[ifig].cunit,RG_fig[ifig].legend,RG_fig[ifig].span,RG_fig[ifig].spancolor);

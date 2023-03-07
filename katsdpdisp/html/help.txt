@@ -428,3 +428,5 @@ Sets the limits for axes used on the page. These commands applies to all figures
 'Fmin=1.6' sets the minimum frequency of all spectrum and waterfall plots that have GHz units to 1.6 GHz
 'pmin=-60' sets the minimum power of all plots that have power units to -60 dB. Also may affect colour scale of waterfall plots.
 'pmax=' clears the upper limit of power in all plots (i.e. set to autoscale)
+'phasemin=-1.5' sets maximum phase to -1.5 radians
+'phasemax=1.5' sets maximum phase to 1.5 radians
