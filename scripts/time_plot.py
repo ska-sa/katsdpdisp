@@ -3441,6 +3441,8 @@ if (opts.debug):
     logger.setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.INFO)
+    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+    logging.getLogger('tornado').setLevel(logging.CRITICAL)
 
 #configure SPEAD to display warnings about dropped packets etc...
 #logging.getLogger('spead2').setLevel(logging.WARNING)
