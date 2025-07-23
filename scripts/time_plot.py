@@ -1479,6 +1479,7 @@ def handle_websock_event(handlerkey,*args):
         elif (args[0].startswith('wtabhh') or args[0].startswith('wtabhv') or args[0].startswith('wtabvh') or args[0].startswith('wtabvv')):
             logger.info(repr(args))
             antnumbers=[int(antnumberstr[1:]) for antnumberstr in telstate_antenna_mask if antnumberstr[0]=='m']#determine all meerkat inputs
+            mkeants=[antname for antname in telstate_antenna_mask if antname[0]=='e']
             skaants=[antname for antname in telstate_antenna_mask if antname[0]=='s']
             if (len(antnumbers)==0):
                 send_websock_cmd('logconsole("No antenna inputs found or specified",true,true,true)',handlerkey)
@@ -1502,6 +1503,9 @@ def handle_websock_event(handlerkey,*args):
                         ijstr=str(iant)+str(args[0][-1])+str(refantnumber)+str(args[0][-2])
                     else:
                         ijstr=str(refantnumber)+str(args[0][-2])+str(iant)+str(args[0][-1])
+                    html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
+                for iant in range(len(mkeants)): # keep blank placeholder if antenna not present
+                    ijstr=mkeants[iant]+str(args[0][-2])+str(refantnumber)+str(args[0][-1])
                     html_viewsettings[username].append({'figtype':'waterfall'+ijstr,'type':'phase','xtype':'mhz','xmin':[],'xmax':[],'ymin':[],'ymax':[],'cmin':[],'cmax':[],'showlegend':'off','showxlabel':'off','showylabel':'off','showxticklabel':'off','showyticklabel':'off','showtitle':'in','processtime':0,'version':0})
                 for iant in range(len(skaants)): # keep blank placeholder if antenna not present
                     ijstr=str(refantnumber)+str(args[0][-2])+skaants[iant]+str(args[0][-1])
