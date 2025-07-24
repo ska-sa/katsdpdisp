@@ -2195,17 +2195,21 @@ def decodecustomsignal(signalstr):
         return ()
     if sreg[0].isdigit():
         rv0='m%03d'%int(sreg[0])
-    elif sreg[0][0].lower()=='m' and sreg[0][1:].isdigit():
+    elif sreg[0].lower().startswith('m') and sreg[0][1:].isdigit():
         rv0='m%03d'%int(sreg[0][1:])
-    elif sreg[0][0].lower()=='s' and sreg[0][1:].isdigit():
+    elif sreg[0].lower().startswith('e') and sreg[0][1:].isdigit():
+        rv0='e%03d'%int(sreg[0][1:])
+    elif sreg[0].lower().startswith('s') and sreg[0][1:].isdigit():
         rv0='s%04d'%int(sreg[0][1:])
     else:
         rv0=sreg[0]
     if sreg[1].isdigit():
         rv1='m%03d'%int(sreg[1])
-    elif sreg[1][0].lower()=='m' and sreg[1][1:].isdigit():
+    elif sreg[1].lower().startswith('m') and sreg[1][1:].isdigit():
         rv1='m%03d'%int(sreg[1][1:])
-    elif sreg[1][0].lower()=='s' and sreg[1][1:].isdigit():
+    elif sreg[1].lower().startswith('e') and sreg[1][1:].isdigit():
+        rv1='e%03d'%int(sreg[1][1:])
+    elif sreg[1].lower().startswith('s') and sreg[1][1:].isdigit():
         rv1='s%04d'%int(sreg[1][1:])
     else:
         rv1=sreg[1]
