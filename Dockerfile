@@ -14,10 +14,14 @@ RUN uv pip compile /tmp/install/requirements.txt \
 
 # Install the package
 COPY --chown=kat:kat . /tmp/install/katsdpdisp
-WORKDIR /tmp/install/katsdpdisp
-RUN python ./setup.py clean
-RUN pip install --no-deps .
-RUN pip check
+#WORKDIR /tmp/install/katsdpdisp
+#RUN python ./setup.py clean
+#RUN pip install --no-deps .
+#RUN pip check
+RUN cd /tmp/install/katsdpdisp && \
+    python ./setup.py clean && \
+    uv pip install --no-deps . && \
+    uv pip check
 
 #######################################################################
 
