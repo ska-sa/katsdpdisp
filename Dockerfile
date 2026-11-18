@@ -7,13 +7,13 @@ FROM $KATSDPDOCKERBASE_REGISTRY/docker-base-build AS build
 ENV PATH="/home/kat/.local/bin:$PATH_PYTHON3" VIRTUAL_ENV="$VIRTUAL_ENV_PYTHON3"
 
 # Install dependencies
-COPY --chown=kat:kat base-requirements.txt /tmp/install/
 COPY --chown=kat:kat requirements.txt /tmp/install/
-
 RUN uv pip compile /tmp/install/requirements.txt \
-    -o /tmp/install/requirements.lock && \
-    uv pip install --no-deps -r /tmp/install/requirements.lock&&\
+        -c /home/kat/docker-base/base-requirements.lock \
+        -o /tmp/install/requirements.lock && \
+    uv pip install --no-deps -r /tmp/install/requirements.lock && \
     uv pip check
+
 
 # Install the package
 COPY --chown=kat:kat . /tmp/install/katsdpdisp
